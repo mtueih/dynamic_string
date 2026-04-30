@@ -1,17 +1,11 @@
-cmake_minimum_required(VERSION 4.1)
-project(dynamic_string C)
+cmake_minimum_required(VERSION 3.10)
+project(dynamic_string LANGUAGES C)
 
-set(CMAKE_C_STANDARD 17)
-set(CMAKE_C_STANDARD_REQUIRED ON)
+add_subdirectory(deps/portable_attributes)
 
+add_library(dstr_adt STATIC src/dynamic_string.c)
+target_include_directories(dstr_adt PUBLIC include)
+target_link_libraries(dstr_adt PRIVATE portable_attributes::portable_attributes)
 
-add_library(dstr STATIC src/dynamic_string.c
-        include/portable_attributes.h
-include/dynamic_string.h)
-
-target_include_directories(dstr PUBLIC include)
-
-add_executable(dynamic_string src/main.c)
-target_include_directories(dynamic_string PUBLIC include)
-target_link_libraries(dynamic_string PRIVATE dstr)
-
+add_executable(dynamic_string_test src/main.c)
+target_link_libraries(dynamic_string_test PRIVATE dstr_adt)

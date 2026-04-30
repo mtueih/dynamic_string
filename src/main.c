@@ -2,7 +2,7 @@
 #include "dynamic_string.h"
 
 int main(void) {
-    DString *dstr = NULL;
+    dstr_adt *dstr = NULL;
 
     return 0;
 }

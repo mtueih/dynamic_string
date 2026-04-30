@@ -1,0 +1,3 @@
+[submodule "deps/portable_attributes"]
+	path = deps/portable_attributes
+	url = https://github.com/mtueih/portable_attributes.git

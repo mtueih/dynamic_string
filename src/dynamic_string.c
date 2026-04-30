@@ -11,7 +11,7 @@
 #include <string.h>
 
 // ADT 类型定义
-struct DynamicString {
+struct dynamic_string {
     char *data;
     size_t len;
     size_t cap;
@@ -20,13 +20,13 @@ struct DynamicString {
 
 // 静态函数定义
 // 调整一个「动态字符串」的容量
-static bool capacity_resize(DString *dstr, const size_t new_cap) {
+static bool capacity_resize(dstr_adt *dstr, const size_t new_cap) {
     char *new_cstr;
     size_t adjusted_cap;
 
     if (new_cap == 0) {
         if (dstr->data != NULL) free(dstr->data);
-        *dstr = (DString)
+        *dstr = (dstr_adt)
         {
             0
         };
@@ -63,14 +63,14 @@ static bool capacity_resize(DString *dstr, const size_t new_cap) {
 
 // API 函数定义
 // 创建、销毁、清空
-DString *dstr_create(const char *cstr) {
-    DString *new_dstr;
+dstr_adt *dstr_create(const char *cstr) {
+    dstr_adt *new_dstr;
     size_t cstr_len;
 
-    new_dstr = malloc(sizeof(DString));
+    new_dstr = malloc(sizeof(dstr_adt));
     if (new_dstr == NULL) return NULL;
 
-    *new_dstr = (DString){0};
+    *new_dstr = (dstr_adt){0};
 
     if (cstr != NULL && (cstr_len = strlen(cstr)) != 0) {
         if (!capacity_resize(new_dstr, cstr_len + 1)) {
@@ -83,14 +83,14 @@ DString *dstr_create(const char *cstr) {
     return new_dstr;
 }
 
-void dstr_destroy(DString *dstr) {
+void dstr_destroy(dstr_adt *dstr) {
     assert(dstr != NULL);
 
     if (dstr->data != NULL) free(dstr->data);
     free(dstr);
 }
 
-void dstr_clear(DString *dstr) {
+void dstr_clear(dstr_adt *dstr) {
     assert(dstr != NULL);
 
     if (dstr->data == NULL || dstr->len == 0) return;
@@ -100,25 +100,25 @@ void dstr_clear(DString *dstr) {
 }
 
 // 属性获取与设置
-const char *dstr_cstr(const DString *dstr) {
+const char *dstr_cstr(const dstr_adt *dstr) {
     assert(dstr != NULL);
 
     return dstr->data;
 }
 
-size_t dstr_length(const DString *dstr) {
+size_t dstr_length(const dstr_adt *dstr) {
     assert(dstr != NULL);
 
     return dstr->len;
 }
 
-size_t dstr_capacity(const DString *dstr) {
+size_t dstr_capacity(const dstr_adt *dstr) {
     assert(dstr != NULL);
 
     return dstr->cap;
 }
 
-bool dstr_resize_capacity(DString *dstr, const size_t new_capacity) {
+bool dstr_set_capacity(dstr_adt *dstr, const size_t new_capacity) {
     size_t old_min_cap;
 
     assert(dstr != NULL);
@@ -135,7 +135,7 @@ bool dstr_resize_capacity(DString *dstr, const size_t new_capacity) {
 
 // 复制、追加、插入、删除
 // 复制、追加、插入完整现有字符串到目标字符串
-bool dstr_cpy_cstr(DString *dest, const char *src) {
+bool dstr_cpy_cstr(dstr_adt *dest, const char *src) {
     size_t src_len;
 
     assert(dest != NULL && src != NULL);
@@ -151,7 +151,7 @@ bool dstr_cpy_cstr(DString *dest, const char *src) {
     return false;
 }
 
-bool dstr_cpy(DString *dest, const DString *src) {
+bool dstr_cpy(dstr_adt *dest, const dstr_adt *src) {
     assert(dest != NULL && src != NULL);
 
     // ReSharper disable once CppDFANullDereference
@@ -164,7 +164,7 @@ bool dstr_cpy(DString *dest, const DString *src) {
     return false;
 }
 
-bool dstr_cat_cstr(DString *dest, const char *src) {
+bool dstr_cat_cstr(dstr_adt *dest, const char *src) {
     size_t src_len;
 
     assert(dest != NULL && src != NULL);
@@ -179,7 +179,7 @@ bool dstr_cat_cstr(DString *dest, const char *src) {
     return false;
 }
 
-bool dstr_cat(DString *dest, const DString *src) {
+bool dstr_cat(dstr_adt *dest, const dstr_adt *src) {
     assert(dest != NULL && src != NULL);
 
     if (src->len == 0) return false;
@@ -192,7 +192,7 @@ bool dstr_cat(DString *dest, const DString *src) {
     return false;
 }
 
-bool dstr_insert_cstr(DString *dest, const char *src, const size_t index) {
+bool dstr_insert_cstr(dstr_adt *dest, const char *src, const size_t index) {
     size_t src_len;
 
     assert(dest != NULL && src != NULL);
@@ -215,7 +215,7 @@ bool dstr_insert_cstr(DString *dest, const char *src, const size_t index) {
     return false;
 }
 
-bool dstr_insert(DString *dest, const DString *src, const size_t index) {
+bool dstr_insert(dstr_adt *dest, const dstr_adt *src, const size_t index) {
     assert(dest != NULL && src != NULL);
 
     if (index > dest->len || src->len == 0) return 0;
@@ -235,7 +235,7 @@ bool dstr_insert(DString *dest, const DString *src, const size_t index) {
 }
 
 // 复制、追加、插入现有字符串的子串到目标字符串
-bool dstr_cpy_sub_cstr(DString *dest, const char *src, const size_t sub_index, const size_t sub_count) {
+bool dstr_cpy_sub_cstr(dstr_adt *dest, const char *src, const size_t sub_index, const size_t sub_count) {
     size_t src_len, sub_len;
 
     assert(dest != NULL && src != NULL);
@@ -253,7 +253,7 @@ bool dstr_cpy_sub_cstr(DString *dest, const char *src, const size_t sub_index, c
     return false;
 }
 
-bool dstr_cpy_sub(DString *dest, const DString *src, const size_t sub_index, const size_t sub_count) {
+bool dstr_cpy_sub(dstr_adt *dest, const dstr_adt *src, const size_t sub_index, const size_t sub_count) {
     size_t sub_len;
 
     assert(dest != NULL && src != NULL);
@@ -270,7 +270,7 @@ bool dstr_cpy_sub(DString *dest, const DString *src, const size_t sub_index, con
     return false;
 }
 
-bool dstr_cat_sub_cstr(DString *dest, const char *src, const size_t sub_index, const size_t sub_count) {
+bool dstr_cat_sub_cstr(dstr_adt *dest, const char *src, const size_t sub_index, const size_t sub_count) {
     size_t src_len, sub_len;
 
     assert(dest != NULL && src != NULL);
@@ -288,7 +288,7 @@ bool dstr_cat_sub_cstr(DString *dest, const char *src, const size_t sub_index, c
     return false;
 }
 
-bool dstr_cat_sub(DString *dest, const DString *src, const size_t sub_index, const size_t sub_count) {
+bool dstr_cat_sub(dstr_adt *dest, const dstr_adt *src, const size_t sub_index, const size_t sub_count) {
     size_t sub_len;
 
     assert(dest != NULL && src != NULL);
@@ -305,7 +305,7 @@ bool dstr_cat_sub(DString *dest, const DString *src, const size_t sub_index, con
     return false;
 }
 
-bool dstr_insert_sub_cstr(DString *dest, const char *src, const size_t index, const size_t sub_index,
+bool dstr_insert_sub_cstr(dstr_adt *dest, const char *src, const size_t index, const size_t sub_index,
                           const size_t sub_count) {
     size_t src_len, sub_len;
 
@@ -331,7 +331,7 @@ bool dstr_insert_sub_cstr(DString *dest, const char *src, const size_t index, co
     return false;
 }
 
-bool dstr_insert_sub(DString *dest, const DString *src, const size_t index, const size_t sub_index,
+bool dstr_insert_sub(dstr_adt *dest, const dstr_adt *src, const size_t index, const size_t sub_index,
                      const size_t sub_count) {
     size_t sub_len;
 
@@ -357,7 +357,7 @@ bool dstr_insert_sub(DString *dest, const DString *src, const size_t index, cons
 }
 
 // 删除子串
-void dstr_remove(DString *dstr, const size_t sub_index, const size_t sub_count) {
+void dstr_remove(dstr_adt *dstr, const size_t sub_index, const size_t sub_count) {
     size_t sub_len;
 
     assert(dstr != NULL);
@@ -377,7 +377,7 @@ void dstr_remove(DString *dstr, const size_t sub_index, const size_t sub_count) 
 }
 
 // 删除特定内容
-void dstr_trim(DString *dstr) {
+void dstr_trim(dstr_adt *dstr) {
     char *find;
     size_t space_len;
 
@@ -414,7 +414,7 @@ void dstr_trim(DString *dstr) {
 }
 
 // 格式化写入
-bool dstr_printf(DString *dstr, const char *format, ...) {
+bool dstr_printf(dstr_adt *dstr, const char *format, ...) {
     va_list args, temp_args;
     size_t old_cap;
     int needed_len, written_len;
@@ -448,19 +448,19 @@ bool dstr_printf(DString *dstr, const char *format, ...) {
 
 // 从现有字符串生成新字符串
 // 提取子串
-DString *dstr_sub_cstr(const char *cstr, const size_t sub_index, const size_t sub_count) {
+dstr_adt *dstr_sub_cstr(const char *cstr, const size_t sub_index, const size_t sub_count) {
     size_t cstr_len, sub_len;
-    DString *new_dstr;
+    dstr_adt *new_dstr;
 
     assert(cstr != NULL);
 
     cstr_len = strlen(cstr);
     if (sub_index >= cstr_len || sub_index + sub_count > cstr_len) return NULL;
 
-    new_dstr = malloc(sizeof(DString));
+    new_dstr = malloc(sizeof(dstr_adt));
     if (new_dstr == NULL) return NULL;
 
-    *new_dstr = (DString){0};
+    *new_dstr = (dstr_adt){0};
 
     sub_len = sub_count == 0 ? cstr_len - sub_index : sub_count;
 
@@ -474,18 +474,18 @@ DString *dstr_sub_cstr(const char *cstr, const size_t sub_index, const size_t su
     return NULL;
 }
 
-DString *dstr_sub(const DString *dstr, const size_t sub_index, const size_t sub_count) {
+dstr_adt *dstr_sub(const dstr_adt *dstr, const size_t sub_index, const size_t sub_count) {
     size_t sub_len;
-    DString *new_dstr;
+    dstr_adt *new_dstr;
 
     assert(dstr != NULL);
 
     if (sub_index >= dstr->len || sub_index + sub_count > dstr->len) return NULL;
 
-    new_dstr = malloc(sizeof(DString));
+    new_dstr = malloc(sizeof(dstr_adt));
     if (new_dstr == NULL) return NULL;
 
-    *new_dstr = (DString){0};
+    *new_dstr = (dstr_adt){0};
 
     sub_len = sub_count == 0 ? dstr->len - sub_index : sub_count;
 
@@ -500,15 +500,15 @@ DString *dstr_sub(const DString *dstr, const size_t sub_index, const size_t sub_
 }
 
 // 克隆
-DString *dstr_clone(const DString *dstr) {
-    DString *new_dstr;
+dstr_adt *dstr_clone(const dstr_adt *dstr) {
+    dstr_adt *new_dstr;
 
     assert(dstr != NULL);
 
-    new_dstr = malloc(sizeof(DString));
+    new_dstr = malloc(sizeof(dstr_adt));
     if (new_dstr == NULL) return NULL;
 
-    *new_dstr = (DString){0};
+    *new_dstr = (dstr_adt){0};
     if (capacity_resize(new_dstr, dstr->len + 1)) {
         memcpy(new_dstr->data, dstr->data, dstr->len);
         new_dstr->data[new_dstr->len = dstr->len] = '\0';
@@ -520,7 +520,7 @@ DString *dstr_clone(const DString *dstr) {
 }
 
 // 查找、统计与替换
-bool dstr_find_cstr(const DString *dstr, const char *sub, size_t *out_index, const bool backward) {
+bool dstr_find_cstr(const dstr_adt *dstr, const char *sub, size_t *out_index, const bool backward) {
     size_t sub_len;
     char *find;
 
@@ -554,7 +554,7 @@ bool dstr_find_cstr(const DString *dstr, const char *sub, size_t *out_index, con
     return false;
 }
 
-bool dstr_find(const DString *dstr, const DString *sub, size_t *out_index, const bool backward) {
+bool dstr_find(const dstr_adt *dstr, const dstr_adt *sub, size_t *out_index, const bool backward) {
     char *find;
 
     assert(dstr != NULL && sub != NULL && out_index != NULL);
@@ -586,7 +586,7 @@ bool dstr_find(const DString *dstr, const DString *sub, size_t *out_index, const
     return false;
 }
 
-size_t dstr_count_cstr(const DString *dstr, const char *sub) {
+size_t dstr_count_cstr(const dstr_adt *dstr, const char *sub) {
     size_t sub_len;
     char *find;
     size_t find_count;
@@ -610,7 +610,7 @@ size_t dstr_count_cstr(const DString *dstr, const char *sub) {
     return find_count;
 }
 
-size_t dstr_count(const DString *dstr, const DString *sub) {
+size_t dstr_count(const dstr_adt *dstr, const dstr_adt *sub) {
     char *find;
     size_t find_count;
 
@@ -633,7 +633,7 @@ size_t dstr_count(const DString *dstr, const DString *sub) {
     return find_count;
 }
 
-bool dstr_find_nth_cstr(const DString *dstr, const char *sub, size_t *out_index, const size_t n, const bool backward) {
+bool dstr_find_nth_cstr(const dstr_adt *dstr, const char *sub, size_t *out_index, const size_t n, const bool backward) {
     size_t sub_len;
     char *find;
     size_t find_count;
@@ -677,7 +677,7 @@ bool dstr_find_nth_cstr(const DString *dstr, const char *sub, size_t *out_index,
     return false;
 }
 
-bool dstr_find_nth(const DString *dstr, const DString *sub, size_t *out_index, const size_t n, const bool backward) {
+bool dstr_find_nth(const dstr_adt *dstr, const dstr_adt *sub, size_t *out_index, const size_t n, const bool backward) {
     char *find;
     size_t find_count;
 
@@ -721,7 +721,7 @@ bool dstr_find_nth(const DString *dstr, const DString *sub, size_t *out_index, c
 }
 
 
-size_t dstr_replace_cstr(DString *dstr, const char *old, const char *new, const size_t n,
+size_t dstr_replace_cstr(dstr_adt *dstr, const char *old, const char *new, const size_t n,
                          const bool backward) {
     // 局部变量声明
     size_t find_count;
@@ -794,7 +794,7 @@ size_t dstr_replace_cstr(DString *dstr, const char *old, const char *new, const 
 }
 
 
-size_t dstr_replace(DString *dstr, const DString *old, const DString *new,
+size_t dstr_replace(dstr_adt *dstr, const dstr_adt *old, const dstr_adt *new,
                     const size_t n, const bool backward) {
     // 局部变量声明
     size_t find_count;
@@ -864,7 +864,7 @@ size_t dstr_replace(DString *dstr, const DString *old, const DString *new,
 }
 
 // 判断与比较
-bool dstr_starts_with_cstr(const DString *dstr, const char *prefix) {
+bool dstr_starts_with_cstr(const dstr_adt *dstr, const char *prefix) {
     size_t prefix_len;
 
     assert(dstr != NULL && prefix != NULL);
@@ -876,7 +876,7 @@ bool dstr_starts_with_cstr(const DString *dstr, const char *prefix) {
 }
 
 
-bool dstr_starts_with(const DString *dstr, const DString *prefix) {
+bool dstr_starts_with(const dstr_adt *dstr, const dstr_adt *prefix) {
     assert(dstr != NULL && prefix != NULL);
 
     if (prefix->len == 0 || prefix->len > dstr->len) return false;
@@ -885,7 +885,7 @@ bool dstr_starts_with(const DString *dstr, const DString *prefix) {
 }
 
 
-bool dstr_ends_with_cstr(const DString *dstr, const char *suffix) {
+bool dstr_ends_with_cstr(const dstr_adt *dstr, const char *suffix) {
     size_t suffix_len;
 
     assert(dstr != NULL && suffix != NULL);
@@ -897,7 +897,7 @@ bool dstr_ends_with_cstr(const DString *dstr, const char *suffix) {
 }
 
 
-bool dstr_ends_with(const DString *dstr, const DString *suffix) {
+bool dstr_ends_with(const dstr_adt *dstr, const dstr_adt *suffix) {
     assert(dstr != NULL && suffix != NULL);
     if (suffix->len == 0 || suffix->len > dstr->len) return false;
 
@@ -906,7 +906,7 @@ bool dstr_ends_with(const DString *dstr, const DString *suffix) {
 }
 
 
-bool dstr_contains_cstr(const DString *dstr, const char *sub) {
+bool dstr_contains_cstr(const dstr_adt *dstr, const char *sub) {
     size_t sub_len;
 
     assert(dstr != NULL && sub != NULL);
@@ -916,7 +916,7 @@ bool dstr_contains_cstr(const DString *dstr, const char *sub) {
     return strstr(dstr->data, sub) != NULL;
 }
 
-bool dstr_contains(const DString *dstr, const DString *sub) {
+bool dstr_contains(const dstr_adt *dstr, const dstr_adt *sub) {
     assert(dstr != NULL && sub != NULL);
     if (sub->len == 0 || sub->len > dstr->len) return false;
 
@@ -924,7 +924,7 @@ bool dstr_contains(const DString *dstr, const DString *sub) {
 }
 
 
-bool dstr_equals_cstr(const DString *dstr, const char *cstr) {
+bool dstr_equals_cstr(const dstr_adt *dstr, const char *cstr) {
     size_t cstr_len;
 
     assert(dstr != NULL && cstr != NULL);
@@ -935,20 +935,20 @@ bool dstr_equals_cstr(const DString *dstr, const char *cstr) {
 }
 
 
-bool dstr_equals(const DString *dstr_1, const DString *dstr_2) {
+bool dstr_equals(const dstr_adt *dstr_1, const dstr_adt *dstr_2) {
     assert(dstr_1 != NULL && dstr_2 != NULL);
     if (dstr_1->len != dstr_2->len) return false;
 
     return strncmp(dstr_1->data, dstr_2->data, dstr_2->len) == 0;
 }
 
-int dstr_compare_cstr(const DString *dstr, const char *cstr) {
+int dstr_compare_cstr(const dstr_adt *dstr, const char *cstr) {
     assert(dstr != NULL && cstr != NULL);
 
     return strcmp(dstr->data, cstr);
 }
 
-int dstr_compare(const DString *dstr_1, const DString *dstr_2) {
+int dstr_compare(const dstr_adt *dstr_1, const dstr_adt *dstr_2) {
     assert(dstr_1 != NULL && dstr_2 != NULL);
 
     return strcmp(dstr_1->data, dstr_2->data);
