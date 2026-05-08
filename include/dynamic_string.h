@@ -7,7 +7,7 @@
 
 #include <attrs.h>
 #include <errno.h>
-#if defined(__STDC_VERSION__) && __STDC_VERSION__ < 202311L
+#if !defined(__STDC_VERSION__) || (defined(__STDC_VERSION__) && __STDC_VERSION__ < 202311L)
 	#include <stdbool.h>
 #endif
 #include <stddef.h>
@@ -401,7 +401,7 @@ size_t dstr_count(
  * @param dstr 目标动态字符串。
  * @param sub 要查找的子串。
  * @param out_index 输出参数，不为 NULL 时将找到的子串的起始索引写入其指向的内存。
- * @param n 要查找的第 n 次出现，n 从 1 开始，为 0 表示最后一次。
+ * @param n 要查找的第 n 次出现，n 从 1 开始。
  * @param backward 是否从后向前查找。
  * @return 如果找到则返回 true，否则返回 false。
  */
@@ -418,7 +418,7 @@ bool dstr_find_nth_cstr(
  * @param dstr 目标动态字符串。
  * @param sub 要查找的子串。
  * @param out_index 输出参数，不为 NULL 时将找到的子串的起始索引写入其指向的内存。
- * @param n 要查找的第 n 次出现，n 从 1 开始，为 0 表示最后一次。
+ * @param n 要查找的第 n 次出现，n 从 1 开始。
  * @param backward 是否从后向前查找。
  * @return 如果找到则返回 true，否则返回 false。
  */
