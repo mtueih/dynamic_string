@@ -5,15 +5,16 @@
 #include "dynamic_string.h"
 #include <assert.h>
 #include <ctype.h>
+#include <safe_calc.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <safe_calc.h>
 
+// 缓存行大小。
 #define DYNAMIC_STRING_CACHELINE_SIZE 64
 
-// 如果 C 标准大于 C23，则 将 NULL 定义为 nullptr
+// 如果 C 标准大于 C23，则 将 NULL 定义为 nullptr。
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
 #define DYNAMIC_STRING_NULL_PTR nullptr
 #else
@@ -21,7 +22,8 @@
 #endif
 
 
-// ADT 类型定义
+// ADT 类型定义。
+// ReSharper disable once CppClassNeverUsed
 struct dynamic_string {
 	char *data;
 	size_t len;
@@ -44,17 +46,20 @@ static void local_free_dstr(dstr_adt *const dstr) {
 /**
  * 调整一个动态字符串的容量，
  * @warning 只进行实际 realloc、更新 adt 成员变量 data、cap、len（如果容量不够则会截断）的值；
- *	请确保 new_cap 不等于 0，否则将导致 relloc 的未定义行为，以及可能的溢出，以及后续的越界访问
- * @param new_cap 请确保 new_cap 不等于 0，否则将导致 relloc 的未定义行为，以及可能的溢出，以及后续的越界访问
+ *	请确保 new_cap 不等于 0，否则将导致 realloc 的未定义行为，以及可能的溢出，以及后续的越界访问。
+ * @param new_cap 请确保 new_cap 不等于 0，否则将导致 realloc 的未定义行为，以及可能的溢出，以及后续的越界访问
  */
+// ReSharper disable once CppDoxygenUndocumentedParameter
 static bool local_capacity_resize(dstr_adt *const dstr, const size_t new_cap) {
 	char *new_cstr = realloc(dstr->data, new_cap);
 
 	if (new_cstr == DYNAMIC_STRING_NULL_PTR) return false;
 
+	// 更新 adt 成员变量的值
 	dstr->data = new_cstr;
 	dstr->cap = new_cap;
 
+	// 截断字符串，保证以 '\0' 结尾
 	if (new_cap <= dstr->len) {
 		dstr->len = new_cap - 1;
 		dstr->data[dstr->len] = '\0';
@@ -65,6 +70,7 @@ static bool local_capacity_resize(dstr_adt *const dstr, const size_t new_cap) {
 
 // 实际调整一个动字符串的容量
 static bool local_capacity_resize_really(dstr_adt *const dstr, const size_t new_cap) {
+	// 单独释放，避免 realloc 未定义行为
 	if (new_cap == 0) {
 		local_free_dstr(dstr);
 		return true;
@@ -78,6 +84,7 @@ static bool local_capacity_resize_really(dstr_adt *const dstr, const size_t new_
  * 动态调整一个「动态字符串」的容量
  * @param new_len 所需的字符串长度，无须手动+1
  */
+// ReSharper disable once CppDoxygenUndocumentedParameter
 static bool local_capacity_resize_dynamic(dstr_adt *const dstr, const size_t new_len) {
 	size_t new_cap = 0; // 不低于保底值目标容量
 	size_t adjusted_cap = 0; // 基于目标容量调整后的容量，为目标容量 1.5 倍
@@ -140,12 +147,20 @@ static bool local_capacity_resize_dynamic(dstr_adt *const dstr, const size_t new
 				return true;
 			}
 		}
+
+		// 上述尝试都失败，则返回失败
 		return false;
 	}
 
 	// 目标容量小于当前容量的 1/4，减容
 	// 尝试对齐到缓存行大小
 	if (safe_size_align_up(new_cap, DYNAMIC_STRING_CACHELINE_SIZE, &cache_line_aligned_cap)) {
+		// 对齐后的容量有可能与当前容量相等，如果真相等，则直接返回成功
+		if (cache_line_aligned_cap == dstr->cap) {
+			return true;
+		}
+
+		// 尝试分配对齐后的容量
 		if (local_capacity_resize(dstr, cache_line_aligned_cap)) {
 			return true;
 		}
@@ -157,14 +172,14 @@ static bool local_capacity_resize_dynamic(dstr_adt *const dstr, const size_t new
 			return true;
 		}
 	}
+
+	// 上述尝试都失败，则返回失败
 	return false;
 }
 
 // 在堆上创建 adt 并初始化
-static struct dynamic_string *local_create_dstr_and_init(void) {
-	dstr_adt *new_dstr;
-
-	new_dstr = malloc(sizeof(struct dynamic_string));
+static dstr_adt *local_create_dstr_and_init(void) {
+	dstr_adt *new_dstr = malloc(sizeof(dstr_adt));
 	if (new_dstr == DYNAMIC_STRING_NULL_PTR) return DYNAMIC_STRING_NULL_PTR;
 
 	// 初始化
@@ -182,15 +197,19 @@ static struct dynamic_string *local_create_dstr_and_init(void) {
 dstr_adt *dstr_create(const char *const cstr) {
 	size_t cstr_len;
 
+	// 创建 adt
 	dstr_adt *new_dstr = local_create_dstr_and_init();
 	if (new_dstr == DYNAMIC_STRING_NULL_PTR) return DYNAMIC_STRING_NULL_PTR;
 
+	// 如果 cstr 不为空指针，且不指向空字符串，则进行初始化
 	if (cstr != DYNAMIC_STRING_NULL_PTR && (cstr_len = strlen(cstr)) != 0) {
+		// 分配内存
 		if (!local_capacity_resize_dynamic(new_dstr, cstr_len)) {
 			free(new_dstr);
 			return DYNAMIC_STRING_NULL_PTR;
 		}
 
+		// 拷贝字符串
 		memcpy(new_dstr->data, cstr, cstr_len);
 		new_dstr->data[new_dstr->len = cstr_len] = '\0';
 	}
@@ -216,6 +235,7 @@ void dstr_clear(dstr_adt *const dstr) {
 }
 
 // 属性获取与设置
+// ReSharper disable once CppParameterMayBeConstPtrOrRef
 char *dstr_cstr(dstr_adt *const dstr) {
 	// 断言，开发阶段参数检查
 	assert(dstr != DYNAMIC_STRING_NULL_PTR);
@@ -259,13 +279,11 @@ int dstr_set_capacity(dstr_adt *const dstr, const size_t new_capacity) {
 // 复制、追加、插入、删除
 // 复制、追加、插入完整现有字符串到目标字符串
 int dstr_cpy_cstr(dstr_adt *const dest, const char *const src) {
-	size_t src_len;
-
 	// 断言，开发阶段参数检查
 	assert(dest != DYNAMIC_STRING_NULL_PTR && src != DYNAMIC_STRING_NULL_PTR);
 
 	// 参数检查
-	if ((src_len = strlen(src)) == 0) return DSTR_INVALID_PARAM;
+	const size_t src_len = strlen(src);
 
 	// 容量调整
 	if (!local_capacity_resize_dynamic(dest, src_len)) {
@@ -273,8 +291,11 @@ int dstr_cpy_cstr(dstr_adt *const dest, const char *const src) {
 	}
 
 	// 字符串插入/拷贝
-	memcpy(dest->data, src, src_len);
-	dest->data[dest->len = src_len] = '\0';
+	if (src_len != 0) {
+		memcpy(dest->data, src, src_len);
+		dest->data[dest->len = src_len] = '\0';
+	}
+
 	return DSTR_SUCCESS;
 }
 
@@ -282,24 +303,29 @@ int dstr_cpy(dstr_adt *const dest, const dstr_adt *const src) {
 	// 断言，开发阶段参数检查
 	assert(dest != DYNAMIC_STRING_NULL_PTR && src != DYNAMIC_STRING_NULL_PTR);
 
-	if (src->len == 0) return DSTR_INVALID_PARAM;
 
 	if (!local_capacity_resize_dynamic(dest, src->len)) {
 		return DSTR_MEMORY_ALLOC_FAILED;
 	}
 
-	memcpy(dest->data, src->data, src->len);
-	dest->data[dest->len = src->len] = '\0';
+	if (src->len != 0) {
+		memcpy(dest->data, src->data, src->len);
+		dest->data[dest->len = src->len] = '\0';
+	}
+
 	return DSTR_SUCCESS;
 }
 
 int dstr_cat_cstr(dstr_adt *const dest, const char *const src) {
-	size_t src_len;
-
 	// 断言，开发阶段参数检查
 	assert(dest != DYNAMIC_STRING_NULL_PTR && src != DYNAMIC_STRING_NULL_PTR);
 
-	if ((src_len = strlen(src)) == 0) return DSTR_INVALID_PARAM;
+	const size_t src_len = strlen(src);
+
+	// src_len 为 0，视为追加空气，而这一定会成功
+	if (src_len == 0) return DSTR_SUCCESS;
+
+	if (safe_size_add_test(dest->len, src_len)) return DSTR_OVERFLOW;
 
 	if (!local_capacity_resize_dynamic(dest, dest->len + src_len)) {
 		return DSTR_MEMORY_ALLOC_FAILED;
@@ -307,6 +333,7 @@ int dstr_cat_cstr(dstr_adt *const dest, const char *const src) {
 
 	memcpy(dest->data + dest->len, src, src_len);
 	dest->data[dest->len += src_len] = '\0';
+
 	return DSTR_SUCCESS;
 }
 
@@ -314,7 +341,10 @@ int dstr_cat(dstr_adt *const dest, const dstr_adt *const src) {
 	// 断言，开发阶段参数检查
 	assert(dest != DYNAMIC_STRING_NULL_PTR && src != DYNAMIC_STRING_NULL_PTR);
 
-	if (src->len == 0) return DSTR_INVALID_PARAM;
+	// src->len 为 0，视为追加空气，而这一定会成功
+	if (src->len == 0) return DSTR_SUCCESS;
+
+	if (!safe_size_add_test(dest->len, src->len)) return DSTR_OVERFLOW;
 
 	if (!local_capacity_resize_dynamic(dest, dest->len + src->len)) {
 		return DSTR_MEMORY_ALLOC_FAILED;
@@ -325,13 +355,16 @@ int dstr_cat(dstr_adt *const dest, const dstr_adt *const src) {
 }
 
 int dstr_insert_cstr(dstr_adt *const dest, const size_t index, const char *const src) {
-	size_t src_len;
-
 	// 断言，开发阶段参数检查
 	assert(dest != DYNAMIC_STRING_NULL_PTR && src != DYNAMIC_STRING_NULL_PTR);
 
 	if (index > dest->len) return DSTR_INVALID_PARAM;
-	if ((src_len = strlen(src)) == 0) return DSTR_INVALID_PARAM;
+
+	const size_t src_len = strlen(src);
+	// src 长度为 0，视为追加空气，而这一定会成功
+	if (src_len == 0) return DSTR_SUCCESS;
+
+	if (!safe_size_add_test(dest->len, src_len)) return DSTR_OVERFLOW;
 
 	if (!local_capacity_resize_dynamic(dest, dest->len + src_len)) {
 		return DSTR_MEMORY_ALLOC_FAILED;
@@ -352,7 +385,12 @@ int dstr_insert(dstr_adt *const dest, const size_t index, const dstr_adt *const 
 	// 断言，开发阶段参数检查
 	assert(dest != DYNAMIC_STRING_NULL_PTR && src != DYNAMIC_STRING_NULL_PTR);
 
-	if (index > dest->len || src->len == 0) return DSTR_INVALID_PARAM;
+	if (index > dest->len) return DSTR_INVALID_PARAM;
+
+	// src->len 为 0，视为追加空气，而这一定会成功
+	if (src->len == 0) return DSTR_SUCCESS;
+
+	if (!safe_size_add_test(dest->len, src->len)) return DSTR_OVERFLOW;
 
 	if (!local_capacity_resize_dynamic(dest, dest->len + src->len)) {
 		return DSTR_MEMORY_ALLOC_FAILED;
@@ -374,8 +412,13 @@ int dstr_cpy_sub_cstr(dstr_adt *const dest, const char *const src, const size_t 
 	// 断言，开发阶段参数检查
 	assert(dest != DYNAMIC_STRING_NULL_PTR && src != DYNAMIC_STRING_NULL_PTR);
 
+	// 获取源字符串长度
 	const size_t src_len = strlen(src);
-	if (sub_index >= src_len || sub_index + sub_count > src_len) return DSTR_INVALID_PARAM;
+	// 检查子串范围是否越界
+	if (sub_index >= src_len) return DSTR_INVALID_PARAM;
+
+	if (!safe_size_add_test(sub_index, sub_count)) return DSTR_OVERFLOW;
+	if (sub_index + sub_count > src_len) return DSTR_INVALID_PARAM;
 
 	const size_t sub_len = sub_count == 0 ? src_len - sub_index : sub_count;
 
@@ -393,7 +436,10 @@ int dstr_cpy_sub(dstr_adt *const dest, const dstr_adt *const src, const size_t s
 	assert(dest != DYNAMIC_STRING_NULL_PTR && src != DYNAMIC_STRING_NULL_PTR);
 
 	// 检查子串范围是否越界
-	if (sub_index >= src->len || sub_index + sub_count > src->len) return DSTR_INVALID_PARAM;
+	if (sub_index >= src->len) return DSTR_INVALID_PARAM;
+
+	if (!safe_size_add_test(sub_index, sub_count)) return DSTR_OVERFLOW;
+	if (sub_index + sub_count > src->len) return DSTR_INVALID_PARAM;
 
 	// 计算子串长度，sub_count 为 0 视为到末尾
 	const size_t sub_len = sub_count == 0 ? src->len - sub_index : sub_count;
@@ -416,7 +462,10 @@ int dstr_cat_sub_cstr(dstr_adt *const dest, const char *const src, const size_t 
 	// 获取源字符串长度
 	const size_t src_len = strlen(src);
 	// 检查子串范围是否越界
-	if (sub_index >= src_len || sub_index + sub_count > src_len) return DSTR_INVALID_PARAM;
+	if (sub_index >= src_len) return DSTR_INVALID_PARAM;
+
+	if (!safe_size_add_test(sub_index, sub_count)) return DSTR_OVERFLOW;
+	if (sub_index + sub_count > src_len) return DSTR_INVALID_PARAM;
 
 	// 计算子串长度，sub_count 为 0 视为到末尾
 	const size_t sub_len = sub_count == 0 ? src_len - sub_index : sub_count;
@@ -437,7 +486,10 @@ int dstr_cat_sub(dstr_adt *const dest, const dstr_adt *const src, const size_t s
 	assert(dest != DYNAMIC_STRING_NULL_PTR && src != DYNAMIC_STRING_NULL_PTR);
 
 	// 检查子串范围是否越界
-	if (sub_index >= src->len || sub_index + sub_count > src->len) return DSTR_INVALID_PARAM;
+	if (sub_index >= src->len) return DSTR_INVALID_PARAM;
+
+	if (!safe_size_add_test(sub_index, sub_count)) return DSTR_OVERFLOW;
+	if (sub_index + sub_count > src->len) return DSTR_INVALID_PARAM;
 
 	// 计算子串长度，sub_count 为 0 视为到末尾
 	const size_t sub_len = sub_count == 0 ? src->len - sub_index : sub_count;
@@ -465,7 +517,10 @@ int dstr_insert_sub_cstr(
 	// 获取源字符串长度
 	const size_t src_len = strlen(src);
 	// 检查子串范围是否越界
-	if (sub_index >= src_len || sub_index + sub_count > src_len) return DSTR_INVALID_PARAM;
+	if (sub_index >= src_len) return DSTR_INVALID_PARAM;
+
+	if (!safe_size_add_test(sub_index, sub_count)) return DSTR_OVERFLOW;
+	if (sub_index + sub_count > src_len) return DSTR_INVALID_PARAM;
 
 	// 计算子串长度，sub_count 为 0 视为到末尾
 	const size_t sub_len = sub_count == 0 ? src_len - sub_index : sub_count;
@@ -498,7 +553,10 @@ int dstr_insert_sub(
 	// 检查索引是否越界
 	if (index > dest->len) return DSTR_INVALID_PARAM;
 	// 检查子串范围是否越界
-	if (sub_index >= src->len || sub_index + sub_count > src->len) return DSTR_INVALID_PARAM;
+	if (sub_index >= src->len) return DSTR_INVALID_PARAM;
+
+	if (!safe_size_add_test(sub_index, sub_count)) return DSTR_OVERFLOW;
+	if (sub_index + sub_count > src->len) return DSTR_INVALID_PARAM;
 
 	// 计算子串长度，sub_count 为 0 视为到末尾
 	size_t sub_len = sub_count == 0 ? src->len - sub_index : sub_count;
@@ -523,20 +581,23 @@ int dstr_insert_sub(
 }
 
 // 删除子串
-void dstr_remove(dstr_adt *const dstr, const size_t sub_index, const size_t sub_count) {
+void dstr_remove(dstr_adt *const dstr, const size_t index, const size_t count) {
 	// 断言，开发阶段参数检查
 	assert(dstr != DYNAMIC_STRING_NULL_PTR);
 
 	// 检查子串范围是否越界
-	if (sub_index >= dstr->len || sub_index + sub_count > dstr->len) return;
+	if (index >= dstr->len) return;
+
+	if (!safe_size_add_test(index, count)) return;
+	if (index + count > dstr->len) return;
 
 	// 计算子串长度，sub_count 为 0 视为到末尾
-	const size_t sub_len = sub_count == 0 ? dstr->len - sub_index : sub_count;
+	const size_t sub_len = count == 0 ? dstr->len - index : count;
 	// 如果子串不位于末尾，则需要移动后面的字符串
-	if (sub_count != 0 && sub_index + sub_count < dstr->len) {
-		memmove(dstr->data + sub_index,
-			dstr->data + sub_index + sub_count,
-			dstr->len - sub_index - sub_count
+	if (count != 0 && index + count < dstr->len) {
+		memmove(dstr->data + index,
+			dstr->data + index + count,
+			dstr->len - index - count
 		);
 	}
 
@@ -652,7 +713,10 @@ dstr_adt *dstr_sub_cstr(const char *const cstr, const size_t sub_index, const si
 	// 获取 cstr 的长度
 	const size_t cstr_len = strlen(cstr);
 	// 检查子串范围是否越界
-	if (sub_index >= cstr_len || sub_index + sub_count > cstr_len) return DYNAMIC_STRING_NULL_PTR;
+	if (sub_index >= cstr_len) return DYNAMIC_STRING_NULL_PTR;
+
+	if (!safe_size_add_test(sub_index, sub_count)) return DYNAMIC_STRING_NULL_PTR;
+	if (sub_index + sub_count > cstr_len) return DYNAMIC_STRING_NULL_PTR;
 
 	// 在堆上创建并初始化一个新「动态字符串」
 	dstr_adt *new_dstr = local_create_dstr_and_init();
@@ -678,7 +742,10 @@ dstr_adt *dstr_sub(const dstr_adt *const dstr, const size_t sub_index, const siz
 	assert(dstr != DYNAMIC_STRING_NULL_PTR);
 
 	// 检查子串范围是否越界
-	if (sub_index >= dstr->len || sub_index + sub_count > dstr->len) return DYNAMIC_STRING_NULL_PTR;
+	if (sub_index >= dstr->len) return DYNAMIC_STRING_NULL_PTR;
+
+	if (!safe_size_add_test(sub_index, sub_count)) return DYNAMIC_STRING_NULL_PTR;
+	if (sub_index + sub_count > dstr->len) return DYNAMIC_STRING_NULL_PTR;
 
 	// 在堆上创建并初始化一个新「动态字符串」
 	dstr_adt *new_dstr = local_create_dstr_and_init();
@@ -798,7 +865,7 @@ bool dstr_find(const dstr_adt *const dstr, const dstr_adt *const sub, size_t *co
 	return false;
 }
 
-size_t dstr_count_cstr(const dstr_adt *const dstr, const char *const sub) {
+size_t dstr_count_cstr(const dstr_adt *const dstr, const char *const sub, const bool backward) {
 	// 局部变量声明
 	char *find;
 	size_t find_count;
@@ -812,21 +879,35 @@ size_t dstr_count_cstr(const dstr_adt *const dstr, const char *const sub) {
 	if (sub_len == 0 || sub_len > dstr->len) return 0;
 
 	// 执行查找统计
-	for (find_count = 0, find = dstr->data;
-	     find <= dstr->data + dstr->len - sub_len;
-	) {
-		if (strncmp(find, sub, sub_len) == 0) {
-			++find_count;
-			find += sub_len;
-		} else {
-			++find;
+	if (backward) {
+		for (find_count = 0, find = dstr->data + dstr->len - sub_len;
+		     find >= dstr->data;
+		     --find
+		) {
+			if (strncmp(find, sub, sub_len) == 0) {
+				++find_count;
+				find -= sub_len;
+			} else {
+				--find;
+			}
+		}
+	} else {
+		for (find_count = 0, find = dstr->data;
+		     find <= dstr->data + dstr->len - sub_len;
+		) {
+			if (strncmp(find, sub, sub_len) == 0) {
+				++find_count;
+				find += sub_len;
+			} else {
+				++find;
+			}
 		}
 	}
 
 	return find_count;
 }
 
-size_t dstr_count(const dstr_adt *const dstr, const dstr_adt *const sub) {
+size_t dstr_count(const dstr_adt *const dstr, const dstr_adt *const sub, const bool backward) {
 	// 局部变量声明
 	char *find;
 	size_t find_count;
@@ -838,16 +919,31 @@ size_t dstr_count(const dstr_adt *const dstr, const dstr_adt *const sub) {
 	if (sub->len == 0 || sub->len > dstr->len) return 0;
 
 	// 执行查找统计
-	for (find_count = 0, find = dstr->data;
-	     find <= dstr->data + dstr->len - sub->len;
-	) {
-		if (strncmp(find, sub->data, sub->len) == 0) {
-			++find_count;
-			find += sub->len;
-		} else {
-			++find;
+	if (backward) {
+		for (find_count = 0, find = dstr->data + dstr->len - sub->len;
+		     find >= dstr->data;
+		     --find
+		) {
+			if (strncmp(find, sub->data, sub->len) == 0) {
+				++find_count;
+				find -= sub->len;
+			} else {
+				--find;
+			}
+		}
+	} else {
+		for (find_count = 0, find = dstr->data;
+		     find <= dstr->data + dstr->len - sub->len;
+		) {
+			if (strncmp(find, sub->data, sub->len) == 0) {
+				++find_count;
+				find += sub->len;
+			} else {
+				++find;
+			}
 		}
 	}
+
 
 	return find_count;
 }
@@ -863,7 +959,7 @@ bool dstr_find_nth_cstr(
 	// 断言，开发阶段参数检查
 	assert(dstr != DYNAMIC_STRING_NULL_PTR && sub != DYNAMIC_STRING_NULL_PTR);
 
-	// n 从 1 开始，n 为 0 视为参数无效
+	// n 从 1 开始，n 为 0，表示第 0 次，而第 0 次一定不存在
 	if (n == 0) return false;
 
 	// 获取 sub 长度
@@ -919,8 +1015,9 @@ bool dstr_find_nth(
 	// 断言，开发阶段参数检查
 	assert(dstr != DYNAMIC_STRING_NULL_PTR && sub != DYNAMIC_STRING_NULL_PTR);
 
-	// n 从 1 开始，n 为 0 视为参数无效
+	// n 从 1 开始，n 为 0，表示第 0 次，而第 0 次一定不存在
 	if (n == 0) return false;
+
 	// 如果 sub 长度为 0 或者 sub 长度大于 dstr 长度，则 dstr 一定不包含 sub
 	if (sub->len == 0 || sub->len > dstr->len) return false;
 
@@ -979,19 +1076,22 @@ int dstr_replace_cstr(
 	if (old_str_len == 0 || old_str_len > dstr->len) return DSTR_INVALID_PARAM;
 
 	// 获取 old_str 在 dstr 中出现的次数
-	const size_t old_count = dstr_count_cstr(dstr, old_str);
+	const size_t old_count = dstr_count_cstr(dstr, old_str, backward);
 	// 如果 old_str 在 dstr 中没有出现，则视为参数无效
 	if (old_count == 0) return DSTR_INVALID_PARAM;
+
+	// 需要替换的次数
+	const size_t replace_count = n == 0 ? old_count : (n < old_count ? n : old_count);
 
 	// 计算 new_str 长度，如果 new_str 为 NULL 则视长度为 0
 	const size_t new_str_len = new_str != DYNAMIC_STRING_NULL_PTR ? strlen(new_str) : 0;
 
 	// 如果 new_str 长度大于 old_str，则需要扩容
 	if (new_str_len > old_str_len) {
-		// 所需的长度：原来的长度 + (new_str 长度 - old_str 长度) * old_str 在 dstr 中出现的次数
-		// 安全计算 size_t 乘法（(new_len - old_str_len) * old_count），防止溢出
+		// 所需的长度：原来的长度 + (new_str 长度 - old_str 长度) * 需要替换的次数
+		// 安全计算 size_t 乘法（(new_len - old_str_len) * replace_count），防止溢出
 		size_t added_length;
-		if (!safe_size_mul(new_str_len - old_str_len, old_count, &added_length)) {
+		if (!safe_size_mul(new_str_len - old_str_len, replace_count, &added_length)) {
 			return DSTR_OVERFLOW;
 		}
 		// 安全计算 size_t 加法（dstr->len + added_length），防止溢出
@@ -1008,8 +1108,7 @@ int dstr_replace_cstr(
 	// 执行替换
 	if (backward) {
 		for (find_count = 0, find = dstr->data + dstr->len - old_str_len;
-		     find >= dstr->data && find_count < old_count
-		     && (n == 0 ? true : find_count < n);
+		     find >= dstr->data && find_count < replace_count;
 		) {
 			if (strncmp(find, old_str, old_str_len) == 0) {
 				++find_count;
@@ -1027,9 +1126,11 @@ int dstr_replace_cstr(
 					memcpy(find, new_str, new_str_len);
 				}
 				// 更新长度
-				dstr->len -= old_str_len;
-				dstr->len += new_str_len;
-				dstr->data[dstr->len] = '\0';
+				if (old_str_len != new_str_len) {
+					dstr->len -= old_str_len;
+					dstr->len += new_str_len;
+					dstr->data[dstr->len] = '\0';
+				}
 
 				find -= old_str_len;
 			} else {
@@ -1038,8 +1139,7 @@ int dstr_replace_cstr(
 		}
 	} else {
 		for (find_count = 0, find = dstr->data;
-		     find <= dstr->data + dstr->len - old_str_len && find_count < old_count
-		     && (n == 0 ? true : find_count < n);
+		     find <= dstr->data + dstr->len - old_str_len && find_count < replace_count;
 		) {
 			if (strncmp(find, old_str, old_str_len) == 0) {
 				++find_count;
@@ -1057,9 +1157,11 @@ int dstr_replace_cstr(
 					memcpy(find, new_str, new_str_len);
 				}
 				// 更新长度
-				dstr->len -= old_str_len;
-				dstr->len += new_str_len;
-				dstr->data[dstr->len] = '\0';
+				if (old_str_len != new_str_len) {
+					dstr->len -= old_str_len;
+					dstr->len += new_str_len;
+					dstr->data[dstr->len] = '\0';
+				}
 
 				find += new_str_len;
 			} else {
@@ -1069,7 +1171,7 @@ int dstr_replace_cstr(
 	}
 
 	if (new_str_len < old_str_len) {
-		local_capacity_resize_dynamic(dstr, dstr->len - (old_str_len - new_str_len) * old_count);
+		local_capacity_resize_dynamic(dstr, dstr->len);
 	}
 
 	return DSTR_SUCCESS;
@@ -1092,19 +1194,22 @@ int dstr_replace(
 	if (old_str->len == 0 || old_str->len > dstr->len) return DSTR_INVALID_PARAM;
 
 	// 获取 old_str 在 dstr 中出现的次数
-	const size_t old_count = dstr_count(dstr, old_str);
+	const size_t old_count = dstr_count(dstr, old_str, backward);
 	// 如果 old_str 在 dstr 中没有出现，则视为参数无效
 	if (old_count == 0) return DSTR_INVALID_PARAM;
+
+	// 需要替换的次数
+	const size_t replace_count = n == 0 ? old_count : (n < old_count ? n : old_count);
 
 	// 计算 new_str 长度，如果 new_str 为 NULL 则视长度为 0
 	const size_t new_str_len = new_str != DYNAMIC_STRING_NULL_PTR ? new_str->len : 0;
 
 	// 如果 new_str 长度大于 old_str，则需要扩容
 	if (new_str_len > old_str->len) {
-		// 所需的长度：原来的长度 + (new_str 长度 - old_str 长度) * old_str 在 dstr 中出现的次数
-		// 安全计算 size_t 乘法（(new_len - old_str->len) * old_count），防止溢出
+		// 所需的长度：原来的长度 + (new_str 长度 - old_str 长度) * 需要替换的次数
+		// 安全计算 size_t 乘法（(new_len - old_str->len) * replace_count），防止溢出
 		size_t added_length;
-		if (!safe_size_mul(new_str_len - old_str->len, old_count, &added_length)) {
+		if (!safe_size_mul(new_str_len - old_str->len, replace_count, &added_length)) {
 			return DSTR_OVERFLOW;
 		}
 		// 安全计算 size_t 加法（dstr->len + added_length），防止溢出
@@ -1121,8 +1226,7 @@ int dstr_replace(
 	// 执行替换
 	if (backward) {
 		for (find_count = 0, find = dstr->data + dstr->len - old_str->len;
-		     find >= dstr->data && find_count < old_count
-		     && (n == 0 ? true : find_count < n);
+		     find >= dstr->data && find_count < replace_count;
 		) {
 			if (strncmp(find, old_str->data, old_str->len) == 0) {
 				++find_count;
@@ -1140,9 +1244,11 @@ int dstr_replace(
 					memcpy(find, new_str->data, new_str_len);
 				}
 				// 更新长度
-				dstr->len -= old_str->len;
-				dstr->len += new_str_len;
-				dstr->data[dstr->len] = '\0';
+				if (old_str->len != new_str_len) {
+					dstr->len -= old_str->len;
+					dstr->len += new_str_len;
+					dstr->data[dstr->len] = '\0';
+				}
 
 				find -= old_str->len;
 			} else {
@@ -1151,8 +1257,7 @@ int dstr_replace(
 		}
 	} else {
 		for (find_count = 0, find = dstr->data;
-		     find <= dstr->data + dstr->len - old_str->len && find_count < old_count
-		     && (n == 0 ? true : find_count < n);
+		     find <= dstr->data + dstr->len - old_str->len && find_count < replace_count;
 		) {
 			if (strncmp(find, old_str->data, old_str->len) == 0) {
 				++find_count;
@@ -1170,9 +1275,11 @@ int dstr_replace(
 					memcpy(find, new_str->data, new_str_len);
 				}
 				// 更新长度
-				dstr->len -= old_str->len;
-				dstr->len += new_str_len;
-				dstr->data[dstr->len] = '\0';
+				if (old_str->len != new_str_len) {
+					dstr->len -= old_str->len;
+					dstr->len += new_str_len;
+					dstr->data[dstr->len] = '\0';
+				}
 
 				find += new_str_len;
 			} else {
@@ -1183,8 +1290,7 @@ int dstr_replace(
 
 	// 缩容
 	if (new_str_len < old_str->len) {
-		// 如果能执行到此处，则以下 size_t 计算一定不会溢出
-		local_capacity_resize_dynamic(dstr, dstr->len - (old_str->len - new_str_len) * old_count);
+		local_capacity_resize_dynamic(dstr, dstr->len);
 	}
 
 	return DSTR_SUCCESS;
