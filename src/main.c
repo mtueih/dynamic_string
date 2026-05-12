@@ -4,9 +4,30 @@
 #include <string.h>
 
 // 测试辅助宏
-#define TEST_START(name) printf("\n=== 测试: %s ===\n", name)
-#define TEST_PASS() printf("✓ 测试通过\n")
-#define TEST_FAIL(msg) printf("✗ 测试失败: %s\n", msg)
+#define TEST_START(name) do { \
+	current_test_name = name; \
+	printf("\n=== 测试: %s ===\n", name); \
+} while(0)
+#define TEST_PASS() do { printf("✓ 测试通过\n"); test_passed++; } while(0)
+#define TEST_FAIL(msg) do { \
+	printf("✗ 测试失败: %s\n", msg); \
+	test_failed++; \
+	if (failed_count < MAX_TESTS) { \
+		failed_tests[failed_count++] = current_test_name; \
+	} \
+} while(0)
+
+// 全局测试计数器
+static int test_passed = 0;
+static int test_failed = 0;
+
+// 记录失败的测试名称
+#define MAX_TESTS 100
+static const char *failed_tests[MAX_TESTS];
+static int failed_count = 0;
+
+// 当前测试名称
+static const char *current_test_name = NULL;
 
 // 1. 测试 dstr_create
 void test_dstr_create(void) {
@@ -854,6 +875,18 @@ int main(void) {
 	printf("\n========================================\n");
 	printf("   所有测试完成！\n");
 	printf("========================================\n");
+	printf("总测试数: %d\n", test_passed + test_failed);
+	printf("通过: %d\n", test_passed);
+	printf("失败: %d\n", test_failed);
+	
+	if (test_failed > 0) {
+		printf("\n⚠ 以下 %d 个测试失败：\n", test_failed);
+		for (int i = 0; i < failed_count; i++) {
+			printf("  - %s\n", failed_tests[i]);
+		}
+	} else {
+		printf("\n✓ 所有测试均通过！\n");
+	}
 
-	return EXIT_SUCCESS;
+	return test_failed > 0 ? EXIT_FAILURE : EXIT_SUCCESS;
 }

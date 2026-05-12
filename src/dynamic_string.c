@@ -325,7 +325,7 @@ int dstr_cat_cstr(dstr_adt *const dest, const char *const src) {
 	// src_len 为 0，视为追加空气，而这一定会成功
 	if (src_len == 0) return DSTR_SUCCESS;
 
-	if (safe_size_add_test(dest->len, src_len)) return DSTR_OVERFLOW;
+	if (!safe_size_add_test(dest->len, src_len)) return DSTR_OVERFLOW;
 
 	if (!local_capacity_resize_dynamic(dest, dest->len + src_len)) {
 		return DSTR_MEMORY_ALLOC_FAILED;
