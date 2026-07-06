@@ -755,18 +755,16 @@ bool dstr_equals_cstr(
 	const dstr_adt *const dstr,
 	const char *const cstr
 ) {
-	if (dstr == DSTR_NULLPTR || cstr == DSTR_NULLPTR) {
-		return false;
+	const int str_1_valid = (dstr != DSTR_NULLPTR && dstr->len > 0) ? 1 : 0;
+	const int str_2_valid = (cstr != DSTR_NULLPTR) ? 1 : 0;
+
+	if (str_1_valid + str_2_valid < 2) {
+		return ((str_1_valid ^ str_2_valid) == 0);
 	}
 
 	const size_t cstr_len = strlen(cstr);
-
-	if (cstr_len != dstr->len) {
+	if (dstr->len != cstr_len) {
 		return false;
-	}
-
-	if (dstr->len == 0) {
-		return true;
 	}
 
 	return (strncmp(dstr->data, cstr, cstr_len) == 0);
@@ -777,16 +775,15 @@ bool dstr_equals(
 	const dstr_adt *const dstr_1,
 	const dstr_adt *const dstr_2
 ) {
-	if (dstr_1 == DSTR_NULLPTR || dstr_2 == DSTR_NULLPTR) {
-		return false;
+	const int str_1_valid = (dstr_1 != DSTR_NULLPTR && dstr_1->len > 0) ? 1 : 0;
+	const int str_2_valid = (dstr_2 != DSTR_NULLPTR && dstr_2->len > 0) ? 1 : 0;
+
+	if (str_1_valid + str_2_valid < 2) {
+		return ((str_1_valid ^ str_2_valid) == 0);
 	}
 
 	if (dstr_1->len != dstr_2->len) {
 		return false;
-	}
-
-	if (dstr_1->len == 0) {
-		return true;
 	}
 
 	return (strncmp(dstr_1->data, dstr_2->data, dstr_1->len) == 0);
@@ -796,13 +793,31 @@ bool dstr_equals(
 int dstr_compare_cstr(
 	const dstr_adt *const dstr,
 	const char *const cstr
-) {}
+) {
+	const int str_1_valid = (dstr != DSTR_NULLPTR && dstr->len > 0) ? 1 : 0;
+	const int str_2_valid = (cstr != DSTR_NULLPTR) ? 1 : 0;
+
+	if (str_1_valid + str_2_valid < 2) {
+		return str_1_valid - str_2_valid;
+	}
+
+	return strcmp(dstr->data, cstr);
+}
 
 /* 比较两个「动态字符串」。 */
 int dstr_compare(
 	const dstr_adt *const dstr_1,
 	const dstr_adt *const dstr_2
-) {}
+) {
+	const int str_1_valid = (dstr_1 != DSTR_NULLPTR && dstr_1->len > 0) ? 1 : 0;
+	const int str_2_valid = (dstr_2 != DSTR_NULLPTR && dstr_2->len > 0) ? 1 : 0;
+
+	if (str_1_valid + str_2_valid < 2) {
+		return str_1_valid - str_2_valid;
+	}
+
+	return strcmp(dstr_1->data, dstr_2->data);
+}
 
 /* 查找、统计与替换。 */
 
