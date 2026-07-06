@@ -827,7 +827,50 @@ bool dstr_find_cstr(
 	const char *const sub,
 	size_t *const out_index,
 	const bool backward
-) {}
+) {
+	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR) {
+		return false;
+	}
+
+	const size_t sub_len = strlen(sub);
+	if (sub_len == 0 || sub_len > dstr->len) {
+		return false;
+	}
+
+	const char *p;
+
+	if (backward) {
+		p = dstr->data + dstr->len - sub_len;
+
+		while (p >= dstr->data) {
+			if (strncmp(p, sub, sub_len) == 0) {
+				if (out_index != DSTR_NULLPTR) {
+					*out_index = p - dstr->data;
+				}
+
+				return true;
+			}
+
+			--p;
+		}
+	} else {
+		p = dstr->data;
+
+		while (p < dstr->data + dstr->len) {
+			if (strncmp(p, sub, sub_len) == 0) {
+				if (out_index != DSTR_NULLPTR) {
+					*out_index = p - dstr->data;
+				}
+
+				return true;
+			}
+
+			++p;
+		}
+	}
+
+	return false;
+}
 
 /* 查找一个「动态字符串」中指定子「动态字符串」首次出现的位置。 */
 bool dstr_find(
@@ -835,7 +878,49 @@ bool dstr_find(
 	const dstr_adt *const sub,
 	size_t *const out_index,
 	const bool backward
-) {}
+) {
+	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR) {
+		return false;
+	}
+
+	if (sub->len == 0 || sub->len > dstr->len) {
+		return false;
+	}
+
+	const char *p;
+
+	if (backward) {
+		p = dstr->data + dstr->len - sub->len;
+
+		while (p >= dstr->data) {
+			if (strncmp(p, sub->data, sub->len) == 0) {
+				if (out_index != DSTR_NULLPTR) {
+					*out_index = p - dstr->data;
+				}
+
+				return true;
+			}
+
+			--p;
+		}
+	} else {
+		p = dstr->data;
+
+		while (p < dstr->data + dstr->len) {
+			if (strncmp(p, sub->data, sub->len) == 0) {
+				if (out_index != DSTR_NULLPTR) {
+					*out_index = p - dstr->data;
+				}
+
+				return true;
+			}
+
+			++p;
+		}
+	}
+
+	return false;
+}
 
 /* 查找一个「动态字符串」中指定子「C 字符串」第 n 次出现的位置。 */
 bool dstr_find_nth_cstr(
@@ -844,7 +929,67 @@ bool dstr_find_nth_cstr(
 	size_t *const out_index,
 	const size_t n,
 	const bool backward
-) {}
+) {
+	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR) {
+		return false;
+	}
+
+	const size_t sub_len = strlen(sub);
+	if (sub_len == 0 || sub_len > dstr->len) {
+		return false;
+	}
+
+	const char *p;
+	const char *find = DSTR_NULLPTR;
+	size_t find_count = 0;
+
+	if (backward) {
+		p = dstr->data + dstr->len - sub_len;
+
+		while (p >= dstr->data) {
+			if (strncmp(p, sub, sub_len) == 0) {
+				++find_count;
+				find = p;
+
+				if (find_count == n) {
+					break;
+				}
+
+				p -= sub_len;
+			} else {
+				--p;
+			}
+		}
+	} else {
+		p = dstr->data;
+
+		while (p < dstr->data + dstr->len) {
+			if (strncmp(p, sub, sub_len) == 0) {
+				++find_count;
+				find = p;
+
+				if (find_count == n) {
+					break;
+				}
+
+				p += sub_len;
+			} else {
+				++p;
+			}
+
+		}
+	}
+
+	if (find == DSTR_NULLPTR) {
+		return false;
+	}
+
+	if (out_index != DSTR_NULLPTR) {
+		*out_index = find - dstr->data;
+	}
+
+	return true;
+}
 
 /* 查找一个「动态字符串」中指定子「动态字符串」第 n 次出现的位置。 */
 bool dstr_find_nth(
@@ -853,21 +998,157 @@ bool dstr_find_nth(
 	size_t *const out_index,
 	const size_t n,
 	const bool backward
-) {}
+) {
+	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR) {
+		return false;
+	}
+
+	if (sub->len == 0 || sub->len > dstr->len) {
+		return false;
+	}
+
+	const char *p;
+	const char *find = DSTR_NULLPTR;
+	size_t find_count = 0;
+
+	if (backward) {
+		p = dstr->data + dstr->len - sub->len;
+
+		while (p >= dstr->data) {
+			if (strncmp(p, sub->data, sub->len) == 0) {
+				++find_count;
+				find = p;
+
+				if (find_count == n) {
+					break;
+				}
+
+				p -= sub->len;
+			} else {
+				--p;
+			}
+		}
+	} else {
+		p = dstr->data;
+
+		while (p < dstr->data + dstr->len) {
+			if (strncmp(p, sub->data, sub->len) == 0) {
+				++find_count;
+				find = p;
+
+				if (find_count == n) {
+					break;
+				}
+
+				p += sub->len;
+			} else {
+				++p;
+			}
+
+		}
+	}
+
+	if (find == DSTR_NULLPTR) {
+		return false;
+	}
+
+	if (out_index != DSTR_NULLPTR) {
+		*out_index = find - dstr->data;
+	}
+
+	return true;
+}
 
 /* 统计一个「动态字符串」中指定子「C 字符串」出现的次数。 */
 size_t dstr_count_cstr(
 	const dstr_adt *const dstr,
 	const char *const sub,
 	const bool backward
-) {}
+) {
+	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR) {
+		return 0;
+	}
+
+	const size_t sub_len = strlen(sub);
+	if (sub_len == 0 || sub_len > dstr->len) {
+		return 0;
+	}
+
+	const char *p;
+	size_t find_count = 0;
+
+	if (backward) {
+		p = dstr->data + dstr->len - sub_len;
+
+		while (p >= dstr->data) {
+			if (strncmp(p, sub, sub_len) == 0) {
+				++find_count;
+				p -= sub_len;
+			} else {
+				--p;
+			}
+		}
+	} else {
+		p = dstr->data;
+
+		while (p < dstr->data + dstr->len) {
+			if (strncmp(p, sub, sub_len) == 0) {
+				++find_count;
+				p += sub_len;
+			} else {
+				++p;
+			}
+
+		}
+	}
+
+	return find_count;
+}
 
 /* 统计一个「动态字符串」中指定子「动态字符串」出现的次数。 */
 size_t dstr_count(
 	const dstr_adt *const dstr,
 	const dstr_adt *const sub,
 	const bool backward
-) {}
+) {
+	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR) {
+		return 0;
+	}
+
+	if (sub->len == 0 || sub->len > dstr->len) {
+		return 0;
+	}
+
+	const char *p;
+	size_t find_count = 0;
+
+	if (backward) {
+		p = dstr->data + dstr->len - sub->len;
+
+		while (p >= dstr->data) {
+			if (strncmp(p, sub->data, sub->len) == 0) {
+				++find_count;
+				p -= sub->len;
+			} else {
+				--p;
+			}
+		}
+	} else {
+		p = dstr->data;
+
+		while (p < dstr->data + dstr->len) {
+			if (strncmp(p, sub->data, sub->len) == 0) {
+				++find_count;
+				p += sub->len;
+			} else {
+				++p;
+			}
+
+		}
+	}
+
+	return find_count;
+}
 
 /* 替换一个「动态字符串」中指定旧「C 字符串」为指定新「C 字符串」n 次。 */
 dstr_status_t dstr_replace_cstr(
