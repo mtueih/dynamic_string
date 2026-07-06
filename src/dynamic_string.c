@@ -644,49 +644,153 @@ dstr_status_t dstr_printf(
 bool dstr_starts_with_cstr(
 	const dstr_adt *const dstr,
 	const char *const prefix
-) {}
+) {
+	if (dstr == DSTR_NULLPTR || prefix == DSTR_NULLPTR) {
+		return false;
+	}
+
+	const size_t prefix_len = strlen(prefix);
+
+	if (prefix_len == 0 || prefix_len > dstr->len) {
+		return false;
+	}
+
+	return (strncmp(dstr->data, prefix, prefix_len) == 0);
+}
 
 /* 判断一个「动态字符串」是否以指定「动态字符串」前缀开头。 */
 bool dstr_starts_with(
 	const dstr_adt *const dstr,
 	const dstr_adt *const prefix
-) {}
+) {
+	if (dstr == DSTR_NULLPTR || prefix == DSTR_NULLPTR) {
+		return false;
+	}
+
+	if (prefix->len == 0 || prefix->len > dstr->len) {
+		return false;
+	}
+
+	return (strncmp(dstr->data, prefix->data, prefix->len) == 0);
+}
 
 /* 判断一个「动态字符串」是否以指定「C 字符串」后缀结尾。 */
 bool dstr_ends_with_cstr(
 	const dstr_adt *const dstr,
 	const char *const suffix
-) {}
+) {
+	if (dstr == DSTR_NULLPTR || suffix == DSTR_NULLPTR) {
+		return false;
+	}
+
+	const size_t suffix_len = strlen(suffix);
+
+	if (suffix_len == 0 || suffix_len > dstr->len) {
+		return false;
+	}
+
+	return (strncmp(
+		dstr->data + dstr->len - suffix_len,
+		suffix,
+		suffix_len
+	) == 0);
+}
 
 /* 判断一个「动态字符串」是否以指定「动态字符串」后缀结尾。 */
 bool dstr_ends_with(
 	const dstr_adt *const dstr,
 	const dstr_adt *const suffix
-) {}
+) {
+	if (dstr == DSTR_NULLPTR || suffix == DSTR_NULLPTR) {
+		return false;
+	}
+
+	if (suffix->len == 0 || suffix->len > dstr->len) {
+		return false;
+	}
+
+	return (strncmp(
+		dstr->data + dstr->len - suffix->len,
+		suffix->data,
+		suffix->len
+	) == 0);
+}
 
 /* 判断一个「动态字符串」是否包含指定子「C 字符串」。 */
 bool dstr_contains_cstr(
 	const dstr_adt *const dstr,
 	const char *const sub
-) {}
+) {
+	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR) {
+		return false;
+	}
+
+	const size_t sub_len = strlen(sub);
+
+	if (sub_len == 0 || sub_len > dstr->len) {
+		return false;
+	}
+
+	return (strstr(dstr->data, sub) != DSTR_NULLPTR);
+}
 
 /* 判断一个「动态字符串」是否包含指定子「动态字符串」。 */
 bool dstr_contains(
 	const dstr_adt *const dstr,
 	const dstr_adt *const sub
-) {}
+) {
+	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR) {
+		return false;
+	}
+
+	if (sub->len == 0 || sub->len > dstr->len) {
+		return false;
+	}
+
+	return (strstr(dstr->data, sub->data) != DSTR_NULLPTR);
+}
 
 /* 判断一个「动态字符串」是否与一个「C 字符串」相等。 */
 bool dstr_equals_cstr(
 	const dstr_adt *const dstr,
 	const char *const cstr
-) {}
+) {
+	if (dstr == DSTR_NULLPTR || cstr == DSTR_NULLPTR) {
+		return false;
+	}
+
+	const size_t cstr_len = strlen(cstr);
+
+	if (cstr_len != dstr->len) {
+		return false;
+	}
+
+	if (dstr->len == 0) {
+		return true;
+	}
+
+	return (strncmp(dstr->data, cstr, cstr_len) == 0);
+}
 
 /* 判断两个「动态字符串」是否相等。 */
 bool dstr_equals(
 	const dstr_adt *const dstr_1,
 	const dstr_adt *const dstr_2
-) {}
+) {
+	if (dstr_1 == DSTR_NULLPTR || dstr_2 == DSTR_NULLPTR) {
+		return false;
+	}
+
+	if (dstr_1->len != dstr_2->len) {
+		return false;
+	}
+
+	if (dstr_1->len == 0) {
+		return true;
+	}
+
+	return (strncmp(dstr_1->data, dstr_2->data, dstr_1->len) == 0);
+}
 
 /* 比较一个「动态字符串」与一个「C 字符串」。 */
 int dstr_compare_cstr(
