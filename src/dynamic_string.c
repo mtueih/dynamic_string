@@ -267,11 +267,7 @@ void dstr_shrink_to_fit(
 
 	dstr->min_cap = 0;
 
-	if (dstr->len > 0) {
-		capacity_resize_regular(dstr, dstr->len + 1);
-	} else {
-		capacity_resize_regular(dstr, 0);
-	}
+	capacity_resize_regular(dstr, (dstr->len > 0) ? (dstr->len + 1) : 0);
 }
 
 /* 内容编辑。 */
@@ -548,7 +544,53 @@ void dstr_remove(
 void dstr_trim(
 	dstr_adt *const dstr,
 	const char *const trim_chars
-) {}
+) {
+	if (dstr == DSTR_NULLPTR) {
+		return;
+	}
+
+	if (dstr->len == 0) {
+		return;
+	}
+
+	const bool is_specified_trim_chars = (trim_chars != DSTR_NULLPTR && trim_chars[0] != '\0');
+
+	const char *p = dstr->data;
+	const char *q = dstr->data + dstr->len;
+
+	/* 定位剩余区间。 */
+	if (is_specified_trim_chars) {
+		while (strchr(trim_chars, *p) != DSTR_NULLPTR) {
+			++p;
+		}
+		while (q > p && strchr(trim_chars, *(q - 1)) != DSTR_NULLPTR) {
+			--q;
+		}
+	} else {
+		while (isspace(*p)) {
+			++p;
+		}
+		while (q > p && isspace(*(q - 1))) {
+			--q;
+		}
+	}
+
+	if (p < q) {
+		dstr->len = q - p;
+		if (p > dstr->data) {
+			memmove(dstr->data, p, dstr->len);
+		}
+	} else {
+		dstr->len = 0;
+	}
+
+
+	capacity_resize_dynamic(dstr, (dstr->len > 0) ? (dstr->len + 1) : 0);
+
+	if (dstr->cap > 0) {
+		dstr->data[dstr->len] = '\0';
+	}
+}
 
 /* 格式化写入字符串到一个「动态字符串」。 */
 dstr_status_t dstr_printf(
