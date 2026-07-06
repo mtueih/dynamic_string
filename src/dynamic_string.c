@@ -535,7 +535,7 @@ void dstr_remove(
 		return;
 	}
 
-	const size_t remove_count = count > 0 ? count : dstr->len - index;
+	const size_t remove_count = (count > 0) ? count : (dstr->len - index);
 
 	insert_str(dstr, index, remove_count, DSTR_NULLPTR, 0, 0, 0);
 }
@@ -548,13 +548,11 @@ void dstr_trim(
 	if (dstr == DSTR_NULLPTR) {
 		return;
 	}
-
 	if (dstr->len == 0) {
 		return;
 	}
 
 	const bool is_specified_trim_chars = (trim_chars != DSTR_NULLPTR && trim_chars[0] != '\0');
-
 	const char *p = dstr->data;
 	const char *q = dstr->data + dstr->len;
 
@@ -584,9 +582,7 @@ void dstr_trim(
 		dstr->len = 0;
 	}
 
-
 	capacity_resize_dynamic(dstr, (dstr->len > 0) ? (dstr->len + 1) : 0);
-
 	if (dstr->cap > 0) {
 		dstr->data[dstr->len] = '\0';
 	}
@@ -597,7 +593,50 @@ dstr_status_t dstr_printf(
 	dstr_adt *const dstr,
 	const char *const format,
 	...
-) {}
+) {
+	if (dstr == DSTR_NULLPTR || format == DSTR_NULLPTR) {
+		return DSTR_INVALID_ARGUMENT;
+	}
+
+	va_list args, temp_args; /* 变参列表。 */
+	size_t needed_cap;       /* 容纳输出字符串所需容量。 */
+
+	/* 变参列表初始化。 */
+	va_start(args, format);
+
+	/* 计算输出长度。 */
+	va_copy(temp_args, args);
+	const int output_len = vsnprintf(DSTR_NULLPTR, 0, format, temp_args);
+	va_end(temp_args);
+
+	if (output_len < 0) {
+		va_end(args);
+		return DSTR_INVALID_ARGUMENT;
+	}
+
+	if (!safe_size_t_add(output_len, 1, &needed_cap)) {
+		return DSTR_MEMORY_ALLOC_FAILED;
+	}
+	/* 所需长度大于当前长度，尝试扩容。 */
+	if (output_len > dstr->len) {
+		if (!capacity_resize_dynamic(dstr, needed_cap)) {
+			return DSTR_MEMORY_ALLOC_FAILED;
+		}
+	}
+
+	/* 执行写入。 */
+	if (output_len > 0) {
+		vsnprintf(dstr->data, needed_cap, format, args);
+	}
+	va_end(args);
+
+	if (output_len < dstr->len) {
+		capacity_resize_dynamic(dstr, (output_len > 0) ? needed_cap : 0);
+	}
+	dstr->len = output_len;
+
+	return DSTR_SUCCESS;
+}
 
 /* 关系判断与比较。 */
 
@@ -919,7 +958,6 @@ static dstr_status_t insert_str(
 	const size_t copy_len = (src_len > 0)
 		? ((sub_count > 0) ? (sub_count) : (src_len - sub_index))
 		: 0;
-
 	const size_t new_len = dest->len - count + copy_len;
 
 	/* 当新长度大于当前长度时尝试扩容。 */
