@@ -26,7 +26,6 @@
  *----------------------------------------------------------------------------*/
 #include "dynamic_string.h"
 
-#include <assert.h>
 #include <ctype.h>
 #include <safe_calc.h>
 #include <stdarg.h>
@@ -755,14 +754,14 @@ bool dstr_equals_cstr(
 	const dstr_adt *const dstr,
 	const char *const cstr
 ) {
+	size_t cstr_len;
 	const int str_1_valid = (dstr != DSTR_NULLPTR && dstr->len > 0) ? 1 : 0;
-	const int str_2_valid = (cstr != DSTR_NULLPTR) ? 1 : 0;
+	const int str_2_valid = (cstr != DSTR_NULLPTR && (cstr_len = strlen(cstr)) > 0) ? 1 : 0;
 
 	if (str_1_valid + str_2_valid < 2) {
 		return ((str_1_valid ^ str_2_valid) == 0);
 	}
 
-	const size_t cstr_len = strlen(cstr);
 	if (dstr->len != cstr_len) {
 		return false;
 	}
@@ -795,7 +794,7 @@ int dstr_compare_cstr(
 	const char *const cstr
 ) {
 	const int str_1_valid = (dstr != DSTR_NULLPTR && dstr->len > 0) ? 1 : 0;
-	const int str_2_valid = (cstr != DSTR_NULLPTR) ? 1 : 0;
+	const int str_2_valid = (cstr != DSTR_NULLPTR && strlen(cstr) > 0) ? 1 : 0;
 
 	if (str_1_valid + str_2_valid < 2) {
 		return str_1_valid - str_2_valid;
@@ -1157,7 +1156,23 @@ dstr_status_t dstr_replace_cstr(
 	const char *const new_str,
 	const size_t n,
 	const bool backward
-) {}
+) {
+	if (dstr == DSTR_NULLPTR || old_str == DSTR_NULLPTR) {
+		return DSTR_INVALID_ARGUMENT;
+	}
+
+	const size_t old_str_len = strlen(old_str);
+	if (old_str_len == 0 || old_str_len > dstr->len) {
+		return DSTR_INVALID_ARGUMENT;
+	}
+
+	const size_t old_str_count = dstr_count_cstr(dstr, old_str, false);
+	if (old_str_count == 0) {
+		return DSTR_INVALID_ARGUMENT;
+	}
+
+
+}
 
 /* 替换一个「动态字符串」中指定旧「动态字符串」为指定新「动态字符串」n 次。 */
 dstr_status_t dstr_replace(
