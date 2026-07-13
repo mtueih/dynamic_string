@@ -76,8 +76,7 @@ dstr_adt *dstr_create(
  * @brief 销毁一个「动态字符串」。
  *
  * @param dstr 目标「动态字符串」的指针。
- *
- * @return 参数有误时会直接返回。
+ *             如果为空指针，则函数会直接返回。
  */
 void dstr_destroy(
 	dstr_adt *dstr
@@ -87,6 +86,7 @@ void dstr_destroy(
  * @brief 克隆一个「动态字符串」。
  *
  * @param dstr 目标「动态字符串」的指针。
+ *             如果为空指针，则函数会直接返回空指针。
  *
  * @return 所创建的「动态字符串」的指针。
  *         如果创建失败则返回空指针。
@@ -100,10 +100,12 @@ dstr_adt *dstr_clone(
 /**
  * @brief 获取一个「动态字符串」的内部「C 字符串」指针（非 const）。
  *
+ * @remark 只为兼容部分 C API，请勿通过此函数返回的指针修改其指向的数据，否则后果自负。
+ *
  * @param dstr 目标「动态字符串」的指针。
+ *             如果为空指针，则函数会直接返回空指针。
  *
  * @return 所获取的「C 字符串」指针。
- *         参数有误时返回空指针。
  */
 char *dstr_cstr(
 	dstr_adt *dstr
@@ -113,9 +115,9 @@ char *dstr_cstr(
  * @brief 获取一个「动态字符串」的内部「C 字符串」指针（const）。
  *
  * @param dstr 目标「动态字符串」的指针。
+ *             如果为空指针，则函数会直接返回空指针。
  *
  * @return 所获取的「C 字符串」指针。
- *         参数有误时返回空指针。
  */
 const char *dstr_cstr_const(
 	const dstr_adt *dstr
@@ -125,11 +127,23 @@ const char *dstr_cstr_const(
  * @brief 获取一个「动态字符串」的长度。
  *
  * @param dstr 目标「动态字符串」的指针。
+ *             如果为空指针，则函数会直接返回 0。
  *
  * @return 所获取的长度。
- *         参数有误时返回 0。
  */
 size_t dstr_length(
+	const dstr_adt *dstr
+);
+
+/**
+ * @brief 判断一个「动态字符串」是否是空「动态字符串」。
+ *
+ * @param dstr 目标「动态字符串」的指针。
+ *             如果为空指针，则函数会直接返回 true。
+ *
+ * @return 如果目标「动态字符串」是空字符串则返回 true，否则返回 false。
+ */
+bool dstr_is_empty(
 	const dstr_adt *dstr
 );
 
@@ -137,9 +151,9 @@ size_t dstr_length(
  * @brief 获取一个「动态字符串」的容量。
  *
  * @param dstr 目标「动态字符串」的指针。
+ *             如果为空指针，则函数会直接返回 0。
  *
  * @return 所获取的容量。
- *         参数有误时返回 0。
  */
 size_t dstr_capacity(
 	const dstr_adt *dstr
@@ -151,6 +165,7 @@ size_t dstr_capacity(
  * @attention 当目标容量小于当前长度时，当前内容将被截断。
  *
  * @param dstr 目标「动态字符串」的指针。
+ *             如果为空指针，则视为不合法参数。
  * @param new_capacity 新的容量。
  *
  * @return 全局状态码。
@@ -164,8 +179,7 @@ dstr_status_t dstr_set_capacity(
  * @brief 调整一个「动态字符串」的容量到刚合适。
  *
  * @param dstr 目标「动态字符串」的指针。
- *
- * @return 参数有误时会直接返回。
+ *             如果为空指针，则函数会直接返回。
  */
 void dstr_shrink_to_fit(
 	dstr_adt *dstr
@@ -177,7 +191,9 @@ void dstr_shrink_to_fit(
  * @brief 复制一个「C 字符串」到一个「动态字符串」。
  *
  * @param dest 目标「动态字符串」的指针。
+ *             如果为空指针，则视为不合法参数。
  * @param src 源「C 字符串」的指针。
+ *            如果为空指针，则视为不合法参数。
  *
  * @return 全局状态码。
  */
@@ -190,7 +206,9 @@ dstr_status_t dstr_cpy_cstr(
  * @brief 复制一个「动态字符串」到另一个「动态字符串」。
  *
  * @param dest 目标「动态字符串」的指针。
+ *             如果为空指针，则视为不合法参数。
  * @param src 源「动态字符串」的指针。
+ *            如果为空指针，则视为不合法参数。
  *
  * @return 全局状态码。
  */
@@ -203,10 +221,14 @@ dstr_status_t dstr_cpy(
  * @brief 复制一个「C 字符串」的子串到一个「动态字符串」。
  *
  * @param dest 目标「动态字符串」的指针。
+ *             如果为空指针，则视为不合法参数。
  * @param src 源「C 字符串」的指针。
+ *            如果为空指针，则视为不合法参数。
  * @param sub_index 子串的起始索引。
+ *                  如果越界，则视为不合法参数。
  * @param sub_count 子串的长度。
  *                  为 0 表示到末尾。
+ *                  如果越界，则视为不合法参数。
  *
  * @return 全局状态码。
  */
@@ -221,10 +243,14 @@ dstr_status_t dstr_cpy_sub_cstr(
  * @brief 复制一个「动态字符串」的子串到另一个「动态字符串」。
  *
  * @param dest 目标「动态字符串」的指针。
+ *             如果为空指针，则视为不合法参数。
  * @param src 源「动态字符串」的指针。
+ *            如果为空指针，则视为不合法参数。
  * @param sub_index 子串的起始索引。
+ *                  如果越界，则视为不合法参数。
  * @param sub_count 子串的长度。
  *                  为 0 表示到末尾。
+ *                  如果越界，则视为不合法参数。
  *
  * @return 全局状态码。
  */
@@ -239,7 +265,9 @@ dstr_status_t dstr_cpy_sub(
  * @brief 追加一个「C 字符串」到一个「动态字符串」。
  *
  * @param dest 目标「动态字符串」的指针。
+ *             如果为空指针，则视为不合法参数。
  * @param src 源「C 字符串」的指针。
+ *            如果为空指针，则视为不合法参数。
  *
  * @return 全局状态码。
  */
@@ -252,7 +280,9 @@ dstr_status_t dstr_cat_cstr(
  * @brief 追加一个「动态字符串」到另一个「动态字符串」。
  *
  * @param dest 目标「动态字符串」的指针。
+ *             如果为空指针，则视为不合法参数。
  * @param src 源「动态字符串」的指针。
+ *            如果为空指针，则视为不合法参数。
  *
  * @return 全局状态码。
  */
@@ -265,10 +295,14 @@ dstr_status_t dstr_cat(
  * @brief 追加一个「C 字符串」的子串到一个「动态字符串」。
  *
  * @param dest 目标「动态字符串」的指针。
+ *             如果为空指针，则视为不合法参数。
  * @param src 源「C 字符串」的指针。
+ *            如果为空指针，则视为不合法参数。
  * @param sub_index 子串的起始索引。
+ *                  如果越界，则视为不合法参数。
  * @param sub_count 子串的长度。
  *                  为 0 表示到末尾。
+ *                  如果越界，则视为不合法参数。
  *
  * @return 全局状态码。
  */
@@ -283,10 +317,14 @@ dstr_status_t dstr_cat_sub_cstr(
  * @brief 追加一个「动态字符串」的子串到另一个「动态字符串」。
  *
  * @param dest 目标「动态字符串」的指针。
+ *             如果为空指针，则视为不合法参数。
  * @param src 源「动态字符串」的指针。
+ *            如果为空指针，则视为不合法参数。
  * @param sub_index 子串的起始索引。
+ *                  如果越界，则视为不合法参数。
  * @param sub_count 子串的长度。
  *                  为 0 表示到末尾。
+ *                  如果越界，则视为不合法参数。
  *
  * @return 全局状态码。
  */
@@ -301,8 +339,11 @@ dstr_status_t dstr_cat_sub(
  * @brief 插入一个「C 字符串」到一个「动态字符串」。
  *
  * @param dest 目标「动态字符串」的指针。
+ *             如果为空指针，则视为不合法参数。
  * @param index 插入位置的索引。
+ *              如果越界，则视为不合法参数。
  * @param src 源「C 字符串」的指针。
+ *            如果为空指针，则视为不合法参数。
  *
  * @return 全局状态码。
  */
@@ -316,8 +357,11 @@ dstr_status_t dstr_insert_cstr(
  * @brief 插入一个「动态字符串」到另一个「动态字符串」。
  *
  * @param dest 目标「动态字符串」的指针。
+ *             如果为空指针，则视为不合法参数。
  * @param index 插入位置的索引。
+ *              如果越界，则视为不合法参数。
  * @param src 源「动态字符串」的指针。
+ *            如果为空指针，则视为不合法参数。
  *
  * @return 全局状态码。
  */
@@ -331,11 +375,16 @@ dstr_status_t dstr_insert(
  * @brief 插入一个「C 字符串」的子串到一个「动态字符串」。
  *
  * @param dest 目标「动态字符串」的指针。
+ *             如果为空指针，则视为不合法参数。
  * @param index 插入位置的索引。
+ *              如果越界，则视为不合法参数。
  * @param src 源「C 字符串」的指针。
+ *            如果为空指针，则视为不合法参数。
  * @param sub_index 子串的起始索引。
+ *                  如果越界，则视为不合法参数。
  * @param sub_count 子串的长度。
  *                  为 0 表示到末尾。
+ *                  如果越界，则视为不合法参数。
  *
  * @return 全局状态码。
  */
@@ -351,11 +400,16 @@ dstr_status_t dstr_insert_sub_cstr(
  * @brief 插入一个「动态字符串」的子串到另一个「动态字符串」。
  *
  * @param dest 目标「动态字符串」的指针。
+ *             如果为空指针，则视为不合法参数。
  * @param index 插入位置的索引。
+ *              如果越界，则视为不合法参数。
  * @param src 源「动态字符串」的指针。
+ *            如果为空指针，则视为不合法参数。
  * @param sub_index 子串的起始索引。
+ *                  如果越界，则视为不合法参数。
  * @param sub_count 子串的长度。
  *                  为 0 表示到末尾。
+ *                  如果越界，则视为不合法参数。
  *
  * @return 全局状态码。
  */
@@ -372,8 +426,7 @@ dstr_status_t dstr_insert_sub(
  *        使其长度为 0，不会立即释放内存。
  *
  * @param dstr 目标「动态字符串」的指针。
- *
- * @return 参数有误时会直接返回。
+ *             如果为空指针，则函数会直接返回。
  */
 void dstr_clear(
 	dstr_adt *dstr
@@ -383,11 +436,12 @@ void dstr_clear(
  * @brief 删除一个「动态字符串」的子串。
  *
  * @param dstr 目标「动态字符串」的指针。
+ *             如果为空指针，则函数会直接返回。
  * @param index 子串的起始索引。
+ *              如果为越界，则函数会直接返回。
  * @param count 子串的长度。
  *              为 0 表示到末尾。
- *
- * @return 参数有误时会直接返回。
+ *              如果为越界，则函数会直接返回。
  */
 void dstr_remove(
 	dstr_adt *dstr,
@@ -399,10 +453,9 @@ void dstr_remove(
  * @brief 删除一个「动态字符串」首尾的空白字符或指定字符。
  *
  * @param dstr 目标「动态字符串」的指针。
+ *             如果为空指针，则函数会直接返回。
  * @param trim_chars 指定字符集合的「C 字符串」的指针。
  *                   为空指针或指向空「C 字符串」时删除空白字符。
- *
- * @return 参数有误时会直接返回。
  */
 void dstr_trim(
 	dstr_adt *dstr,
@@ -413,7 +466,10 @@ void dstr_trim(
  * @brief 格式化写入字符串到一个「动态字符串」。
  *
  * @param dstr 目标「动态字符串」的指针。
+ *             如果为空指针，则视为不合法参数。
  * @param format 格式「C 字符串」的指针。
+ *               如果为空指针，则视为不合法参数。
+ *               如果指向空「C 字符串」，则将写入空字符串。
  * @param ... 可变参数列表。
  *
  * @return 全局状态码。
@@ -430,10 +486,11 @@ dstr_status_t dstr_printf(
  * @brief 判断一个「动态字符串」是否以指定「C 字符串」前缀开头。
  *
  * @param dstr 目标「动态字符串」的指针。
+ *             如果为空指针，则函数会直接返回 false。
  * @param prefix 前缀「C 字符串」的指针。
+ *               如果为空指针，则函数会直接返回 false。
  *
  * @return 如果目标「动态字符串」以指定「C 字符串」前缀开头则返回 true，否则返回 false。
- *         参数有误时返回 false。
  */
 bool dstr_starts_with_cstr(
 	const dstr_adt *dstr,
@@ -444,10 +501,11 @@ bool dstr_starts_with_cstr(
  * @brief 判断一个「动态字符串」是否以指定「动态字符串」前缀开头。
  *
  * @param dstr 目标「动态字符串」的指针。
+ *             如果为空指针，则函数会直接返回 false。
  * @param prefix 前缀「动态字符串」的指针。
+ *               如果为空指针，则函数会直接返回 false。
  *
  * @return 如果目标「动态字符串」以指定「动态字符串」前缀开头则返回 true，否则返回 false。
- *         参数有误时返回 false。
  */
 bool dstr_starts_with(
 	const dstr_adt *dstr,
@@ -458,10 +516,11 @@ bool dstr_starts_with(
  * @brief 判断一个「动态字符串」是否以指定「C 字符串」后缀结尾。
  *
  * @param dstr 目标「动态字符串」的指针。
+ *             如果为空指针，则函数会直接返回 false。
  * @param suffix 后缀「C 字符串」的指针。
+ *               如果为空指针，则函数会直接返回 false。
  *
  * @return 如果目标「动态字符串」以指定「C 字符串」后缀结尾则返回 true，否则返回 false。
- *         参数有误时返回 false。
  */
 bool dstr_ends_with_cstr(
 	const dstr_adt *dstr,
@@ -472,10 +531,11 @@ bool dstr_ends_with_cstr(
  * @brief 判断一个「动态字符串」是否以指定「动态字符串」后缀结尾。
  *
  * @param dstr 目标「动态字符串」的指针。
+ *             如果为空指针，则函数会直接返回 false。
  * @param suffix 后缀「动态字符串」的指针。
+ *               如果为空指针，则函数会直接返回 false。
  *
  * @return 如果目标「动态字符串」以指定「动态字符串」后缀结尾则返回 true，否则返回 false。
- *         参数有误时返回 false。
  */
 bool dstr_ends_with(
 	const dstr_adt *dstr,
@@ -486,10 +546,11 @@ bool dstr_ends_with(
  * @brief 判断一个「动态字符串」是否包含指定子「C 字符串」。
  *
  * @param dstr 目标「动态字符串」的指针。
+ *             如果为空指针，则函数会直接返回 false。
  * @param sub 子「C 字符串」的指针。
+ *            如果为空指针，则函数会直接返回 false。
  *
  * @return 包含则返回 true，否则返回 false。
- *         参数有误时返回 false。
  */
 bool dstr_contains_cstr(
 	const dstr_adt *dstr,
@@ -500,10 +561,11 @@ bool dstr_contains_cstr(
  * @brief 判断一个「动态字符串」是否包含指定子「动态字符串」。
  *
  * @param dstr 目标「动态字符串」的指针。
+ *             如果为空指针，则函数会直接返回 false。
  * @param sub 子「动态字符串」的指针。
+ *            如果为空指针，则函数会直接返回 false。
  *
  * @return 包含则返回 true，否则返回 false。
- *         参数有误时返回 false。
  */
 bool dstr_contains(
 	const dstr_adt *dstr,
@@ -514,10 +576,12 @@ bool dstr_contains(
  * @brief 判断一个「动态字符串」是否与一个「C 字符串」相等。
  *
  * @param dstr 「动态字符串」的指针。
+ *             如果为空指针，则视其为「空字符串」。
  * @param cstr 「C 字符串」的指针。
+ *             如果为空指针，则视其为「空字符串」。
  *
  * @return 相等则返回 true，否则返回 false。
- *         参数有误时返回 false。
+ *         两者同为「空字符串」时，返回 true。
  */
 bool dstr_equals_cstr(
 	const dstr_adt *dstr,
@@ -528,10 +592,12 @@ bool dstr_equals_cstr(
  * @brief 判断两个「动态字符串」是否相等。
  *
  * @param dstr_1 第一个「动态字符串」的指针。
+ *               如果为空指针，则视其为「空字符串」。
  * @param dstr_2 第二个「动态字符串」的指针。
+ *               如果为空指针，则视其为「空字符串」。
  *
  * @return 相等则返回 true，否则返回 false。
- *         参数有误时返回 false。
+ *         两者同为「空字符串」时，返回 true。
  */
 bool dstr_equals(
 	const dstr_adt *dstr_1,
@@ -542,10 +608,13 @@ bool dstr_equals(
  * @brief 比较一个「动态字符串」与一个「C 字符串」。
  *
  * @param dstr 「动态字符串」的指针。
+ *             如果为空指针，则视其为「空字符串」。
  * @param cstr 「C 字符串」的指针。
+ *             如果为空指针，则视其为「空字符串」。
  *
  * @return 两者相等返回 0，前者大于后者返回正值，前者小于后者返回负值。
- *         参数有误时返回非 0 值。
+ *         两者同为「空字符串」时，返回 0。
+ *         两者只有一者为「空字符串」时，为「空字符串」者小于非「空字符串」者。
  */
 int dstr_compare_cstr(
 	const dstr_adt *dstr,
@@ -556,10 +625,13 @@ int dstr_compare_cstr(
  * @brief 比较两个「动态字符串」。
  *
  * @param dstr_1 第一个「动态字符串」的指针。
+ *               如果为空指针，则视其为「空字符串」。
  * @param dstr_2 第二个「动态字符串」的指针。
+ *               如果为空指针，则视其为「空字符串」。
  *
  * @return 两者相等返回 0，前者大于后者返回正值，前者小于后者返回负值。
- *         参数有误时返回非 0 值。
+ *         两者同为「空字符串」时，返回 0。
+ *         两者只有一者为「空字符串」时，为「空字符串」者小于非「空字符串」者。
  */
 int dstr_compare(
 	const dstr_adt *dstr_1,
@@ -572,13 +644,14 @@ int dstr_compare(
  * @brief 查找一个「动态字符串」中指定子「C 字符串」首次出现的位置。
  *
  * @param dstr 目标「动态字符串」的指针。
+ *             如果为空指针，则函数会直接返回 false。
  * @param sub 子「C 字符串」的指针。
+ *            如果为空指针，则函数会直接返回 false。
  * @param out_index 存储查找结果（位置索引）的 size_t 变量的指针。
  *                  为空指针时不写入。
  * @param backward 是否从后向前查找。
  *
  * @return 找到则返回 true，否则返回 false。
- *         参数有误时返回 false。
  */
 bool dstr_find_cstr(
 	const dstr_adt *dstr,
@@ -591,13 +664,14 @@ bool dstr_find_cstr(
  * @brief 查找一个「动态字符串」中指定子「动态字符串」首次出现的位置。
  *
  * @param dstr 目标「动态字符串」的指针。
+ *             如果为空指针，则函数会直接返回 false。
  * @param sub 子「动态字符串」的指针。
+ *            如果为空指针，则函数会直接返回 false。
  * @param out_index 存储查找结果（位置索引）的 size_t 变量的指针。
  *                  为空指针时不写入。
  * @param backward 是否从后向前查找。
  *
  * @return 找到则返回 true，否则返回 false。
- *         参数有误时返回 false。
  */
 bool dstr_find(
 	const dstr_adt *dstr,
@@ -610,22 +684,24 @@ bool dstr_find(
  * @brief 查找一个「动态字符串」中指定子「C 字符串」第 n 次出现的位置。
  *
  * @param dstr 目标「动态字符串」的指针。
+ *             如果为空指针，则函数会直接返回 false。
  * @param sub 子「C 字符串」的指针。
+ *            如果为空指针，则函数会直接返回 false。
  * @param out_index 存储查找结果（位置索引）的 size_t 变量的指针。
  *                  为空指针时不写入。
  * @param n 出现的次序。
  *          从 1 开始。
  *          为 0 表示最后一次。
+ *          如果大于实际出现次数，则视为最后一次。
  * @param backward 是否从后向前查找。
  *
  * @return 找到则返回 true，否则返回 false。
- *         参数有误时返回 false。
  */
 bool dstr_find_nth_cstr(
 	const dstr_adt *dstr,
 	const char *sub,
 	size_t *out_index,
-	size_t n,
+    size_t n,
 	bool backward
 );
 
@@ -633,22 +709,24 @@ bool dstr_find_nth_cstr(
  * @brief 查找一个「动态字符串」中指定子「动态字符串」第 n 次出现的位置。
  *
  * @param dstr 目标「动态字符串」的指针。
+ *             如果为空指针，则函数会直接返回 false。
  * @param sub 子「动态字符串」的指针。
+ *            如果为空指针，则函数会直接返回 false。
  * @param out_index 存储查找结果（位置索引）的 size_t 变量的指针。
  *                  为空指针时不写入。
  * @param n 出现的次序。
  *          从 1 开始。
  *          为 0 表示最后一次。
+ *          如果大于实际出现次数，则视为最后一次。
  * @param backward 是否从后向前查找。
  *
  * @return 找到则返回 true，否则返回 false。
- *         参数有误时返回 false。
  */
 bool dstr_find_nth(
 	const dstr_adt *dstr,
 	const dstr_adt *sub,
 	size_t *out_index,
-	size_t n,
+    size_t n,
 	bool backward
 );
 
@@ -656,11 +734,12 @@ bool dstr_find_nth(
  * @brief 统计一个「动态字符串」中指定子「C 字符串」出现的次数。
  *
  * @param dstr 目标「动态字符串」的指针。
+ *             如果为空指针，则函数会直接返回 0。
  * @param sub 子「C 字符串」的指针。
+ *            如果为空指针，则函数会直接返回 0。
  * @param backward 是否从后向前查找。
  *
  * @return 出现的次数。
- *         参数有误时返回 0。
  */
 size_t dstr_count_cstr(
 	const dstr_adt *dstr,
@@ -672,11 +751,12 @@ size_t dstr_count_cstr(
  * @brief 统计一个「动态字符串」中指定子「动态字符串」出现的次数。
  *
  * @param dstr 目标「动态字符串」的指针。
+ *             如果为空指针，则函数会直接返回 0。
  * @param sub 子「动态字符串」的指针。
+ *            如果为空指针，则函数会直接返回 0。
  * @param backward 是否从后向前查找。
  *
  * @return 出现的次数。
- *         参数有误时返回 0。
  */
 size_t dstr_count(
 	const dstr_adt *dstr,
@@ -688,10 +768,14 @@ size_t dstr_count(
  * @brief 替换一个「动态字符串」中指定旧「C 字符串」为指定新「C 字符串」n 次。
  *
  * @param dstr 目标「动态字符串」的指针。
+ *             如果为空指针或其长度为 0，则视为不合法参数。
  * @param old_str 旧「C 字符串」的指针。
+ *                如果为空指针或其长度大于目标「动态字符串」的长度，则视为不合法参数。
  * @param new_str 新「C 字符串」的指针。
+ *                为空指针或指向空「C 字符串」时，替换为空。
  * @param n 替换的次数。
  *          为 0 表示替换所有。
+ *          如果大于旧「C 字符串」实际出现的次数，则视为不合法参数，将一次替换都不进行。
  * @param backward 是否从后向前替换。
  *
  * @return 全局状态码。
@@ -708,10 +792,14 @@ dstr_status_t dstr_replace_cstr(
  * @brief 替换一个「动态字符串」中指定旧「动态字符串」为指定新「动态字符串」n 次。
  *
  * @param dstr 目标「动态字符串」的指针。
+ *             如果为空指针或其长度为 0，则视为不合法参数。
  * @param old_str 旧「动态字符串」的指针。
+ *                如果为空指针或其长度大于目标「动态字符串」的长度，则视为不合法参数。
  * @param new_str 新「动态字符串」的指针。
+ *                为空指针或指向空「动态字符串」时，替换为空。
  * @param n 替换的次数。
  *          为 0 表示替换所有。
+ *          如果大于旧「C 字符串」实际出现的次数，则视为不合法参数，将一次替换都不进行。
  * @param backward 是否从后向前替换。
  *
  * @return 全局状态码。
