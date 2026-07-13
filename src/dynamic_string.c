@@ -119,11 +119,36 @@ static bool capacity_resize_dynamic(
 	size_t new_cap
 );
 
+/**
+ * @brief 从一个「C 字符串」创建一个「动态字符串」。
+ *
+ * @param src 源「C 字符串」的指针。
+ * @param src_len 源「C 字符串」的长度。
+ *                为 0 时，创建空「动态字符串」。
+ *
+ * @return 所创建的「动态字符串」的指针。
+ *         如果创建失败则返回空指针。
+ */
 static dstr_adt *create_dstr(
 	const char *src,
 	size_t src_len
 );
 
+/**
+ * @brief 先删除一个「动态字符串」中的指定位置处开始向后的指定个字符，
+ *        然后向该位置插入一个「C 字符串」的子串。
+ *
+ * @param dest 目标「动态字符串」的指针。
+ * @param index 目标位置的索引。
+ * @param count 删除个数。
+ * @param src 源「C 字符串」的指针。
+ * @param src_len 源「C 字符串」的长度。
+ * @param sub_index 子串的起始索引。
+ * @param sub_count 字串的长度。
+ *                  为 0 表示到末尾。
+ *
+ * @return 全局状态码。
+ */
 static dstr_status_t insert_str(
 	dstr_adt *dest,
 	size_t index,
@@ -177,11 +202,9 @@ void dstr_destroy(
 dstr_adt *dstr_clone(
 	const dstr_adt *const dstr
 ) {
-	if (dstr == DSTR_NULLPTR) {
-		return DSTR_NULLPTR;
-	}
-
-	return create_dstr(dstr->data, dstr->len);
+	return (dstr == DSTR_NULLPTR)
+		? create_dstr(DSTR_NULLPTR, 0)
+		: create_dstr(dstr->data, dstr->len);
 }
 
 /* 属性获取与设置。 */
@@ -277,7 +300,10 @@ void dstr_shrink_to_fit(
 
 	dstr->min_cap = 0;
 
-	capacity_resize_regular(dstr, (dstr->len > 0) ? (dstr->len + 1) : 0);
+	capacity_resize_regular(
+		dstr,
+		(dstr->len > 0) ? (dstr->len + 1) : 0
+	);
 }
 
 /* 内容编辑。 */
@@ -635,9 +661,7 @@ dstr_status_t dstr_printf(
 	}
 
 	/* 执行写入。 */
-	if (output_len > 0) {
-		vsnprintf(dstr->data, needed_cap, format, args);
-	}
+	vsnprintf(dstr->data, needed_cap, format, args);
 	va_end(args);
 
 	if (output_len < dstr->len) {
@@ -986,7 +1010,6 @@ bool dstr_find_nth_cstr(
 			} else {
 				++p;
 			}
-
 		}
 	}
 
@@ -1054,7 +1077,6 @@ bool dstr_find_nth(
 			} else {
 				++p;
 			}
-
 		}
 	}
 
@@ -1108,7 +1130,6 @@ size_t dstr_count_cstr(
 			} else {
 				++p;
 			}
-
 		}
 	}
 
@@ -1153,7 +1174,6 @@ size_t dstr_count(
 			} else {
 				++p;
 			}
-
 		}
 	}
 
@@ -1181,8 +1201,6 @@ dstr_status_t dstr_replace_cstr(
 	if (old_str_count == 0) {
 		return DSTR_INVALID_ARGUMENT;
 	}
-
-
 }
 
 /* 替换一个「动态字符串」中指定旧「动态字符串」为指定新「动态字符串」n 次。 */
