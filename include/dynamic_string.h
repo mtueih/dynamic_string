@@ -701,7 +701,7 @@ bool dstr_find_nth_cstr(
 	const dstr_adt *dstr,
 	const char *sub,
 	size_t *out_index,
-    size_t n,
+	size_t n,
 	bool backward
 );
 
@@ -726,7 +726,7 @@ bool dstr_find_nth(
 	const dstr_adt *dstr,
 	const dstr_adt *sub,
 	size_t *out_index,
-    size_t n,
+	size_t n,
 	bool backward
 );
 
