@@ -219,6 +219,17 @@ size_t dstr_length(
 	return dstr->len;
 }
 
+/* 判断一个「动态字符串」是否是空「动态字符串」。 */
+bool dstr_is_empty(
+	const dstr_adt *const dstr
+) {
+	if (dstr == DSTR_NULLPTR) {
+		return true;
+	}
+
+	return (dstr->len == 0);
+}
+
 /* 获取一个「动态字符串」的容量。 */
 size_t dstr_capacity(
 	const dstr_adt *const dstr
