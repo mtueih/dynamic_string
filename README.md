@@ -20,13 +20,10 @@
 git clone https://github.com/mtueih/dynamic_string.git
 cd dynamic_string
 
-# 创建构建目录。
-mkdir build && cd build
-
 # 配置并安装。
-cmake .. -DDYNAMIC_STRING_INSTALL=ON -DBUILD_TESTING=OFF
-cmake --build .
-cmake --install .
+cmake . -B build -DDYNAMIC_STRING_INSTALL=ON -DBUILD_TESTING=OFF
+cmake --build build
+cmake --install build
 ```
 
 ### CPM.cmake
