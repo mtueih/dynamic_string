@@ -17,7 +17,7 @@
 
 
 /*==============================================================================
- * include/dynamic_string.h
+ * include/dynamic_string.h - 项目主库头文件
  *============================================================================*/
 #ifndef DYNAMIC_STRING_H
 #define DYNAMIC_STRING_H
@@ -95,31 +95,51 @@ dstr_adt *dstr_clone(
 	const dstr_adt *dstr
 );
 
-/* 属性获取与设置。 */
-
 /**
- * @brief 获取一个「动态字符串」的内部「C 字符串」指针（非 const）。
+ * @brief 提取一个「C 字符串」的子串为一个新的「动态字符串」。
  *
- * @remark 只为兼容部分 C API，请勿通过此函数返回的指针修改其指向的数据，否则后果自负。
+ * @param cstr 目标「C 字符串」的指针。
+ * @param sub_index 子串的起始索引。
+ * @param sub_count 子串的长度。
+ *                  为 0 表示到末尾。
  *
- * @param dstr 目标「动态字符串」的指针。
- *             如果为空指针，则函数会直接返回空指针。
- *
- * @return 所获取的「C 字符串」指针。
+ * @return 所创建「动态字符串」的指针。
+ *         创建失败返回空指针。
  */
-char *dstr_cstr(
-	dstr_adt *dstr
+dstr_adt *dstr_sub_cstr(
+	const char *cstr,
+	size_t sub_index,
+	size_t sub_count
 );
 
 /**
- * @brief 获取一个「动态字符串」的内部「C 字符串」指针（const）。
+ * @brief 提取一个「动态字符串」的字串为一个新的「动态字符串」。
+ *
+ * @param dstr 目标「动态字符串」的指针。
+ * @param sub_index 子串的起始索引。
+ * @param sub_count 子串的长度。
+ *                  为 0 表示到末尾。
+ *
+ * @return 所创建「动态字符串」的指针。
+ *         创建失败返回空指针。
+ */
+dstr_adt *dstr_sub(
+	const dstr_adt *dstr,
+	size_t sub_index,
+	size_t sub_count
+);
+
+/* 属性获取与设置。 */
+
+/**
+ * @brief 获取一个「动态字符串」的内部「C 字符串」指针。
  *
  * @param dstr 目标「动态字符串」的指针。
  *             如果为空指针，则函数会直接返回空指针。
  *
  * @return 所获取的「C 字符串」指针。
  */
-const char *dstr_cstr_const(
+const char *dstr_cstr(
 	const dstr_adt *dstr
 );
 
@@ -262,6 +282,24 @@ dstr_status_t dstr_cpy_sub(
 );
 
 /**
+ * @brief 格式化写入字符串到一个「动态字符串」。
+ *
+ * @param dstr 目标「动态字符串」的指针。
+ *             如果为空指针，则视为不合法参数。
+ * @param format 格式「C 字符串」的指针。
+ *               如果为空指针，则视为不合法参数。
+ *               如果指向空「C 字符串」，则将写入空字符串。
+ * @param ... 可变参数列表。
+ *
+ * @return 全局状态码。
+ */
+dstr_status_t dstr_printf(
+	dstr_adt *dstr,
+	const char *format,
+	...
+);
+
+/**
  * @brief 追加一个「C 字符串」到一个「动态字符串」。
  *
  * @param dest 目标「动态字符串」的指针。
@@ -333,6 +371,24 @@ dstr_status_t dstr_cat_sub(
 	const dstr_adt *src,
 	size_t sub_index,
 	size_t sub_count
+);
+
+/**
+ * @brief 格式化追加字符串到一个「动态字符串」。
+ *
+ * @param dstr 目标「动态字符串」的指针。
+ *             如果为空指针，则视为不合法参数。
+ * @param format 格式「C 字符串」的指针。
+ *               如果为空指针，则视为不合法参数。
+ *               如果指向空「C 字符串」，则将写入空字符串。
+ * @param ... 可变参数列表。
+ *
+ * @return 全局状态码。
+ */
+dstr_status_t dstr_cat_printf(
+	dstr_adt *dstr,
+	const char *format,
+	...
 );
 
 /**
@@ -422,6 +478,26 @@ dstr_status_t dstr_insert_sub(
 );
 
 /**
+ * @brief 格式化插入字符串到一个「动态字符串」。
+ *
+ * @param dstr 目标「动态字符串」的指针。
+ *             如果为空指针，则视为不合法参数。
+ * @param index
+ * @param format 格式「C 字符串」的指针。
+ *               如果为空指针，则视为不合法参数。
+ *               如果指向空「C 字符串」，则将写入空字符串。
+ * @param ... 可变参数列表。
+ *
+ * @return 全局状态码。
+ */
+dstr_status_t dstr_insert_printf(
+	dstr_adt *dstr,
+	size_t index,
+	const char *format,
+	...
+);
+
+/**
  * @brief 清空一个「动态字符串」。
  *        使其长度为 0，不会立即释放内存。
  *
@@ -460,24 +536,6 @@ void dstr_remove(
 void dstr_trim(
 	dstr_adt *dstr,
 	const char *trim_chars
-);
-
-/**
- * @brief 格式化写入字符串到一个「动态字符串」。
- *
- * @param dstr 目标「动态字符串」的指针。
- *             如果为空指针，则视为不合法参数。
- * @param format 格式「C 字符串」的指针。
- *               如果为空指针，则视为不合法参数。
- *               如果指向空「C 字符串」，则将写入空字符串。
- * @param ... 可变参数列表。
- *
- * @return 全局状态码。
- */
-dstr_status_t dstr_printf(
-	dstr_adt *dstr,
-	const char *format,
-	...
 );
 
 /* 关系判断与比较。 */
@@ -737,14 +795,12 @@ bool dstr_find_nth(
  *             如果为空指针，则函数会直接返回 0。
  * @param sub 子「C 字符串」的指针。
  *            如果为空指针，则函数会直接返回 0。
- * @param backward 是否从后向前查找。
  *
  * @return 出现的次数。
  */
 size_t dstr_count_cstr(
 	const dstr_adt *dstr,
-	const char *sub,
-	bool backward
+	const char *sub
 );
 
 /**
@@ -754,14 +810,12 @@ size_t dstr_count_cstr(
  *             如果为空指针，则函数会直接返回 0。
  * @param sub 子「动态字符串」的指针。
  *            如果为空指针，则函数会直接返回 0。
- * @param backward 是否从后向前查找。
  *
  * @return 出现的次数。
  */
 size_t dstr_count(
 	const dstr_adt *dstr,
-	const dstr_adt *sub,
-	bool backward
+	const dstr_adt *sub
 );
 
 /**
@@ -812,5 +866,30 @@ dstr_status_t dstr_replace(
 	bool backward
 );
 
+/* 分隔与合并。 */
+
+dstr_adt **dstr_split_cstr(
+	const char *cstr,
+	const char *separator,
+	size_t *out_dstr_count
+);
+
+dstr_adt **dstr_split(
+	const dstr_adt *dstr,
+	const dstr_adt *separator,
+	size_t *out_dstr_count
+);
+
+dstr_adt *dstr_join_cstr(
+	const char **cstrs,
+	size_t cstr_count,
+	const char *separator
+);
+
+dstr_adt *dstr_join(
+	const dstr_adt **dstrs,
+	size_t dstr_count,
+	const dstr_adt *separator
+);
 
 #endif /* DYNAMIC_STRING_H */
