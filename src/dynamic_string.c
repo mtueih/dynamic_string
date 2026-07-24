@@ -1561,7 +1561,7 @@ static size_t find_str(
 		p = dstr->data + dstr->len - sub_len;
 
 		while (p >= dstr->data) {
-			if (strncmp(p, sub, sub_len) == 0) {
+			if (memcmp(p, sub, sub_len) == 0) {
 				++find_count;
 				find = p;
 
@@ -1578,7 +1578,7 @@ static size_t find_str(
 		p = dstr->data;
 
 		while (p < dstr->data + dstr->len) {
-			if (strncmp(p, sub, sub_len) == 0) {
+			if (memcmp(p, sub, sub_len) == 0) {
 				++find_count;
 				find = p;
 
