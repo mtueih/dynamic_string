@@ -932,7 +932,6 @@ bool dstr_starts_with_cstr(
 	}
 
 	const size_t prefix_len = strlen(prefix);
-
 	if (prefix_len > dstr->len) {
 		return false;
 	}
@@ -970,7 +969,6 @@ bool dstr_ends_with_cstr(
 	}
 
 	const size_t suffix_len = strlen(suffix);
-
 	if (suffix_len > dstr->len) {
 		return false;
 	}
@@ -1016,8 +1014,7 @@ bool dstr_contains_cstr(
 	}
 
 	const size_t sub_len = strlen(sub);
-
-	if (sub_len == 0 || sub_len > dstr->len) {
+	if (sub_len > dstr->len) {
 		return false;
 	}
 
@@ -1035,7 +1032,7 @@ bool dstr_contains(
 		return false;
 	}
 
-	if (sub->len == 0 || sub->len > dstr->len) {
+	if (sub->len > dstr->len) {
 		return false;
 	}
 
