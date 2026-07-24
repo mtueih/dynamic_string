@@ -857,7 +857,7 @@ void dstr_remove(
 	const size_t index,
 	const size_t count
 ) {
-	if (dstr == DSTR_NULLPTR ||
+	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
 		index >= dstr->len ||
 		!safe_size_t_add(index, count, DSTR_NULLPTR) ||
 		index + count > dstr->len
@@ -925,8 +925,8 @@ bool dstr_starts_with_cstr(
 	const dstr_adt *const dstr,
 	const char *const prefix
 ) {
-	if (dstr == DSTR_NULLPTR || prefix == DSTR_NULLPTR ||
-		prefix[0] == '\0'
+	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
+		prefix == DSTR_NULLPTR ||prefix[0] == '\0'
 	) {
 		return false;
 	}
@@ -944,8 +944,8 @@ bool dstr_starts_with(
 	const dstr_adt *const dstr,
 	const dstr_adt *const prefix
 ) {
-	if (dstr == DSTR_NULLPTR || prefix == DSTR_NULLPTR ||
-		prefix->len == 0
+	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
+		prefix == DSTR_NULLPTR ||prefix->len == 0
 	) {
 		return false;
 	}
@@ -962,8 +962,8 @@ bool dstr_ends_with_cstr(
 	const dstr_adt *const dstr,
 	const char *const suffix
 ) {
-	if (dstr == DSTR_NULLPTR || suffix == DSTR_NULLPTR ||
-		suffix[0] == '\0'
+	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
+		suffix == DSTR_NULLPTR || suffix[0] == '\0'
 	) {
 		return false;
 	}
@@ -985,8 +985,8 @@ bool dstr_ends_with(
 	const dstr_adt *const dstr,
 	const dstr_adt *const suffix
 ) {
-	if (dstr == DSTR_NULLPTR || suffix == DSTR_NULLPTR ||
-		suffix->len == 0
+	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
+		suffix == DSTR_NULLPTR || suffix->len == 0
 	) {
 		return false;
 	}
@@ -1007,8 +1007,8 @@ bool dstr_contains_cstr(
 	const dstr_adt *const dstr,
 	const char *const sub
 ) {
-	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR ||
-		sub[0] == '\0'
+	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
+		sub == DSTR_NULLPTR || sub[0] == '\0'
 	) {
 		return false;
 	}
@@ -1026,8 +1026,8 @@ bool dstr_contains(
 	const dstr_adt *const dstr,
 	const dstr_adt *const sub
 ) {
-	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR ||
-		sub->len == 0
+	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
+		sub == DSTR_NULLPTR || sub->len == 0
 	) {
 		return false;
 	}
@@ -1117,8 +1117,8 @@ bool dstr_find_cstr(
 	size_t *const out_index,
 	const bool backward
 ) {
-	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR ||
-		sub[0] == '\0'
+	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
+		sub == DSTR_NULLPTR || sub[0] == '\0'
 	) {
 		return false;
 	}
@@ -1138,8 +1138,8 @@ bool dstr_find(
 	size_t *const out_index,
 	const bool backward
 ) {
-	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR ||
-		sub->len == 0
+	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
+		sub == DSTR_NULLPTR || sub->len == 0
 	) {
 		return false;
 	}
@@ -1159,8 +1159,8 @@ bool dstr_find_nth_cstr(
 	const size_t n,
 	const bool backward
 ) {
-	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR ||
-		sub[0] == '\0'
+	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
+		sub == DSTR_NULLPTR || sub[0] == '\0'
 	) {
 		return false;
 	}
@@ -1181,8 +1181,8 @@ bool dstr_find_nth(
 	const size_t n,
 	const bool backward
 ) {
-	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR ||
-		sub->len == 0
+	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
+		sub == DSTR_NULLPTR || sub->len == 0
 	) {
 		return false;
 	}
@@ -1199,8 +1199,8 @@ size_t dstr_count_cstr(
 	const dstr_adt *const dstr,
 	const char *const sub
 ) {
-	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR ||
-		sub[0] == '\0'
+	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
+		sub == DSTR_NULLPTR || sub[0] == '\0'
 	) {
 		return 0;
 	}
@@ -1218,8 +1218,8 @@ size_t dstr_count(
 	const dstr_adt *const dstr,
 	const dstr_adt *const sub
 ) {
-	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR ||
-		sub->len == 0
+	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
+		sub == DSTR_NULLPTR || sub->len == 0
 	) {
 		return 0;
 	}
