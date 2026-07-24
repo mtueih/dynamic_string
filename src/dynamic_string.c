@@ -1117,12 +1117,14 @@ bool dstr_find_cstr(
 	size_t *const out_index,
 	const bool backward
 ) {
-	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR) {
+	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR ||
+		sub[0] == '\0'
+	) {
 		return false;
 	}
 
 	const size_t sub_len = strlen(sub);
-	if (sub_len == 0 || sub_len > dstr->len) {
+	if (sub_len > dstr->len) {
 		return false;
 	}
 
@@ -1136,11 +1138,13 @@ bool dstr_find(
 	size_t *const out_index,
 	const bool backward
 ) {
-	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR) {
+	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR ||
+		sub->len == 0
+	) {
 		return false;
 	}
 
-	if (sub->len == 0 || sub->len > dstr->len) {
+	if (sub->len > dstr->len) {
 		return false;
 	}
 
@@ -1155,12 +1159,14 @@ bool dstr_find_nth_cstr(
 	const size_t n,
 	const bool backward
 ) {
-	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR) {
+	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR ||
+		sub[0] == '\0'
+	) {
 		return false;
 	}
 
 	const size_t sub_len = strlen(sub);
-	if (sub_len == 0 || sub_len > dstr->len) {
+	if (sub_len > dstr->len) {
 		return false;
 	}
 
@@ -1175,11 +1181,13 @@ bool dstr_find_nth(
 	const size_t n,
 	const bool backward
 ) {
-	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR) {
+	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR ||
+		sub->len == 0
+	) {
 		return false;
 	}
 
-	if (sub->len == 0 || sub->len > dstr->len) {
+	if (sub->len > dstr->len) {
 		return false;
 	}
 
@@ -1191,12 +1199,14 @@ size_t dstr_count_cstr(
 	const dstr_adt *const dstr,
 	const char *const sub
 ) {
-	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR) {
+	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR ||
+		sub[0] == '\0'
+	) {
 		return 0;
 	}
 
 	const size_t sub_len = strlen(sub);
-	if (sub_len == 0 || sub_len > dstr->len) {
+	if (sub_len > dstr->len) {
 		return 0;
 	}
 
@@ -1208,11 +1218,13 @@ size_t dstr_count(
 	const dstr_adt *const dstr,
 	const dstr_adt *const sub
 ) {
-	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR) {
+	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR ||
+		sub->len == 0
+	) {
 		return 0;
 	}
 
-	if (sub->len == 0 || sub->len > dstr->len) {
+	if (sub->len > dstr->len) {
 		return 0;
 	}
 
@@ -1228,13 +1240,15 @@ dstr_status_t dstr_replace_cstr(
 	const bool backward
 ) {
 	/* 参数检查。 */
-	if (dstr == DSTR_NULLPTR || old_str == DSTR_NULLPTR) {
+	if (dstr == DSTR_NULLPTR || old_str == DSTR_NULLPTR ||
+		old_str[0] == '\0'
+	) {
 		return DSTR_INVALID_ARGUMENT;
 	}
 
 	/* 计算 old_str 长度。 */
 	const size_t old_str_len = strlen(old_str);
-	if (old_str_len == 0 || old_str_len > dstr->len) {
+	if (old_str_len > dstr->len) {
 		return DSTR_INVALID_ARGUMENT;
 	}
 
@@ -1259,10 +1273,13 @@ dstr_status_t dstr_replace(
 	const bool backward
 ) {
 	/* 参数检查。 */
-	if (dstr == DSTR_NULLPTR || old_str == DSTR_NULLPTR) {
+	if (dstr == DSTR_NULLPTR || old_str == DSTR_NULLPTR ||
+		old_str->len == 0
+	) {
 		return DSTR_INVALID_ARGUMENT;
 	}
-	if (old_str->len == 0 || old_str->len > dstr->len) {
+
+	if (old_str->len > dstr->len) {
 		return DSTR_INVALID_ARGUMENT;
 	}
 
