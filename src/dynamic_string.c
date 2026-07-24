@@ -125,13 +125,17 @@ static bool capacity_resize_dynamic(
  * @param src 源「C 字符串」的指针。
  * @param src_len 源「C 字符串」的长度。
  *                为 0 时，创建空「动态字符串」。
+ * @param sub_index
+ * @param sub_count
  *
  * @return 所创建的「动态字符串」的指针。
  *         如果创建失败则返回空指针。
  */
 static dstr_adt *create_dstr(
 	const char *src,
-	size_t src_len
+	size_t src_len,
+	size_t sub_index,
+	size_t sub_count
 );
 
 /**
@@ -159,6 +163,41 @@ static dstr_status_t insert_str(
 	size_t sub_count
 );
 
+/**
+ * @brief 查找一个「动态字符串」中，指定子「C 字符串」第 n 次出现的位置，
+ *        并返回直到第 n 次，一共出现的次数。
+ *
+ * @param dstr 目标「动态字符串」的指针。
+ * @param sub 子「C 字符串」的指针。
+ * @param sub_len 子「C 字符串」的长度。
+ * @param out_index 存储查找结果（位置索引）的 size_t 变量的指针。
+ *                  为空指针时不写入。
+ * @param n 出现的次序。
+ *          从 1 开始。
+ *          为 0 表示最后一次。
+ * @param backward 是否从后向前查找。
+ *
+ * @return 指定子「C 字符串」截止第 n 次，一共出现的次数。
+ */
+static size_t find_str(
+	const dstr_adt *dstr,
+	const char *sub,
+	size_t sub_len,
+	size_t *out_index,
+	size_t n,
+	bool backward
+);
+
+static dstr_status_t replace_str(
+	dstr_adt *dstr,
+	const char *old_str,
+	size_t old_str_len,
+	const char *new_str,
+	size_t new_str_len,
+	size_t n,
+	bool backward
+);
+
 
 /*------------------------------------------------------------------------------
  * 接口函数定义
@@ -170,17 +209,11 @@ static dstr_status_t insert_str(
 dstr_adt *dstr_create(
 	const char *const cstr
 ) {
-	if (cstr != DSTR_NULLPTR && cstr[0] != '\0') {
-		const size_t cstr_len = strlen(cstr);
-
-		if (!safe_size_t_add(cstr_len, 1, DSTR_NULLPTR)) {
-			return DSTR_NULLPTR;
-		}
-
-		return create_dstr(cstr, cstr_len);
+	if (cstr == DSTR_NULLPTR || cstr[0] == '\0') {
+		return create_dstr(DSTR_NULLPTR, 0, 0, 0);
 	}
 
-	return create_dstr(DSTR_NULLPTR, 0);
+	return create_dstr(cstr, strlen(cstr), 0, 0);
 }
 
 /* 销毁一个「动态字符串」。 */
@@ -202,26 +235,57 @@ void dstr_destroy(
 dstr_adt *dstr_clone(
 	const dstr_adt *const dstr
 ) {
-	return (dstr == DSTR_NULLPTR)
-		? create_dstr(DSTR_NULLPTR, 0)
-		: create_dstr(dstr->data, dstr->len);
+	if (dstr == DSTR_NULLPTR || dstr->len == 0) {
+		return create_dstr(DSTR_NULLPTR, 0, 0, 0);
+	}
+
+	return create_dstr(dstr->data, dstr->len, 0, 0);
+}
+
+dstr_adt *dstr_sub_cstr(
+	const char *const cstr,
+	const size_t sub_index,
+	const size_t sub_count
+) {
+	if (cstr == DSTR_NULLPTR || cstr[0] == '\0') {
+		return create_dstr(DSTR_NULLPTR, 0, 0, 0);
+	}
+
+	const size_t cstr_len = strlen(cstr);
+
+	if (sub_index >= cstr_len ||
+		!safe_size_t_add(sub_index, sub_count, DSTR_NULLPTR) ||
+		sub_index + sub_count > cstr_len
+	) {
+		return DSTR_NULLPTR;
+	}
+
+	return create_dstr(cstr, cstr_len, sub_index, sub_count);
+}
+
+dstr_adt *dstr_sub(
+	const dstr_adt *const dstr,
+	const size_t sub_index,
+	const size_t sub_count
+) {
+	if (dstr == DSTR_NULLPTR || dstr->len == 0) {
+		return create_dstr(DSTR_NULLPTR, 0, 0, 0);
+	}
+
+	if (sub_index >= dstr->len ||
+		!safe_size_t_add(sub_index, sub_count, DSTR_NULLPTR) ||
+		sub_index + sub_count > dstr->len
+	) {
+		return DSTR_NULLPTR;
+	}
+
+	return create_dstr(dstr->data, dstr->len, sub_index, sub_count);
 }
 
 /* 属性获取与设置。 */
 
-/* 获取一个「动态字符串」的内部「C 字符串」指针（非 const）。 */
-char *dstr_cstr(
-	dstr_adt *const dstr
-) {
-	if (dstr == DSTR_NULLPTR) {
-		return DSTR_NULLPTR;
-	}
-
-	return dstr->data;
-}
-
-/* 获取一个「动态字符串」的内部「C 字符串」指针（const）。 */
-const char *dstr_cstr_const(
+/* 获取一个「动态字符串」的内部「C 字符串」指针。 */
+const char *dstr_cstr(
 	const dstr_adt *const dstr
 ) {
 	if (dstr == DSTR_NULLPTR) {
@@ -313,13 +377,16 @@ dstr_status_t dstr_cpy_cstr(
 	dstr_adt *const dest,
 	const char *const src
 ) {
-	if (dest == DSTR_NULLPTR || src == DSTR_NULLPTR) {
+	if (dest == DSTR_NULLPTR) {
 		return DSTR_INVALID_ARGUMENT;
 	}
 
-	const size_t src_len = strlen(src);
+	/* src 为空指针或指向空字符串，均视为复制空字符串。 */
+	if (src == DSTR_NULLPTR || src[0] == '\0') {
+		return insert_str(dest, 0, dest->len,DSTR_NULLPTR, 0, 0, 0);
+	}
 
-	return insert_str(dest, 0, dest->len, src, src_len, 0, 0);
+	return insert_str(dest, 0, dest->len, src, strlen(src), 0, 0);
 }
 
 /* 复制一个「动态字符串」到另一个「动态字符串」。 */
@@ -327,8 +394,13 @@ dstr_status_t dstr_cpy(
 	dstr_adt *const dest,
 	const dstr_adt *const src
 ) {
-	if (dest == DSTR_NULLPTR || src == DSTR_NULLPTR) {
+	if (dest == DSTR_NULLPTR) {
 		return DSTR_INVALID_ARGUMENT;
+	}
+
+	/* src 为空指针或指向空字符串，均视为复制空字符串。 */
+	if (src == DSTR_NULLPTR || src->len == 0) {
+		return insert_str(dest, 0, dest->len,DSTR_NULLPTR, 0, 0, 0);
 	}
 
 	return insert_str(dest, 0, dest->len, src->data, src->len, 0, 0);
@@ -341,12 +413,17 @@ dstr_status_t dstr_cpy_sub_cstr(
 	const size_t sub_index,
 	const size_t sub_count
 ) {
-	if (dest == DSTR_NULLPTR || src == DSTR_NULLPTR) {
+	if (dest == DSTR_NULLPTR) {
 		return DSTR_INVALID_ARGUMENT;
 	}
 
-	const size_t src_len = strlen(src);
+	/* src 为空指针或指向空字符串，均视为复制空字符串。 */
+	if (src == DSTR_NULLPTR || src[0] == '\0') {
+		return insert_str(dest, 0, dest->len,DSTR_NULLPTR, 0, 0, 0);
+	}
 
+	/* 越界检查。 */
+	const size_t src_len = strlen(src);
 	if (sub_index >= src_len ||
 		!safe_size_t_add(sub_index, sub_count, DSTR_NULLPTR) ||
 		sub_index + sub_count > src_len
@@ -364,10 +441,16 @@ dstr_status_t dstr_cpy_sub(
 	const size_t sub_index,
 	const size_t sub_count
 ) {
-	if (dest == DSTR_NULLPTR || src == DSTR_NULLPTR) {
+	if (dest == DSTR_NULLPTR) {
 		return DSTR_INVALID_ARGUMENT;
 	}
 
+	/* src 为空指针或指向空字符串，均视为复制空字符串。 */
+	if (src == DSTR_NULLPTR || src->len == 0) {
+		return insert_str(dest, 0, dest->len,DSTR_NULLPTR, 0, 0, 0);
+	}
+
+	/* 越界检查。 */
 	if (sub_index >= src->len ||
 		!safe_size_t_add(sub_index, sub_count, DSTR_NULLPTR) ||
 		sub_index + sub_count > src->len
@@ -378,22 +461,107 @@ dstr_status_t dstr_cpy_sub(
 	return insert_str(dest, 0, dest->len, src->data, src->len, sub_index, sub_count);
 }
 
+/* 格式化写入字符串到一个「动态字符串」。 */
+dstr_status_t dstr_printf(
+	dstr_adt *const dstr,
+	const char *const format,
+	...
+) {
+	if (dstr == DSTR_NULLPTR) {
+		return DSTR_INVALID_ARGUMENT;
+	}
+
+	/* format 为空指针或指向空字符串，均视为写入空字符串。 */
+	if (format == DSTR_NULLPTR || format[0] == '\0') {
+		dstr->len = 0;
+		capacity_resize_dynamic(dstr, 0);
+
+		if (dstr->cap > 0) {
+			dstr->data[0] = '\0';
+		}
+		return DSTR_SUCCESS;
+	}
+
+	va_list args, temp_args; /* 变参列表。 */
+	size_t new_len;
+
+	/* 变参列表初始化。 */
+	va_start(args, format);
+
+	/* 计算所需长度。 */
+	va_copy(temp_args, args);
+	const int temp_len = vsnprintf(DSTR_NULLPTR, 0, format, temp_args);
+	va_end(temp_args);
+
+	if (temp_len < 0) {
+		va_end(args);
+		return DSTR_INVALID_ARGUMENT;
+	}
+
+	new_len = temp_len;
+
+
+	/* 所需长度大于当前长度，尝试扩容。 */
+	if
+	(
+		!
+		safe_size_t_add(new_len, 1, DSTR_NULLPTR)
+	) {
+		va_end(args);
+		return DSTR_MEMORY_ALLOC_FAILED;
+	}
+
+	if
+	(new_len
+		>
+		dstr
+		->
+		len
+	) {
+		if (!capacity_resize_dynamic(dstr, new_len + 1)) {
+			va_end(args);
+			return DSTR_MEMORY_ALLOC_FAILED;
+		}
+	}
+
+	/* 执行写入。 */
+	if
+	(new_len
+		>
+		0
+	) {
+		vsnprintf(dstr->data, new_len + 1, format, args);
+	}
+	va_end(args);
+
+	if
+	(new_len < dstr->len) {
+		capacity_resize_dynamic(dstr, (new_len > 0) ? (new_len + 1) : 0);
+	}
+
+	dstr
+		->
+		len = new_len;
+
+	return
+		DSTR_SUCCESS;
+}
+
 /* 追加一个「C 字符串」到一个「动态字符串」。 */
 dstr_status_t dstr_cat_cstr(
 	dstr_adt *const dest,
 	const char *const src
 ) {
-	if (dest == DSTR_NULLPTR || src == DSTR_NULLPTR) {
+	if (dest == DSTR_NULLPTR) {
 		return DSTR_INVALID_ARGUMENT;
 	}
 
-	const size_t src_len = strlen(src);
-
-	if (src_len == 0) {
+	/* src 为空指针或指向空字符串，均视为追加空字符串。 */
+	if (src == DSTR_NULLPTR || src[0] == '\0') {
 		return DSTR_SUCCESS;
 	}
 
-	return insert_str(dest, dest->len, 0, src, src_len, 0, 0);
+	return insert_str(dest, dest->len, 0, src, strlen(src), 0, 0);
 }
 
 /* 追加一个「动态字符串」到另一个「动态字符串」。 */
@@ -401,11 +569,12 @@ dstr_status_t dstr_cat(
 	dstr_adt *const dest,
 	const dstr_adt *const src
 ) {
-	if (dest == DSTR_NULLPTR || src == DSTR_NULLPTR) {
+	if (dest == DSTR_NULLPTR) {
 		return DSTR_INVALID_ARGUMENT;
 	}
 
-	if (src->len == 0) {
+	/* src 为空指针或指向空字符串，均视为追加空字符串。 */
+	if (src == DSTR_NULLPTR || src->len == 0) {
 		return DSTR_SUCCESS;
 	}
 
@@ -419,12 +588,17 @@ dstr_status_t dstr_cat_sub_cstr(
 	const size_t sub_index,
 	const size_t sub_count
 ) {
-	if (dest == DSTR_NULLPTR || src == DSTR_NULLPTR) {
+	if (dest == DSTR_NULLPTR) {
 		return DSTR_INVALID_ARGUMENT;
 	}
 
-	const size_t src_len = strlen(src);
+	/* src 为空指针或指向空字符串，均视为追加空字符串。 */
+	if (src == DSTR_NULLPTR || src[0] == '\0') {
+		return DSTR_SUCCESS;
+	}
 
+	/* 越界检查。 */
+	const size_t src_len = strlen(src);
 	if (sub_index >= src_len ||
 		!safe_size_t_add(sub_index, sub_count, DSTR_NULLPTR) ||
 		sub_index + sub_count > src_len
@@ -442,10 +616,16 @@ dstr_status_t dstr_cat_sub(
 	const size_t sub_index,
 	const size_t sub_count
 ) {
-	if (dest == DSTR_NULLPTR || src == DSTR_NULLPTR) {
+	if (dest == DSTR_NULLPTR) {
 		return DSTR_INVALID_ARGUMENT;
 	}
 
+	/* src 为空指针或指向空字符串，均视为追加空字符串。 */
+	if (src == DSTR_NULLPTR || src->len == 0) {
+		return DSTR_SUCCESS;
+	}
+
+	/* 越界检查。 */
 	if (sub_index >= src->len ||
 		!safe_size_t_add(sub_index, sub_count, DSTR_NULLPTR) ||
 		sub_index + sub_count > src->len
@@ -456,25 +636,83 @@ dstr_status_t dstr_cat_sub(
 	return insert_str(dest, dest->len, 0, src->data, src->len, sub_index, sub_count);
 }
 
+dstr_status_t dstr_cat_printf(
+	dstr_adt *const dstr,
+	const char *const format,
+	...
+) {
+	if (dstr == DSTR_NULLPTR) {
+		return DSTR_INVALID_ARGUMENT;
+	}
+
+	va_list args; /* 变参列表。 */
+	size_t output_len;
+
+	/* 变参列表初始化。 */
+	va_start(args, format);
+
+	/* format 为空指针或指向空字符串，均视为追加空字符串。 */
+	if (format == DSTR_NULLPTR || format[0] == '\0') {
+		output_len = 0;
+	} else {
+		va_list temp_args;
+
+		va_copy(temp_args, args);
+		const int output_len_temp = vsnprintf(
+			DSTR_NULLPTR,
+			0,
+			format,
+			temp_args
+		);
+		va_end(temp_args);
+
+		if (output_len_temp < 0) {
+			va_end(args);
+			return DSTR_INVALID_ARGUMENT;
+		}
+
+		output_len = output_len_temp;
+	}
+
+	/* 所需长度大于当前长度，尝试扩容。 */
+	if (output_len > 0) {
+		if (!safe_size_t_add(output_len, 1, DSTR_NULLPTR) ||
+			!capacity_resize_dynamic(dstr, output_len)
+		) {
+			return DSTR_MEMORY_ALLOC_FAILED;
+		}
+	}
+
+	/* 执行写入。 */
+	if (output_len > 0) {
+		vsnprintf(dstr->data, output_len + 1, format, args);
+	}
+	va_end(args);
+
+	if (output_len < dstr->len) {
+		capacity_resize_dynamic(dstr, (output_len > 0) ? (output_len + 1) : 0);
+	}
+	dstr->len = output_len;
+
+	return DSTR_SUCCESS;
+}
+
 /* 插入一个「C 字符串」到一个「动态字符串」。 */
 dstr_status_t dstr_insert_cstr(
 	dstr_adt *const dest,
 	const size_t index,
 	const char *const src
 ) {
-	if (dest == DSTR_NULLPTR || src == DSTR_NULLPTR ||
-		index > dest->len
-	) {
+	if (dest == DSTR_NULLPTR || index > dest->len) {
 		return DSTR_INVALID_ARGUMENT;
 	}
 
-	const size_t src_len = strlen(src);
-
-	if (src_len == 0) {
+	/* src 为空指针或指向空字符串，均视为插入空字符串。 */
+	if (src == DSTR_NULLPTR || src[0] == '\0') {
 		return DSTR_SUCCESS;
 	}
 
-	return insert_str(dest, index, 0, src, src_len, 0, 0);
+	return insert_str(dest, index, 0, src, strlen(src), 0, 0);
 }
 
 /* 插入一个「动态字符串」到另一个「动态字符串」。 */
@@ -483,13 +721,12 @@ dstr_status_t dstr_insert(
 	const size_t index,
 	const dstr_adt *const src
 ) {
-	if (dest == DSTR_NULLPTR || src == DSTR_NULLPTR ||
-		index > dest->len
-	) {
+	if (dest == DSTR_NULLPTR || index > dest->len) {
 		return DSTR_INVALID_ARGUMENT;
 	}
 
-	if (src->len == 0) {
+	/* src 为空指针或指向空字符串，均视为插入空字符串。 */
+	if (src == DSTR_NULLPTR || src->len == 0) {
 		return DSTR_SUCCESS;
 	}
 
@@ -504,14 +741,17 @@ dstr_status_t dstr_insert_sub_cstr(
 	const size_t sub_index,
 	const size_t sub_count
 ) {
-	if (dest == DSTR_NULLPTR || src == DSTR_NULLPTR ||
-		index > dest->len
-	) {
+	if (dest == DSTR_NULLPTR || index > dest->len) {
 		return DSTR_INVALID_ARGUMENT;
 	}
 
-	const size_t src_len = strlen(src);
+	/* src 为空指针或指向空字符串，均视为插入空字符串。 */
+	if (src == DSTR_NULLPTR || src[0] == '\0') {
+		return DSTR_SUCCESS;
+	}
 
+	/* 越界检查。 */
+	const size_t src_len = strlen(src);
 	if (sub_index >= src_len ||
 		!safe_size_t_add(sub_index, sub_count, DSTR_NULLPTR) ||
 		sub_index + sub_count > src_len
@@ -530,12 +770,16 @@ dstr_status_t dstr_insert_sub(
 	const size_t sub_index,
 	const size_t sub_count
 ) {
-	if (dest == DSTR_NULLPTR || src == DSTR_NULLPTR ||
-		index > dest->len
-	) {
+	if (dest == DSTR_NULLPTR || index > dest->len) {
 		return DSTR_INVALID_ARGUMENT;
 	}
 
+	/* src 为空指针或指向空字符串，均视为插入空字符串。 */
+	if (src == DSTR_NULLPTR || src->len == 0) {
+		return DSTR_SUCCESS;
+	}
+
+	/* 越界检查。 */
 	if (sub_index >= src->len ||
 		!safe_size_t_add(sub_index, sub_count, DSTR_NULLPTR) ||
 		sub_index + sub_count > src->len
@@ -546,91 +790,15 @@ dstr_status_t dstr_insert_sub(
 	return insert_str(dest, index, 0, src->data, src->len, sub_index, sub_count);
 }
 
-/* 清空一个「动态字符串」。 */
-void dstr_clear(
-	dstr_adt *const dstr
-) {
-	if (dstr == DSTR_NULLPTR) {
-		return;
-	}
-
-	dstr->len = 0;
-}
-
-/* 删除一个「动态字符串」的子串。 */
-void dstr_remove(
+dstr_status_t dstr_insert_printf(
 	dstr_adt *const dstr,
 	const size_t index,
-	const size_t count
-) {
-	if (dstr == DSTR_NULLPTR ||
-		index >= dstr->len ||
-		!safe_size_t_add(index, count, DSTR_NULLPTR) ||
-		index + count > dstr->len
-	) {
-		return;
-	}
-
-	const size_t remove_count = (count > 0) ? count : (dstr->len - index);
-
-	insert_str(dstr, index, remove_count, DSTR_NULLPTR, 0, 0, 0);
-}
-
-/* 删除一个「动态字符串」首尾的空白字符或指定字符。 */
-void dstr_trim(
-	dstr_adt *const dstr,
-	const char *const trim_chars
-) {
-	if (dstr == DSTR_NULLPTR) {
-		return;
-	}
-	if (dstr->len == 0) {
-		return;
-	}
-
-	const bool is_specified_trim_chars = (trim_chars != DSTR_NULLPTR && trim_chars[0] != '\0');
-	const char *p = dstr->data;
-	const char *q = dstr->data + dstr->len;
-
-	/* 定位剩余区间。 */
-	if (is_specified_trim_chars) {
-		while (strchr(trim_chars, *p) != DSTR_NULLPTR) {
-			++p;
-		}
-		while (q > p && strchr(trim_chars, *(q - 1)) != DSTR_NULLPTR) {
-			--q;
-		}
-	} else {
-		while (isspace(*p)) {
-			++p;
-		}
-		while (q > p && isspace(*(q - 1))) {
-			--q;
-		}
-	}
-
-	if (p < q) {
-		dstr->len = q - p;
-		if (p > dstr->data) {
-			memmove(dstr->data, p, dstr->len);
-		}
-	} else {
-		dstr->len = 0;
-	}
-
-	capacity_resize_dynamic(dstr, (dstr->len > 0) ? (dstr->len + 1) : 0);
-	if (dstr->cap > 0) {
-		dstr->data[dstr->len] = '\0';
-	}
-}
-
-/* 格式化写入字符串到一个「动态字符串」。 */
-dstr_status_t dstr_printf(
-	dstr_adt *const dstr,
 	const char *const format,
 	...
 ) {
-	if (dstr == DSTR_NULLPTR || format == DSTR_NULLPTR) {
+	if (dstr == DSTR_NULLPTR || index > dstr->len ||
+		format == DSTR_NULLPTR
+	) {
 		return DSTR_INVALID_ARGUMENT;
 	}
 
@@ -672,6 +840,84 @@ dstr_status_t dstr_printf(
 	return DSTR_SUCCESS;
 }
 
+/* 清空一个「动态字符串」。 */
+void dstr_clear(
+	dstr_adt *const dstr
+) {
+	if (dstr == DSTR_NULLPTR) {
+		return;
+	}
+
+	dstr->len = 0;
+}
+
+/* 删除一个「动态字符串」的子串。 */
+void dstr_remove(
+	dstr_adt *const dstr,
+	const size_t index,
+	const size_t count
+) {
+	if (dstr == DSTR_NULLPTR ||
+		index >= dstr->len ||
+		!safe_size_t_add(index, count, DSTR_NULLPTR) ||
+		index + count > dstr->len
+	) {
+		return;
+	}
+
+	const size_t remove_count = (count > 0) ? count : (dstr->len - index);
+
+	insert_str(dstr, index, remove_count, DSTR_NULLPTR, 0, 0, 0);
+}
+
+/* 删除一个「动态字符串」首尾的空白字符或指定字符。 */
+void dstr_trim(
+	dstr_adt *const dstr,
+	const char *const trim_chars
+) {
+	if (dstr == DSTR_NULLPTR || dstr->len == 0) {
+		return;
+	}
+
+	/* trim_chars 为空指针或指向空字符串时，均视为没有指定字符。 */
+	const bool is_specified_trim_chars = (trim_chars != DSTR_NULLPTR && trim_chars[0] != '\0');
+	/* 用于迭代和区间定位。 */
+	const char *p = dstr->data;
+	const char *q = p + dstr->len;
+
+	/* 定位剩余区间。 */
+	if (is_specified_trim_chars) {
+		while (strchr(trim_chars, *p) != DSTR_NULLPTR) {
+			++p;
+		}
+		while (q > p && strchr(trim_chars, *(q - 1)) != DSTR_NULLPTR) {
+			--q;
+		}
+	} else {
+		while (isspace(*p)) {
+			++p;
+		}
+		while (q > p && isspace(*(q - 1))) {
+			--q;
+		}
+	}
+
+	if (p < q) {
+		dstr->len = q - p;
+		if (p > dstr->data) {
+			memmove(dstr->data, p, dstr->len);
+		}
+	} else {
+		dstr->len = 0;
+	}
+
+	capacity_resize_dynamic(dstr, (dstr->len > 0) ? (dstr->len + 1) : 0);
+	if (dstr->cap > 0) {
+		dstr->data[dstr->len] = '\0';
+	}
+}
+
+
 /* 关系判断与比较。 */
 
 /* 判断一个「动态字符串」是否以指定「C 字符串」前缀开头。 */
@@ -689,7 +935,7 @@ bool dstr_starts_with_cstr(
 		return false;
 	}
 
-	return (strncmp(dstr->data, prefix, prefix_len) == 0);
+	return (memcmp(dstr->data, prefix, prefix_len) == 0);
 }
 
 /* 判断一个「动态字符串」是否以指定「动态字符串」前缀开头。 */
@@ -705,7 +951,7 @@ bool dstr_starts_with(
 		return false;
 	}
 
-	return (strncmp(dstr->data, prefix->data, prefix->len) == 0);
+	return (memcmp(dstr->data, prefix->data, prefix->len) == 0);
 }
 
 /* 判断一个「动态字符串」是否以指定「C 字符串」后缀结尾。 */
@@ -723,7 +969,7 @@ bool dstr_ends_with_cstr(
 		return false;
 	}
 
-	return (strncmp(
+	return (memcmp(
 		dstr->data + dstr->len - suffix_len,
 		suffix,
 		suffix_len
@@ -743,7 +989,7 @@ bool dstr_ends_with(
 		return false;
 	}
 
-	return (strncmp(
+	return (memcmp(
 		dstr->data + dstr->len - suffix->len,
 		suffix->data,
 		suffix->len
@@ -794,14 +1040,14 @@ bool dstr_equals_cstr(
 	const int str_2_valid = (cstr != DSTR_NULLPTR && (cstr_len = strlen(cstr)) > 0) ? 1 : 0;
 
 	if (str_1_valid + str_2_valid < 2) {
-		return ((str_1_valid ^ str_2_valid) == 0);
+		return (str_1_valid == str_2_valid);
 	}
 
 	if (dstr->len != cstr_len) {
 		return false;
 	}
 
-	return (strncmp(dstr->data, cstr, cstr_len) == 0);
+	return (memcmp(dstr->data, cstr, cstr_len) == 0);
 }
 
 /* 判断两个「动态字符串」是否相等。 */
@@ -813,14 +1059,14 @@ bool dstr_equals(
 	const int str_2_valid = (dstr_2 != DSTR_NULLPTR && dstr_2->len > 0) ? 1 : 0;
 
 	if (str_1_valid + str_2_valid < 2) {
-		return ((str_1_valid ^ str_2_valid) == 0);
+		return (str_1_valid == str_2_valid);
 	}
 
 	if (dstr_1->len != dstr_2->len) {
 		return false;
 	}
 
-	return (strncmp(dstr_1->data, dstr_2->data, dstr_1->len) == 0);
+	return (memcmp(dstr_1->data, dstr_2->data, dstr_1->len) == 0);
 }
 
 /* 比较一个「动态字符串」与一个「C 字符串」。 */
@@ -871,39 +1117,7 @@ bool dstr_find_cstr(
 		return false;
 	}
 
-	const char *p;
-
-	if (backward) {
-		p = dstr->data + dstr->len - sub_len;
-
-		while (p >= dstr->data) {
-			if (strncmp(p, sub, sub_len) == 0) {
-				if (out_index != DSTR_NULLPTR) {
-					*out_index = p - dstr->data;
-				}
-
-				return true;
-			}
-
-			--p;
-		}
-	} else {
-		p = dstr->data;
-
-		while (p < dstr->data + dstr->len) {
-			if (strncmp(p, sub, sub_len) == 0) {
-				if (out_index != DSTR_NULLPTR) {
-					*out_index = p - dstr->data;
-				}
-
-				return true;
-			}
-
-			++p;
-		}
-	}
-
-	return false;
+	return (find_str(dstr, sub, sub_len, out_index, 1, backward) > 0);
 }
 
 /* 查找一个「动态字符串」中指定子「动态字符串」首次出现的位置。 */
@@ -921,39 +1135,7 @@ bool dstr_find(
 		return false;
 	}
 
-	const char *p;
-
-	if (backward) {
-		p = dstr->data + dstr->len - sub->len;
-
-		while (p >= dstr->data) {
-			if (strncmp(p, sub->data, sub->len) == 0) {
-				if (out_index != DSTR_NULLPTR) {
-					*out_index = p - dstr->data;
-				}
-
-				return true;
-			}
-
-			--p;
-		}
-	} else {
-		p = dstr->data;
-
-		while (p < dstr->data + dstr->len) {
-			if (strncmp(p, sub->data, sub->len) == 0) {
-				if (out_index != DSTR_NULLPTR) {
-					*out_index = p - dstr->data;
-				}
-
-				return true;
-			}
-
-			++p;
-		}
-	}
-
-	return false;
+	return (find_str(dstr, sub->data, sub->len, out_index, 1, backward) > 0);
 }
 
 /* 查找一个「动态字符串」中指定子「C 字符串」第 n 次出现的位置。 */
@@ -973,55 +1155,7 @@ bool dstr_find_nth_cstr(
 		return false;
 	}
 
-	const char *p;
-	const char *find = DSTR_NULLPTR;
-	size_t find_count = 0;
-
-	if (backward) {
-		p = dstr->data + dstr->len - sub_len;
-
-		while (p >= dstr->data) {
-			if (strncmp(p, sub, sub_len) == 0) {
-				++find_count;
-				find = p;
-
-				if (find_count == n) {
-					break;
-				}
-
-				p -= sub_len;
-			} else {
-				--p;
-			}
-		}
-	} else {
-		p = dstr->data;
-
-		while (p < dstr->data + dstr->len) {
-			if (strncmp(p, sub, sub_len) == 0) {
-				++find_count;
-				find = p;
-
-				if (find_count == n) {
-					break;
-				}
-
-				p += sub_len;
-			} else {
-				++p;
-			}
-		}
-	}
-
-	if (find == DSTR_NULLPTR) {
-		return false;
-	}
-
-	if (out_index != DSTR_NULLPTR) {
-		*out_index = find - dstr->data;
-	}
-
-	return true;
+	return (find_str(dstr, sub, sub_len, out_index, n, backward) > 0);
 }
 
 /* 查找一个「动态字符串」中指定子「动态字符串」第 n 次出现的位置。 */
@@ -1040,55 +1174,7 @@ bool dstr_find_nth(
 		return false;
 	}
 
-	const char *p;
-	const char *find = DSTR_NULLPTR;
-	size_t find_count = 0;
-
-	if (backward) {
-		p = dstr->data + dstr->len - sub->len;
-
-		while (p >= dstr->data) {
-			if (strncmp(p, sub->data, sub->len) == 0) {
-				++find_count;
-				find = p;
-
-				if (find_count == n) {
-					break;
-				}
-
-				p -= sub->len;
-			} else {
-				--p;
-			}
-		}
-	} else {
-		p = dstr->data;
-
-		while (p < dstr->data + dstr->len) {
-			if (strncmp(p, sub->data, sub->len) == 0) {
-				++find_count;
-				find = p;
-
-				if (find_count == n) {
-					break;
-				}
-
-				p += sub->len;
-			} else {
-				++p;
-			}
-		}
-	}
-
-	if (find == DSTR_NULLPTR) {
-		return false;
-	}
-
-	if (out_index != DSTR_NULLPTR) {
-		*out_index = find - dstr->data;
-	}
-
-	return true;
+	return (find_str(dstr, sub->data, sub->len, out_index, n, backward) > 0);
 }
 
 /* 统计一个「动态字符串」中指定子「C 字符串」出现的次数。 */
@@ -1106,34 +1192,7 @@ size_t dstr_count_cstr(
 		return 0;
 	}
 
-	const char *p;
-	size_t find_count = 0;
-
-	if (backward) {
-		p = dstr->data + dstr->len - sub_len;
-
-		while (p >= dstr->data) {
-			if (strncmp(p, sub, sub_len) == 0) {
-				++find_count;
-				p -= sub_len;
-			} else {
-				--p;
-			}
-		}
-	} else {
-		p = dstr->data;
-
-		while (p < dstr->data + dstr->len) {
-			if (strncmp(p, sub, sub_len) == 0) {
-				++find_count;
-				p += sub_len;
-			} else {
-				++p;
-			}
-		}
-	}
-
-	return find_count;
+	return find_str(dstr, sub, sub_len, DSTR_NULLPTR, 0, backward);
 }
 
 /* 统计一个「动态字符串」中指定子「动态字符串」出现的次数。 */
@@ -1150,34 +1209,7 @@ size_t dstr_count(
 		return 0;
 	}
 
-	const char *p;
-	size_t find_count = 0;
-
-	if (backward) {
-		p = dstr->data + dstr->len - sub->len;
-
-		while (p >= dstr->data) {
-			if (strncmp(p, sub->data, sub->len) == 0) {
-				++find_count;
-				p -= sub->len;
-			} else {
-				--p;
-			}
-		}
-	} else {
-		p = dstr->data;
-
-		while (p < dstr->data + dstr->len) {
-			if (strncmp(p, sub->data, sub->len) == 0) {
-				++find_count;
-				p += sub->len;
-			} else {
-				++p;
-			}
-		}
-	}
-
-	return find_count;
+	return find_str(dstr, sub->data, sub->len, DSTR_NULLPTR, 0, backward);
 }
 
 /* 替换一个「动态字符串」中指定旧「C 字符串」为指定新「C 字符串」n 次。 */
@@ -1188,19 +1220,27 @@ dstr_status_t dstr_replace_cstr(
 	const size_t n,
 	const bool backward
 ) {
+	/* 参数检查。 */
 	if (dstr == DSTR_NULLPTR || old_str == DSTR_NULLPTR) {
 		return DSTR_INVALID_ARGUMENT;
 	}
 
+	/* 计算 old_str 长度。 */
 	const size_t old_str_len = strlen(old_str);
 	if (old_str_len == 0 || old_str_len > dstr->len) {
 		return DSTR_INVALID_ARGUMENT;
 	}
 
-	const size_t old_str_count = dstr_count_cstr(dstr, old_str, false);
-	if (old_str_count == 0) {
-		return DSTR_INVALID_ARGUMENT;
-	}
+	return replace_str(
+		dstr,
+		old_str,
+		old_str_len,
+		new_str,
+		/* 计算 new_str 字符串长度。空指针视为 0。 */
+		(new_str != DSTR_NULLPTR) ? strlen(new_str) : 0,
+		n,
+		backward
+	);
 }
 
 /* 替换一个「动态字符串」中指定旧「动态字符串」为指定新「动态字符串」n 次。 */
@@ -1210,7 +1250,26 @@ dstr_status_t dstr_replace(
 	const dstr_adt *const new_str,
 	const size_t n,
 	const bool backward
-) {}
+) {
+	/* 参数检查。 */
+	if (dstr == DSTR_NULLPTR || old_str == DSTR_NULLPTR) {
+		return DSTR_INVALID_ARGUMENT;
+	}
+	if (old_str->len == 0 || old_str->len > dstr->len) {
+		return DSTR_INVALID_ARGUMENT;
+	}
+
+	return replace_str(
+		dstr,
+		old_str->data,
+		old_str->len,
+		(new_str != DSTR_NULLPTR) ? new_str->data : DSTR_NULLPTR,
+		/* 计算 new_str 字符串长度。空指针视为 0。 */
+		(new_str != DSTR_NULLPTR) ? new_str->len : 0,
+		n,
+		backward
+	);
+}
 
 
 /*------------------------------------------------------------------------------
@@ -1363,7 +1422,9 @@ static bool capacity_resize_dynamic(
 
 static dstr_adt *create_dstr(
 	const char *const src,
-	const size_t src_len
+	const size_t src_len,
+	const size_t sub_index,
+	const size_t sub_count
 ) {
 	dstr_adt *new_dstr = malloc(sizeof(dstr_adt));
 	if (new_dstr == DSTR_NULLPTR) {
@@ -1373,13 +1434,19 @@ static dstr_adt *create_dstr(
 	new_dstr->data = DSTR_NULLPTR;
 
 	if (src_len > 0) {
-		if (!capacity_resize(new_dstr, src_len + 1)) {
+		const size_t copy_len = (sub_count > 0)
+			? sub_count
+			: src_len - sub_index;
+
+		if (!safe_size_t_add(copy_len, 1, DSTR_NULLPTR) ||
+			!capacity_resize(new_dstr, copy_len + 1)
+		) {
 			free(new_dstr);
 			return DSTR_NULLPTR;
 		}
 
-		memcpy(new_dstr->data, src, src_len);
-		new_dstr->data[new_dstr->len = src_len] = '\0';
+		memcpy(new_dstr->data, src + sub_index, copy_len);
+		new_dstr->data[new_dstr->len = copy_len] = '\0';
 	} else {
 		new_dstr->cap = 0;
 		new_dstr->len = 0;
@@ -1453,3 +1520,443 @@ static dstr_status_t insert_str(
 
 	return DSTR_SUCCESS;
 }
+
+static size_t find_str(
+	const dstr_adt *const dstr,
+	const char *const sub,
+	const size_t sub_len,
+	size_t *const out_index,
+	const size_t n,
+	const bool backward
+) {
+	const char *p;
+	const char *find = DSTR_NULLPTR;
+	size_t find_count = 0;
+
+	if (backward) {
+		p = dstr->data + dstr->len - sub_len;
+
+		while (p >= dstr->data) {
+			if (strncmp(p, sub, sub_len) == 0) {
+				++find_count;
+				find = p;
+
+				if (find_count == n) {
+					break;
+				}
+
+				p -= sub_len;
+			} else {
+				--p;
+			}
+		}
+	} else {
+		p = dstr->data;
+
+		while (p < dstr->data + dstr->len) {
+			if (strncmp(p, sub, sub_len) == 0) {
+				++find_count;
+				find = p;
+
+				if (find_count == n) {
+					break;
+				}
+
+				p += sub_len;
+			} else {
+				++p;
+			}
+		}
+	}
+
+
+	if (out_index != DSTR_NULLPTR && find != DSTR_NULLPTR) {
+		*out_index = find - dstr->data;
+	}
+
+	return find_count;
+}
+
+static dstr_status_t replace_str(
+	dstr_adt *const dstr,
+	const char *const old_str,
+	const size_t old_str_len,
+	const char *const new_str,
+	const size_t new_str_len,
+	const size_t n,
+	const bool backward
+) {
+	/* 进行一次查询，并记录出现过的位置。 */
+	/* 最多可能匹配 dstr->len 次，分配空间记录索引。 */
+	size_t *matches = (size_t*)malloc(dstr->len * sizeof(size_t));
+	if (matches == DSTR_NULLPTR) {
+		return DSTR_MEMORY_ALLOC_FAILED;
+	}
+
+	size_t find_count = 0;
+
+	if (backward) {
+		/* 从后向前搜索，找到的匹配顺序为逆序（最后匹配在前）。 */
+		const char *p = dstr->data + dstr->len - old_str_len;
+
+		while (p >= dstr->data) {
+			if (memcmp(p, old_str, old_str_len) == 0) {
+				matches[find_count++] = p - dstr->data;
+
+				if (find_count == n) break;
+
+				/* 跳过已匹配部分，避免重叠（可根据需要调整） */
+				if (p >= dstr->data + old_str_len) {
+					p -= old_str_len;
+				} else {
+					break;
+				}
+
+				p -= old_str_len;
+			} else {
+				if (p == dstr->data) break;
+				--p;
+			}
+		}
+	} else {
+		/* 从前向后搜索，匹配顺序为正序（第一个匹配在前）。 */
+		const char *p = dstr->data;
+		const char *const end = dstr->data + dstr->len - old_str_len;
+
+		while (p <= end) {
+			if (memcmp(p, old_str, old_str_len) == 0) {
+				matches[find_count++] = p - dstr->data;
+
+				if (find_count == n) break;
+
+				p += old_str_len;
+			} else {
+				++p;
+			}
+		}
+	}
+
+	/* 如果实际出现次数为 0，或不足 n 次（n 不为 0 时），则直接返回，一次替换都不进行。 */
+	if (find_count == 0 || (n > 0 && find_count < n)) {
+		free(matches);
+		return DSTR_INVALID_ARGUMENT;
+	}
+
+	/* 扩容缓冲区。 */
+	if (new_str_len > old_str_len) {
+		/**
+		 * 安全计算 size_t 乘法：
+		 * (old_str_len - new_str_len) * find_count
+		 * 防止溢出。
+		 */
+		size_t add_len;
+		if (!safe_size_t_mul(old_str_len - new_str_len, find_count, &add_len)) {
+			free(matches);
+			return DSTR_MEMORY_ALLOC_FAILED;
+		}
+
+		/**
+		 * 安全计算 size_t 加法：
+		 * (dstr->len + 1) + add_len
+		 * 防止溢出。
+		 */
+		size_t new_len;
+		if (!safe_size_t_add(dstr->len + 1, add_len, &new_len)) {
+			free(matches);
+			return DSTR_MEMORY_ALLOC_FAILED;
+		}
+
+		/* 扩容。 */
+		if (!capacity_resize_dynamic(dstr, new_len)) {
+			free(matches);
+			return DSTR_MEMORY_ALLOC_FAILED;
+		}
+	}
+
+	/* 执行替换。 */
+	if (backward) {
+		const bool is_longer = new_str_len > old_str_len;
+		const size_t offset = is_longer
+			? new_str_len - old_str_len
+			: old_str_len - new_str_len;
+
+		for (size_t i = 0; i < find_count; ++i) {
+			if (offset != 0) {
+				size_t move_start_index = matches[0] + old_str_len;
+
+				/* 移动原有数据。 */
+				if (i != 0 || move_start_index < dstr->len) {
+					size_t count = find_count - 1 - i;
+					size_t move_end_index = is_longer
+						? move_start_index + offset * count
+						: move_start_index - offset * count;
+				}
+			}
+		}
+	} else {}
+
+	free(matches);
+	return DSTR_SUCCESS;
+}
+
+// #include <stdbool.h>
+// #include <stdlib.h>
+// #include <string.h>
+//
+// /* 假设的动态字符串结构体 */
+// typedef struct {
+// 	char *data;   /* 字符串缓冲区，以 '\0' 结尾 */
+// 	size_t len;   /* 字符串长度，不含 '\0' */
+// 	size_t alloc; /* 缓冲区总容量 */
+// } dstr_adt;
+//
+// /* 函数返回状态码 */
+// typedef enum {
+// 	DSTR_STATUS_OK = 0,
+// 	DSTR_STATUS_NOMEM,
+// 	DSTR_STATUS_NOT_FOUND,
+// 	DSTR_STATUS_INVALID_ARG
+// } dstr_status_t;
+//
+// /*
+//  * 函数：replace_str
+//  * 功能：在动态字符串 dstr 中替换子串
+//  * 参数：
+//  *   dstr         - 动态字符串对象
+//  *   old_str      - 待替换的子串
+//  *   old_str_len  - 待替换子串长度
+//  *   new_str      - 替换后的子串
+//  *   new_str_len  - 替换后子串长度
+//  *   n            - 最大替换次数，0 表示替换所有
+//  *   backward     - true: 从后向前替换最后 n 次; false: 从前向后替换前 n 次
+//  * 返回：
+//  *   DSTR_STATUS_OK 成功，DSTR_STATUS_NOT_FOUND 匹配次数不足，DSTR_STATUS_NOMEM 内存不足
+//  */
+// static dstr_status_t replace_str(
+// 	dstr_adt *dstr,
+// 	const char *old_str,
+// 	size_t old_str_len,
+// 	const char *new_str,
+// 	size_t new_str_len,
+// 	size_t n,
+// 	bool backward
+// ) {
+// 	/* 参数有效性检查 */
+// 	if (dstr == NULL || old_str == NULL || new_str == NULL)
+// 		return DSTR_STATUS_INVALID_ARG;
+// 	if (old_str_len == 0)
+// 		return DSTR_STATUS_INVALID_ARG; /* 不允许替换空字符串 */
+//
+// 	size_t txt_len = dstr->len;
+// 	if (txt_len == 0)
+// 		return DSTR_STATUS_OK; /* 空串无需替换 */
+//
+// 	/* ---------------- 1. KMP 搜索所有匹配位置 ---------------- */
+// 	/* 构建 LPS 数组 */
+// 	size_t *lps = (size_t*)malloc(old_str_len * sizeof(size_t));
+// 	if (lps == NULL)
+// 		return DSTR_STATUS_NOMEM;
+//
+// 	lps[0] = 0;
+// 	for (size_t i = 1, len = 0; i < old_str_len;) {
+// 		if (old_str[i] == old_str[len]) {
+// 			lps[i++] = ++len;
+// 		} else if (len != 0) {
+// 			len = lps[len - 1];
+// 		} else {
+// 			lps[i++] = 0;
+// 		}
+// 	}
+//
+// 	/* 动态数组存放匹配位置（索引） */
+// 	size_t *matches = NULL;
+// 	size_t matches_cnt = 0;
+// 	size_t matches_cap = 0;
+//
+// 	/* 是否需要在收集到 n 个匹配后提前停止（仅当 n>0 且非 backward） */
+// 	bool early_stop = (n > 0) && !backward;
+//
+// 	size_t i = 0; /* 遍历 dstr->data 的索引 */
+// 	size_t j = 0; /* 遍历 old_str 的索引 */
+// 	while (i < txt_len) {
+// 		if (dstr->data[i] == old_str[j]) {
+// 			i++;
+// 			j++;
+// 		}
+// 		if (j == old_str_len) {
+// 			/* 找到一个匹配，位置为 i - j */
+// 			size_t pos = i - j;
+//
+// 			/* 扩容位置数组 */
+// 			if (matches_cnt >= matches_cap) {
+// 				size_t new_cap = (matches_cap == 0) ? 16 : matches_cap * 2;
+// 				size_t *tmp = (size_t*)realloc(matches, new_cap * sizeof(size_t));
+// 				if (tmp == NULL) {
+// 					free(lps);
+// 					free(matches);
+// 					return DSTR_STATUS_NOMEM;
+// 				}
+// 				matches = tmp;
+// 				matches_cap = new_cap;
+// 			}
+// 			matches[matches_cnt++] = pos;
+//
+// 			/* 提前停止：只需要前 n 个匹配且已收集足够 */
+// 			if (early_stop && matches_cnt == n)
+// 				break;
+//
+// 			/* KMP 跳转 */
+// 			j = lps[j - 1];
+// 		} else if (i < txt_len && dstr->data[i] != old_str[j]) {
+// 			if (j != 0) {
+// 				j = lps[j - 1];
+// 			} else {
+// 				i++;
+// 			}
+// 		}
+// 	}
+// 	free(lps);
+// 	lps = NULL;
+//
+// 	/* ---------------- 2. 判断匹配数量是否满足要求 ---------------- */
+// 	size_t total_matches = matches_cnt;
+//
+// 	/* 如果提前停止，我们没有扫描全部，但此时 total_matches == n 且 !backward，符合要求 */
+// 	if (n > 0 && total_matches < n) {
+// 		/* 匹配次数不足，一次也不替换 */
+// 		free(matches);
+// 		return DSTR_STATUS_NOT_FOUND;
+// 	}
+//
+// 	/* 确定最终要替换的匹配子集 */
+// 	size_t selected_count;
+// 	size_t *selected_matches; /* 指向 matches 数组中的起始位置 */
+// 	if (n == 0) {
+// 		/* 替换所有匹配 */
+// 		selected_count = total_matches;
+// 		selected_matches = matches;
+// 	} else {
+// 		selected_count = n;
+// 		if (backward) {
+// 			/* 替换最后 n 个匹配 */
+// 			selected_matches = matches + (total_matches - n);
+// 		} else {
+// 			/* 替换前 n 个匹配 */
+// 			selected_matches = matches;
+// 		}
+// 	}
+//
+// 	/* 计算替换后的新长度 */
+// 	size_t old_len = dstr->len;
+// 	ssize_t delta = (ssize_t)new_str_len - (ssize_t)old_str_len;
+// 	size_t new_len = old_len + (size_t)(selected_count * delta);
+//
+// 	/* ---------------- 3. 尝试分配临时缓冲区 ---------------- */
+// 	char *temp = (char*)malloc(old_len);
+// 	if (temp != NULL) {
+// 		/* 算法一：使用临时缓冲区，从前向后写 */
+// 		memcpy(temp, dstr->data, old_len);
+//
+// 		/* 扩容原 dstr 缓冲区 */
+// 		if (new_len + 1 > dstr->alloc) {
+// 			char *new_data = (char*)realloc(dstr->data, new_len + 1);
+// 			if (new_data == NULL) {
+// 				free(temp);
+// 				free(matches);
+// 				return DSTR_STATUS_NOMEM;
+// 			}
+// 			dstr->data = new_data;
+// 			dstr->alloc = new_len + 1;
+// 		}
+//
+// 		size_t r = 0; /* 读指针：临时缓冲区 */
+// 		size_t w = 0; /* 写指针：dstr->data */
+//
+// 		for (size_t k = 0; k < selected_count; k++) {
+// 			size_t pos = selected_matches[k];
+//
+// 			/* 复制匹配前的普通字符 */
+// 			size_t normal_len = pos - r;
+// 			if (normal_len > 0) {
+// 				memcpy(dstr->data + w, temp + r, normal_len);
+// 				w += normal_len;
+// 				r += normal_len;
+// 			}
+//
+// 			/* 写入新字符串 */
+// 			if (new_str_len > 0) {
+// 				memcpy(dstr->data + w, new_str, new_str_len);
+// 				w += new_str_len;
+// 			}
+//
+// 			/* 跳过原字符串中的 old_str */
+// 			r += old_str_len;
+// 		}
+//
+// 		/* 复制剩余尾部 */
+// 		size_t tail_len = old_len - r;
+// 		if (tail_len > 0) {
+// 			memcpy(dstr->data + w, temp + r, tail_len);
+// 			w += tail_len;
+// 		}
+//
+// 		dstr->data[w] = '\0';
+// 		dstr->len = new_len;
+//
+// 		free(temp);
+// 		free(matches);
+// 		return DSTR_STATUS_OK;
+// 	}
+//
+// 	/* ---------------- 4. 临时缓冲区分配失败：原地修改 ---------------- */
+// 	/* 先确保 dstr 缓冲区足够 */
+// 	if (new_len + 1 > dstr->alloc) {
+// 		char *new_data = (char*)realloc(dstr->data, new_len + 1);
+// 		if (new_data == NULL) {
+// 			free(matches);
+// 			return DSTR_STATUS_NOMEM;
+// 		}
+// 		dstr->data = new_data;
+// 		dstr->alloc = new_len + 1;
+// 	}
+//
+// 	/* 原地修改：从后向前分段处理，始终安全 */
+// 	size_t src_end = old_len; /* 源数据尾后指针 */
+// 	size_t dst_end = new_len; /* 目标尾后指针 */
+//
+// 	for (size_t k = selected_count; k > 0; k--) {
+// 		size_t pos = selected_matches[k - 1];
+//
+// 		/* 1. 复制当前匹配之后的后缀 */
+// 		size_t suffix_start = pos + old_str_len;
+// 		size_t suffix_len = src_end - suffix_start;
+// 		if (suffix_len > 0) {
+// 			memmove(
+// 				dstr->data + dst_end - suffix_len,
+// 				dstr->data + suffix_start,
+// 				suffix_len
+// 			);
+// 		}
+// 		dst_end -= suffix_len;
+//
+// 		/* 2. 写入新子串 */
+// 		if (new_str_len > 0) {
+// 			memcpy(
+// 				dstr->data + dst_end - new_str_len,
+// 				new_str,
+// 				new_str_len
+// 			);
+// 		}
+// 		dst_end -= new_str_len;
+//
+// 		/* 3. 更新源尾后指针 */
+// 		src_end = pos;
+// 	}
+// 	/* 此时 dst_end 必然等于 src_end（即前缀长度），前缀已在正确位置，无需移动 */
+//
+// 	dstr->data[new_len] = '\0';
+// 	dstr->len = new_len;
+//
+// 	free(matches);
+// 	return DSTR_STATUS_OK;
+// }
