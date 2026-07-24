@@ -926,7 +926,7 @@ bool dstr_starts_with_cstr(
 	const char *const prefix
 ) {
 	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
-		prefix == DSTR_NULLPTR ||prefix[0] == '\0'
+		prefix == DSTR_NULLPTR || prefix[0] == '\0'
 	) {
 		return false;
 	}
@@ -945,7 +945,7 @@ bool dstr_starts_with(
 	const dstr_adt *const prefix
 ) {
 	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
-		prefix == DSTR_NULLPTR ||prefix->len == 0
+		prefix == DSTR_NULLPTR || prefix->len == 0
 	) {
 		return false;
 	}
@@ -1240,8 +1240,8 @@ dstr_status_t dstr_replace_cstr(
 	const bool backward
 ) {
 	/* 参数检查。 */
-	if (dstr == DSTR_NULLPTR || old_str == DSTR_NULLPTR ||
-		old_str[0] == '\0'
+	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
+		old_str == DSTR_NULLPTR || old_str[0] == '\0'
 	) {
 		return DSTR_INVALID_ARGUMENT;
 	}
@@ -1252,16 +1252,11 @@ dstr_status_t dstr_replace_cstr(
 		return DSTR_INVALID_ARGUMENT;
 	}
 
-	return replace_str(
-		dstr,
-		old_str,
-		old_str_len,
-		new_str,
-		/* 计算 new_str 字符串长度。空指针视为 0。 */
-		(new_str != DSTR_NULLPTR) ? strlen(new_str) : 0,
-		n,
-		backward
-	);
+	if (new_str == DSTR_NULLPTR || new_str[0] == '\0') {
+		replace_str(dstr, old_str, old_str_len, DSTR_NULLPTR, 0, n, backward);
+	}
+
+	return replace_str(dstr, old_str, old_str_len, new_str, strlen(new_str), n, backward);
 }
 
 /* 替换一个「动态字符串」中指定旧「动态字符串」为指定新「动态字符串」n 次。 */
@@ -1273,8 +1268,8 @@ dstr_status_t dstr_replace(
 	const bool backward
 ) {
 	/* 参数检查。 */
-	if (dstr == DSTR_NULLPTR || old_str == DSTR_NULLPTR ||
-		old_str->len == 0
+	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
+		old_str == DSTR_NULLPTR || old_str->len == 0
 	) {
 		return DSTR_INVALID_ARGUMENT;
 	}
@@ -1283,16 +1278,11 @@ dstr_status_t dstr_replace(
 		return DSTR_INVALID_ARGUMENT;
 	}
 
-	return replace_str(
-		dstr,
-		old_str->data,
-		old_str->len,
-		(new_str != DSTR_NULLPTR) ? new_str->data : DSTR_NULLPTR,
-		/* 计算 new_str 字符串长度。空指针视为 0。 */
-		(new_str != DSTR_NULLPTR) ? new_str->len : 0,
-		n,
-		backward
-	);
+	if (new_str == DSTR_NULLPTR || new_str->len == 0) {
+		replace_str(dstr, old_str->data, old_str->len, DSTR_NULLPTR, 0, n, backward);
+	}
+
+	return replace_str(dstr, old_str->data, old_str->len, new_str->data, new_str->len, n, backward);
 }
 
 
