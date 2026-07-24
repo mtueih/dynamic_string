@@ -925,13 +925,15 @@ bool dstr_starts_with_cstr(
 	const dstr_adt *const dstr,
 	const char *const prefix
 ) {
-	if (dstr == DSTR_NULLPTR || prefix == DSTR_NULLPTR) {
+	if (dstr == DSTR_NULLPTR || prefix == DSTR_NULLPTR ||
+		prefix[0] == '\0'
+	) {
 		return false;
 	}
 
 	const size_t prefix_len = strlen(prefix);
 
-	if (prefix_len == 0 || prefix_len > dstr->len) {
+	if (prefix_len > dstr->len) {
 		return false;
 	}
 
@@ -943,11 +945,13 @@ bool dstr_starts_with(
 	const dstr_adt *const dstr,
 	const dstr_adt *const prefix
 ) {
-	if (dstr == DSTR_NULLPTR || prefix == DSTR_NULLPTR) {
+	if (dstr == DSTR_NULLPTR || prefix == DSTR_NULLPTR ||
+		prefix->len == 0
+	) {
 		return false;
 	}
 
-	if (prefix->len == 0 || prefix->len > dstr->len) {
+	if (prefix->len > dstr->len) {
 		return false;
 	}
 
@@ -959,13 +963,15 @@ bool dstr_ends_with_cstr(
 	const dstr_adt *const dstr,
 	const char *const suffix
 ) {
-	if (dstr == DSTR_NULLPTR || suffix == DSTR_NULLPTR) {
+	if (dstr == DSTR_NULLPTR || suffix == DSTR_NULLPTR ||
+		suffix[0] == '\0'
+	) {
 		return false;
 	}
 
 	const size_t suffix_len = strlen(suffix);
 
-	if (suffix_len == 0 || suffix_len > dstr->len) {
+	if (suffix_len > dstr->len) {
 		return false;
 	}
 
@@ -981,11 +987,13 @@ bool dstr_ends_with(
 	const dstr_adt *const dstr,
 	const dstr_adt *const suffix
 ) {
-	if (dstr == DSTR_NULLPTR || suffix == DSTR_NULLPTR) {
+	if (dstr == DSTR_NULLPTR || suffix == DSTR_NULLPTR ||
+		suffix->len == 0
+	) {
 		return false;
 	}
 
-	if (suffix->len == 0 || suffix->len > dstr->len) {
+	if (suffix->len > dstr->len) {
 		return false;
 	}
 
@@ -1001,7 +1009,9 @@ bool dstr_contains_cstr(
 	const dstr_adt *const dstr,
 	const char *const sub
 ) {
-	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR) {
+	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR ||
+		sub[0] == '\0'
+	) {
 		return false;
 	}
 
@@ -1019,7 +1029,9 @@ bool dstr_contains(
 	const dstr_adt *const dstr,
 	const dstr_adt *const sub
 ) {
-	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR) {
+	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR ||
+		sub->len == 0
+	) {
 		return false;
 	}
 
@@ -1035,14 +1047,14 @@ bool dstr_equals_cstr(
 	const dstr_adt *const dstr,
 	const char *const cstr
 ) {
-	size_t cstr_len;
 	const int str_1_valid = (dstr != DSTR_NULLPTR && dstr->len > 0) ? 1 : 0;
-	const int str_2_valid = (cstr != DSTR_NULLPTR && (cstr_len = strlen(cstr)) > 0) ? 1 : 0;
+	const int str_2_valid = (cstr != DSTR_NULLPTR && cstr[0] != '\0') ? 1 : 0;
 
 	if (str_1_valid + str_2_valid < 2) {
 		return (str_1_valid == str_2_valid);
 	}
 
+	const size_t cstr_len = strlen(cstr);
 	if (dstr->len != cstr_len) {
 		return false;
 	}
@@ -1075,7 +1087,7 @@ int dstr_compare_cstr(
 	const char *const cstr
 ) {
 	const int str_1_valid = (dstr != DSTR_NULLPTR && dstr->len > 0) ? 1 : 0;
-	const int str_2_valid = (cstr != DSTR_NULLPTR && strlen(cstr) > 0) ? 1 : 0;
+	const int str_2_valid = (cstr != DSTR_NULLPTR && cstr[0] != '\0') ? 1 : 0;
 
 	if (str_1_valid + str_2_valid < 2) {
 		return str_1_valid - str_2_valid;
@@ -1180,8 +1192,7 @@ bool dstr_find_nth(
 /* 统计一个「动态字符串」中指定子「C 字符串」出现的次数。 */
 size_t dstr_count_cstr(
 	const dstr_adt *const dstr,
-	const char *const sub,
-	const bool backward
+	const char *const sub
 ) {
 	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR) {
 		return 0;
@@ -1192,14 +1203,13 @@ size_t dstr_count_cstr(
 		return 0;
 	}
 
-	return find_str(dstr, sub, sub_len, DSTR_NULLPTR, 0, backward);
+	return find_str(dstr, sub, sub_len, DSTR_NULLPTR, 0, false);
 }
 
 /* 统计一个「动态字符串」中指定子「动态字符串」出现的次数。 */
 size_t dstr_count(
 	const dstr_adt *const dstr,
-	const dstr_adt *const sub,
-	const bool backward
+	const dstr_adt *const sub
 ) {
 	if (dstr == DSTR_NULLPTR || sub == DSTR_NULLPTR) {
 		return 0;
@@ -1209,7 +1219,7 @@ size_t dstr_count(
 		return 0;
 	}
 
-	return find_str(dstr, sub->data, sub->len, DSTR_NULLPTR, 0, backward);
+	return find_str(dstr, sub->data, sub->len, DSTR_NULLPTR, 0, false);
 }
 
 /* 替换一个「动态字符串」中指定旧「C 字符串」为指定新「C 字符串」n 次。 */
