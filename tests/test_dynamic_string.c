@@ -55,7 +55,7 @@ void test_dstr_create(void) {
 
 	// 测试正常创建
 	dstr_adt *dstr1 = dstr_create("Hello, World!");
-	if (dstr1 != NULL && strcmp(dstr_cstr_const(dstr1), "Hello, World!") == 0) {
+	if (dstr1 != NULL && strcmp(dstr_cstr(dstr1), "Hello, World!") == 0) {
 		printf("  - 正常创建: 通过\n");
 	} else {
 		TEST_FAIL("正常创建失败");
@@ -96,7 +96,7 @@ void test_dstr_clear(void) {
 	dstr_adt *dstr = dstr_create("Hello, World!");
 	dstr_clear(dstr);
 
-	if (dstr_length(dstr) == 0 && strcmp(dstr_cstr_const(dstr), "") == 0) {
+	if (dstr_length(dstr) == 0 && strcmp(dstr_cstr(dstr), "") == 0) {
 		printf("  - 清空字符串: 通过\n");
 	} else {
 		TEST_FAIL("清空字符串失败");
@@ -128,7 +128,7 @@ void test_dstr_cstr_const(void) {
 	TEST_START("dstr_cstr_const");
 
 	dstr_adt *dstr = dstr_create("Const Test");
-	const char *cstr = dstr_cstr_const(dstr);
+	const char *cstr = dstr_cstr(dstr);
 
 	if (strcmp(cstr, "Const Test") == 0) {
 		printf("  - 获取常量 C 字符串: 通过\n");
@@ -199,7 +199,7 @@ void test_dstr_cpy_cstr(void) {
 	dstr_adt *dstr = dstr_create("Original");
 	int ret = dstr_cpy_cstr(dstr, "New String");
 
-	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr_const(dstr), "New String") == 0) {
+	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr(dstr), "New String") == 0) {
 		printf("  - 复制 C 字符串: 通过\n");
 	} else {
 		TEST_FAIL("复制 C 字符串失败");
@@ -217,7 +217,7 @@ void test_dstr_cpy(void) {
 	dstr_adt *dest = dstr_create("Destination");
 	int ret = dstr_cpy(dest, src);
 
-	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr_const(dest), "Source") == 0) {
+	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr(dest), "Source") == 0) {
 		printf("  - 复制动态字符串: 通过\n");
 	} else {
 		TEST_FAIL("复制动态字符串失败");
@@ -235,7 +235,7 @@ void test_dstr_cat_cstr(void) {
 	dstr_adt *dstr = dstr_create("Hello");
 	int ret = dstr_cat_cstr(dstr, ", World!");
 
-	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr_const(dstr), "Hello, World!") == 0) {
+	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr(dstr), "Hello, World!") == 0) {
 		printf("  - 追加 C 字符串: 通过\n");
 	} else {
 		TEST_FAIL("追加 C 字符串失败");
@@ -253,7 +253,7 @@ void test_dstr_cat(void) {
 	dstr_adt *dstr2 = dstr_create(", World!");
 	int ret = dstr_cat(dstr1, dstr2);
 
-	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr_const(dstr1), "Hello, World!") == 0) {
+	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr(dstr1), "Hello, World!") == 0) {
 		printf("  - 追加快态字符串: 通过\n");
 	} else {
 		TEST_FAIL("追加快态字符串失败");
@@ -271,7 +271,7 @@ void test_dstr_insert_cstr(void) {
 	dstr_adt *dstr = dstr_create("Hello World!");
 	int ret = dstr_insert_cstr(dstr, 6, "Beautiful ");
 
-	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr_const(dstr), "Hello Beautiful World!") == 0) {
+	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr(dstr), "Hello Beautiful World!") == 0) {
 		printf("  - 插入 C 字符串: 通过\n");
 	} else {
 		TEST_FAIL("插入 C 字符串失败");
@@ -289,7 +289,7 @@ void test_dstr_insert(void) {
 	dstr_adt *dstr2 = dstr_create("Beautiful ");
 	int ret = dstr_insert(dstr1, 6, dstr2);
 
-	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr_const(dstr1), "Hello Beautiful World!") == 0) {
+	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr(dstr1), "Hello Beautiful World!") == 0) {
 		printf("  - 插入动态字符串: 通过\n");
 	} else {
 		TEST_FAIL("插入动态字符串失败");
@@ -307,7 +307,7 @@ void test_dstr_cpy_sub_cstr(void) {
 	dstr_adt *dstr = dstr_create("Original");
 	int ret = dstr_cpy_sub_cstr(dstr, "Hello, World!", 7, 5);
 
-	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr_const(dstr), "World") == 0) {
+	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr(dstr), "World") == 0) {
 		printf("  - 复制 C 字符串子串: 通过\n");
 	} else {
 		TEST_FAIL("复制 C 字符串子串失败");
@@ -325,7 +325,7 @@ void test_dstr_cpy_sub(void) {
 	dstr_adt *dest = dstr_create("Original");
 	int ret = dstr_cpy_sub(dest, src, 7, 5);
 
-	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr_const(dest), "World") == 0) {
+	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr(dest), "World") == 0) {
 		printf("  - 复制动态字符串子串: 通过\n");
 	} else {
 		TEST_FAIL("复制动态字符串子串失败");
@@ -343,7 +343,7 @@ void test_dstr_cat_sub_cstr(void) {
 	dstr_adt *dstr = dstr_create("Hello");
 	int ret = dstr_cat_sub_cstr(dstr, ", World! Welcome!", 0, 8);
 
-	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr_const(dstr), "Hello, World!") == 0) {
+	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr(dstr), "Hello, World!") == 0) {
 		printf("  - 追加 C 字符串子串: 通过\n");
 	} else {
 		TEST_FAIL("追加 C 字符串子串失败");
@@ -361,7 +361,7 @@ void test_dstr_cat_sub(void) {
 	dstr_adt *dstr2 = dstr_create(", World! Welcome!");
 	int ret = dstr_cat_sub(dstr1, dstr2, 0, 8);
 
-	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr_const(dstr1), "Hello, World!") == 0) {
+	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr(dstr1), "Hello, World!") == 0) {
 		printf("  - 追加快态字符串子串: 通过\n");
 	} else {
 		TEST_FAIL("追加快态字符串子串失败");
@@ -379,7 +379,7 @@ void test_dstr_insert_sub_cstr(void) {
 	dstr_adt *dstr = dstr_create("Hello!");
 	int ret = dstr_insert_sub_cstr(dstr, 5, ", World! Fine.", 0, 7);
 
-	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr_const(dstr), "Hello, World!") == 0) {
+	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr(dstr), "Hello, World!") == 0) {
 		printf("  - 插入 C 字符串子串: 通过\n");
 	} else {
 		TEST_FAIL("插入 C 字符串子串失败");
@@ -397,7 +397,7 @@ void test_dstr_insert_sub(void) {
 	dstr_adt *dstr2 = dstr_create(", World! Fine.");
 	int ret = dstr_insert_sub(dstr1, 5, dstr2, 0, 7);
 
-	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr_const(dstr1), "Hello, World!") == 0) {
+	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr(dstr1), "Hello, World!") == 0) {
 		printf("  - 插入动态字符串子串: 通过\n");
 	} else {
 		TEST_FAIL("插入动态字符串子串失败");
@@ -415,7 +415,7 @@ void test_dstr_remove(void) {
 	dstr_adt *dstr = dstr_create("Hello, Beautiful World!");
 	dstr_remove(dstr, 6, 10); // 删除 "Beautiful "
 
-	if (strcmp(dstr_cstr_const(dstr), "Hello, World!") == 0) {
+	if (strcmp(dstr_cstr(dstr), "Hello, World!") == 0) {
 		printf("  - 删除子串: 通过\n");
 	} else {
 		TEST_FAIL("删除子串失败");
@@ -432,7 +432,7 @@ void test_dstr_trim(void) {
 	dstr_adt *dstr = dstr_create("   Hello, World!   ");
 	dstr_trim(dstr, NULL); // 去除空白字符
 
-	if (strcmp(dstr_cstr_const(dstr), "Hello, World!") == 0) {
+	if (strcmp(dstr_cstr(dstr), "Hello, World!") == 0) {
 		printf("  - 去除首尾空白: 通过\n");
 	} else {
 		TEST_FAIL("去除首尾空白失败");
@@ -449,7 +449,7 @@ void test_dstr_printf(void) {
 	dstr_adt *dstr = dstr_create("");
 	int ret = dstr_printf(dstr, "Hello, %s! Number: %d", "World", 42);
 
-	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr_const(dstr), "Hello, World! Number: 42") == 0) {
+	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr(dstr), "Hello, World! Number: 42") == 0) {
 		printf("  - 格式化写入: 通过\n");
 	} else {
 		TEST_FAIL("格式化写入失败");
@@ -465,7 +465,7 @@ void test_dstr_sub_cstr(void) {
 
 	dstr_adt *sub = dstr_sub_cstr("Hello, World!", 7, 5);
 
-	if (sub != NULL && strcmp(dstr_cstr_const(sub), "World") == 0) {
+	if (sub != NULL && strcmp(dstr_cstr(sub), "World") == 0) {
 		printf("  - 从 C 字符串提取子串: 通过\n");
 	} else {
 		TEST_FAIL("从 C 字符串提取子串失败");
@@ -482,7 +482,7 @@ void test_dstr_sub(void) {
 	dstr_adt *src = dstr_create("Hello, World!");
 	dstr_adt *sub = dstr_sub(src, 7, 5);
 
-	if (sub != NULL && strcmp(dstr_cstr_const(sub), "World") == 0) {
+	if (sub != NULL && strcmp(dstr_cstr(sub), "World") == 0) {
 		printf("  - 从动态字符串提取子串: 通过\n");
 	} else {
 		TEST_FAIL("从动态字符串提取子串失败");
@@ -500,7 +500,7 @@ void test_dstr_clone(void) {
 	dstr_adt *original = dstr_create("Hello, World!");
 	dstr_adt *clone = dstr_clone(original);
 
-	if (clone != NULL && strcmp(dstr_cstr_const(clone), "Hello, World!") == 0 && clone != original) {
+	if (clone != NULL && strcmp(dstr_cstr(clone), "Hello, World!") == 0 && clone != original) {
 		printf("  - 克隆动态字符串: 通过\n");
 	} else {
 		TEST_FAIL("克隆动态字符串失败");
@@ -630,7 +630,7 @@ void test_dstr_replace_cstr(void) {
 	dstr_adt *dstr = dstr_create("Hello World, Hello Everyone");
 	int ret = dstr_replace_cstr(dstr, "Hello", "Hi", 0, false); // 替换所有
 
-	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr_const(dstr), "Hi World, Hi Everyone") == 0) {
+	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr(dstr), "Hi World, Hi Everyone") == 0) {
 		printf("  - 替换 C 字符串: 通过\n");
 	} else {
 		TEST_FAIL("替换 C 字符串失败");
@@ -649,7 +649,7 @@ void test_dstr_replace(void) {
 	dstr_adt *new_str = dstr_create("Hi");
 	int ret = dstr_replace(dstr, old_str, new_str, 0, false); // 替换所有
 
-	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr_const(dstr), "Hi World, Hi Everyone") == 0) {
+	if (ret == DSTR_SUCCESS && strcmp(dstr_cstr(dstr), "Hi World, Hi Everyone") == 0) {
 		printf("  - 替换动态字符串: 通过\n");
 	} else {
 		TEST_FAIL("替换动态字符串失败");
