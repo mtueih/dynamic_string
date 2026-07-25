@@ -1604,46 +1604,74 @@ static dstr_status_t replace_str(
 	const size_t n,
 	const bool backward
 ) {
-	/* 进行一次查询，并记录出现过的位置。 */
-	/* 最多可能匹配 dstr->len 次，分配空间记录索引。 */
-	size_t *matches = (size_t*)malloc(dstr->len * sizeof(size_t));
-	if (matches == DSTR_NULLPTR) {
+	/* 先执行一次统计，以获取 old_str 出现的次数。 */
+	const size_t old_str_count = find_str(dstr, old_str, old_str_len, DSTR_NULLPTR, n, backward);
+	if (old_str_count == 0 || old_str_count < n) {
+		return DSTR_INVALID_ARGUMENT;
+	}
+
+	/* 动态分配 size_t 数组，用来记录每次出现的位置。 */
+	size_t indexes_size, *indexes;
+	if (!safe_size_t_mul(old_str_count, sizeof(size_t), &indexes_size) ||
+		(indexes = malloc(indexes_size)) == DSTR_NULLPTR
+	) {
 		return DSTR_MEMORY_ALLOC_FAILED;
 	}
 
+	size_t length_difference = 0; /* new_str_len 与old_str_len差绝对值。 */
+	size_t new_length, required_capacity;
+
+	if (new_str_len > old_str_len) { /* 扩容缓冲区。 */
+		length_difference = new_str_len - old_str_len;
+
+		size_t increased_length;
+
+		if (!safe_size_t_mul(length_difference, old_str_count, &increased_length) ||
+			!safe_size_t_add(dstr->len, increased_length, &new_length) ||
+			!safe_size_t_add(new_length, 1, &required_capacity) ||
+			!capacity_resize_dynamic(dstr, required_capacity)
+		) {
+			free(indexes);
+			return DSTR_MEMORY_ALLOC_FAILED;
+		}
+	} else if (new_str_len < old_str_len) {
+		length_difference = old_str_len - new_str_len;
+
+		const size_t reduced_length = length_difference * old_str_count;
+
+		new_length = dstr->len - reduced_length;
+		required_capacity = new_length + 1;
+	}
+
+	/* 进行一次查找，记录每次出现的位置。 */
+	size_t i = 0;
 	const char *p;
-	size_t find_count = 0;
 	const char *const end = dstr->data + dstr->len - old_str_len + 1;
+
 	if (backward) {
-		/* 从后向前搜索，找到的匹配顺序为逆序（最后匹配在前）。 */
 		p = end;
 
 		while (p > dstr->data) {
 			if (memcmp(p - 1, old_str, old_str_len) == 0) {
-				matches[find_count++] = p - 1 - dstr->data;
+				indexes[old_str_count - ++i] = p - 1 - dstr->data;
 
-				if (find_count == n) {
+				if (i == old_str_count) {
 					break;
 				}
 
-				if ((p - dstr->data) > old_str_len) {
-					p -= old_str_len;
-				} else {
-					break;
-				}
+				p -= old_str_len;
 			} else {
 				--p;
 			}
 		}
 	} else {
-		/* 从前向后搜索，匹配顺序为正序（第一个匹配在前）。 */
 		p = dstr->data;
 
 		while (p < end) {
 			if (memcmp(p, old_str, old_str_len) == 0) {
-				matches[find_count++] = p - dstr->data;
+				indexes[i++] = p - dstr->data;
 
-				if (find_count == n) {
+				if (i == old_str_count) {
 					break;
 				}
 
@@ -1654,351 +1682,78 @@ static dstr_status_t replace_str(
 		}
 	}
 
-	/* 如果实际出现次数为 0，或不足 n 次（n 不为 0 时），则直接返回，一次替换都不进行。 */
-	if (find_count == 0 || find_count < n) {
-		free(matches);
-		return DSTR_INVALID_ARGUMENT;
-	}
-
-	/* 扩容缓冲区。 */
-	if (new_str_len > old_str_len) {
-		/**
-		 * 安全计算 size_t 乘法：
-		 * (new_str_len - old_str_len) * find_count
-		 * 防止溢出。
-		 */
-		size_t add_len;
-		if (!safe_size_t_mul(new_str_len - old_str_len, find_count, &add_len)) {
-			free(matches);
-			return DSTR_MEMORY_ALLOC_FAILED;
-		}
-
-		/**
-		 * 安全计算 size_t 加法：
-		 * dstr->len + add_len
-		 * 防止溢出。
-		 */
-		size_t new_len;
-		if (!safe_size_t_add(dstr->len, add_len, &new_len)) {
-			free(matches);
-			return DSTR_MEMORY_ALLOC_FAILED;
-		}
-
-		/* 扩容。 */
-		if (!safe_size_t_add(new_len, 1, DSTR_NULLPTR) ||
-			!capacity_resize_dynamic(dstr, new_len + 1)
-		) {
-			free(matches);
-			return DSTR_MEMORY_ALLOC_FAILED;
-		}
-	}
-
 	/* 执行替换。 */
-	const bool is_longer = new_str_len > old_str_len;
-	/**
-	 *  以下两种情况下，需要顺序遍历 matches 数组：
-	 *  1. new_str_len > old_str_len 且 backward；
-	 *  2. new_str_len < old_str_len 且 !backward。
-	 *  即，is_longer 与 backward 相等。
-	 *
-	 *  而以下两种情况则需逆序遍历 matches 数组：
-	 *  1. new_str_len > old_str_len 且 !backward；
-	 *  2. new_str_len < old_str_len 且 backward。
-	 *  即，is_longer 与 backward 不相等。
-	 */
-	if (is_longer == backward) {
-		for (size_t i = 0; i < find_count; ++i) {
+	if (new_str_len > old_str_len) {
+		for (i = old_str_count; i > 0; --i) {
+			/* 计算当前 old_str 出现位置后面需要移动的数据长度。 */
+			const size_t move_start = indexes[i - 1] + old_str_len;
+			const size_t move_end = (i == old_str_count) ? dstr->len : indexes[i];
+			const size_t move_length = move_end - move_start;
 
-		}
-	} else {
-		for (size_t i = find_count; i > 0; --i) {
+			/* 移动原有数据。 */
+			if (move_length > 0) {
+				const size_t move_step = length_difference * i;
+				memmove(
+					dstr->data + move_start + move_step,
+					dstr->data + move_start,
+					move_length
+				);
+			}
 
-		}
-	}
-
-	if (backward) {
-		const bool is_longer = new_str_len > old_str_len;
-		const size_t offset = is_longer
-			? new_str_len - old_str_len
-			: old_str_len - new_str_len;
-
-		for (size_t i = 0; i < find_count; ++i) {
-			if (offset != 0) {
-				size_t move_start_index = matches[0] + old_str_len;
-
-				/* 移动原有数据。 */
-				if (i != 0 || move_start_index < dstr->len) {
-					size_t count = find_count - 1 - i;
-					size_t move_end_index = is_longer
-						? move_start_index + offset * count
-						: move_start_index - offset * count;
-				}
+			/* 拷贝新数据。 */
+			if (new_str_len > 0) {
+				const size_t copy_target = indexes[i - 1] + length_difference * (i - 1);
+				memcpy(
+					dstr->data + copy_target,
+					new_str,
+					new_str_len
+				);
 			}
 		}
-	} else {}
+	} else {
+		for (i = 0; i < old_str_count; ++i) {
+			if (new_str_len < old_str_len) {
+				/* 计算当前 old_str 出现位置后面需要移动的数据长度。 */
+				const size_t move_start = indexes[i] + old_str_len;
+				const size_t move_end = (i == old_str_count - 1) ? dstr->len : indexes[i + 1];
+				const size_t move_length = move_end - move_start;
 
-	free(matches);
+				/* 移动原有数据。 */
+				if (move_length > 0) {
+					const size_t move_step = length_difference * (i + 1);
+					memmove(
+						dstr->data + move_start - move_step,
+						dstr->data + move_start,
+						move_length
+					);
+				}
+			}
+
+			/* 拷贝新数据。 */
+			if (new_str_len > 0) {
+				const size_t copy_target = indexes[i] - length_difference * i;
+				memcpy(
+					dstr->data + copy_target,
+					new_str,
+					new_str_len
+				);
+			}
+		}
+	}
+
+	free(indexes);
+
+	if (new_str_len != old_str_len) {
+		dstr->len = new_length;
+
+		if (new_str_len < old_str_len) {
+			capacity_resize_dynamic(dstr, required_capacity);
+		}
+
+		if (dstr->cap > 0) {
+			dstr->data[new_length] = '\0';
+		}
+	}
+
 	return DSTR_SUCCESS;
 }
-
-// #include <stdbool.h>
-// #include <stdlib.h>
-// #include <string.h>
-//
-// /* 假设的动态字符串结构体 */
-// typedef struct {
-// 	char *data;   /* 字符串缓冲区，以 '\0' 结尾 */
-// 	size_t len;   /* 字符串长度，不含 '\0' */
-// 	size_t alloc; /* 缓冲区总容量 */
-// } dstr_adt;
-//
-// /* 函数返回状态码 */
-// typedef enum {
-// 	DSTR_STATUS_OK = 0,
-// 	DSTR_STATUS_NOMEM,
-// 	DSTR_STATUS_NOT_FOUND,
-// 	DSTR_STATUS_INVALID_ARG
-// } dstr_status_t;
-//
-// /*
-//  * 函数：replace_str
-//  * 功能：在动态字符串 dstr 中替换子串
-//  * 参数：
-//  *   dstr         - 动态字符串对象
-//  *   old_str      - 待替换的子串
-//  *   old_str_len  - 待替换子串长度
-//  *   new_str      - 替换后的子串
-//  *   new_str_len  - 替换后子串长度
-//  *   n            - 最大替换次数，0 表示替换所有
-//  *   backward     - true: 从后向前替换最后 n 次; false: 从前向后替换前 n 次
-//  * 返回：
-//  *   DSTR_STATUS_OK 成功，DSTR_STATUS_NOT_FOUND 匹配次数不足，DSTR_STATUS_NOMEM 内存不足
-//  */
-// static dstr_status_t replace_str(
-// 	dstr_adt *dstr,
-// 	const char *old_str,
-// 	size_t old_str_len,
-// 	const char *new_str,
-// 	size_t new_str_len,
-// 	size_t n,
-// 	bool backward
-// ) {
-// 	/* 参数有效性检查 */
-// 	if (dstr == NULL || old_str == NULL || new_str == NULL)
-// 		return DSTR_STATUS_INVALID_ARG;
-// 	if (old_str_len == 0)
-// 		return DSTR_STATUS_INVALID_ARG; /* 不允许替换空字符串 */
-//
-// 	size_t txt_len = dstr->len;
-// 	if (txt_len == 0)
-// 		return DSTR_STATUS_OK; /* 空串无需替换 */
-//
-// 	/* ---------------- 1. KMP 搜索所有匹配位置 ---------------- */
-// 	/* 构建 LPS 数组 */
-// 	size_t *lps = (size_t*)malloc(old_str_len * sizeof(size_t));
-// 	if (lps == NULL)
-// 		return DSTR_STATUS_NOMEM;
-//
-// 	lps[0] = 0;
-// 	for (size_t i = 1, len = 0; i < old_str_len;) {
-// 		if (old_str[i] == old_str[len]) {
-// 			lps[i++] = ++len;
-// 		} else if (len != 0) {
-// 			len = lps[len - 1];
-// 		} else {
-// 			lps[i++] = 0;
-// 		}
-// 	}
-//
-// 	/* 动态数组存放匹配位置（索引） */
-// 	size_t *matches = NULL;
-// 	size_t matches_cnt = 0;
-// 	size_t matches_cap = 0;
-//
-// 	/* 是否需要在收集到 n 个匹配后提前停止（仅当 n>0 且非 backward） */
-// 	bool early_stop = (n > 0) && !backward;
-//
-// 	size_t i = 0; /* 遍历 dstr->data 的索引 */
-// 	size_t j = 0; /* 遍历 old_str 的索引 */
-// 	while (i < txt_len) {
-// 		if (dstr->data[i] == old_str[j]) {
-// 			i++;
-// 			j++;
-// 		}
-// 		if (j == old_str_len) {
-// 			/* 找到一个匹配，位置为 i - j */
-// 			size_t pos = i - j;
-//
-// 			/* 扩容位置数组 */
-// 			if (matches_cnt >= matches_cap) {
-// 				size_t new_cap = (matches_cap == 0) ? 16 : matches_cap * 2;
-// 				size_t *tmp = (size_t*)realloc(matches, new_cap * sizeof(size_t));
-// 				if (tmp == NULL) {
-// 					free(lps);
-// 					free(matches);
-// 					return DSTR_STATUS_NOMEM;
-// 				}
-// 				matches = tmp;
-// 				matches_cap = new_cap;
-// 			}
-// 			matches[matches_cnt++] = pos;
-//
-// 			/* 提前停止：只需要前 n 个匹配且已收集足够 */
-// 			if (early_stop && matches_cnt == n)
-// 				break;
-//
-// 			/* KMP 跳转 */
-// 			j = lps[j - 1];
-// 		} else if (i < txt_len && dstr->data[i] != old_str[j]) {
-// 			if (j != 0) {
-// 				j = lps[j - 1];
-// 			} else {
-// 				i++;
-// 			}
-// 		}
-// 	}
-// 	free(lps);
-// 	lps = NULL;
-//
-// 	/* ---------------- 2. 判断匹配数量是否满足要求 ---------------- */
-// 	size_t total_matches = matches_cnt;
-//
-// 	/* 如果提前停止，我们没有扫描全部，但此时 total_matches == n 且 !backward，符合要求 */
-// 	if (n > 0 && total_matches < n) {
-// 		/* 匹配次数不足，一次也不替换 */
-// 		free(matches);
-// 		return DSTR_STATUS_NOT_FOUND;
-// 	}
-//
-// 	/* 确定最终要替换的匹配子集 */
-// 	size_t selected_count;
-// 	size_t *selected_matches; /* 指向 matches 数组中的起始位置 */
-// 	if (n == 0) {
-// 		/* 替换所有匹配 */
-// 		selected_count = total_matches;
-// 		selected_matches = matches;
-// 	} else {
-// 		selected_count = n;
-// 		if (backward) {
-// 			/* 替换最后 n 个匹配 */
-// 			selected_matches = matches + (total_matches - n);
-// 		} else {
-// 			/* 替换前 n 个匹配 */
-// 			selected_matches = matches;
-// 		}
-// 	}
-//
-// 	/* 计算替换后的新长度 */
-// 	size_t old_len = dstr->len;
-// 	ssize_t delta = (ssize_t)new_str_len - (ssize_t)old_str_len;
-// 	size_t new_len = old_len + (size_t)(selected_count * delta);
-//
-// 	/* ---------------- 3. 尝试分配临时缓冲区 ---------------- */
-// 	char *temp = (char*)malloc(old_len);
-// 	if (temp != NULL) {
-// 		/* 算法一：使用临时缓冲区，从前向后写 */
-// 		memcpy(temp, dstr->data, old_len);
-//
-// 		/* 扩容原 dstr 缓冲区 */
-// 		if (new_len + 1 > dstr->alloc) {
-// 			char *new_data = (char*)realloc(dstr->data, new_len + 1);
-// 			if (new_data == NULL) {
-// 				free(temp);
-// 				free(matches);
-// 				return DSTR_STATUS_NOMEM;
-// 			}
-// 			dstr->data = new_data;
-// 			dstr->alloc = new_len + 1;
-// 		}
-//
-// 		size_t r = 0; /* 读指针：临时缓冲区 */
-// 		size_t w = 0; /* 写指针：dstr->data */
-//
-// 		for (size_t k = 0; k < selected_count; k++) {
-// 			size_t pos = selected_matches[k];
-//
-// 			/* 复制匹配前的普通字符 */
-// 			size_t normal_len = pos - r;
-// 			if (normal_len > 0) {
-// 				memcpy(dstr->data + w, temp + r, normal_len);
-// 				w += normal_len;
-// 				r += normal_len;
-// 			}
-//
-// 			/* 写入新字符串 */
-// 			if (new_str_len > 0) {
-// 				memcpy(dstr->data + w, new_str, new_str_len);
-// 				w += new_str_len;
-// 			}
-//
-// 			/* 跳过原字符串中的 old_str */
-// 			r += old_str_len;
-// 		}
-//
-// 		/* 复制剩余尾部 */
-// 		size_t tail_len = old_len - r;
-// 		if (tail_len > 0) {
-// 			memcpy(dstr->data + w, temp + r, tail_len);
-// 			w += tail_len;
-// 		}
-//
-// 		dstr->data[w] = '\0';
-// 		dstr->len = new_len;
-//
-// 		free(temp);
-// 		free(matches);
-// 		return DSTR_STATUS_OK;
-// 	}
-//
-// 	/* ---------------- 4. 临时缓冲区分配失败：原地修改 ---------------- */
-// 	/* 先确保 dstr 缓冲区足够 */
-// 	if (new_len + 1 > dstr->alloc) {
-// 		char *new_data = (char*)realloc(dstr->data, new_len + 1);
-// 		if (new_data == NULL) {
-// 			free(matches);
-// 			return DSTR_STATUS_NOMEM;
-// 		}
-// 		dstr->data = new_data;
-// 		dstr->alloc = new_len + 1;
-// 	}
-//
-// 	/* 原地修改：从后向前分段处理，始终安全 */
-// 	size_t src_end = old_len; /* 源数据尾后指针 */
-// 	size_t dst_end = new_len; /* 目标尾后指针 */
-//
-// 	for (size_t k = selected_count; k > 0; k--) {
-// 		size_t pos = selected_matches[k - 1];
-//
-// 		/* 1. 复制当前匹配之后的后缀 */
-// 		size_t suffix_start = pos + old_str_len;
-// 		size_t suffix_len = src_end - suffix_start;
-// 		if (suffix_len > 0) {
-// 			memmove(
-// 				dstr->data + dst_end - suffix_len,
-// 				dstr->data + suffix_start,
-// 				suffix_len
-// 			);
-// 		}
-// 		dst_end -= suffix_len;
-//
-// 		/* 2. 写入新子串 */
-// 		if (new_str_len > 0) {
-// 			memcpy(
-// 				dstr->data + dst_end - new_str_len,
-// 				new_str,
-// 				new_str_len
-// 			);
-// 		}
-// 		dst_end -= new_str_len;
-//
-// 		/* 3. 更新源尾后指针 */
-// 		src_end = pos;
-// 	}
-// 	/* 此时 dst_end 必然等于 src_end（即前缀长度），前缀已在正确位置，无需移动 */
-//
-// 	dstr->data[new_len] = '\0';
-// 	dstr->len = new_len;
-//
-// 	free(matches);
-// 	return DSTR_STATUS_OK;
-// }
