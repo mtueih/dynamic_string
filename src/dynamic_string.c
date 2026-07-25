@@ -252,7 +252,6 @@ dstr_adt *dstr_sub_cstr(
 	}
 
 	const size_t cstr_len = strlen(cstr);
-
 	if (sub_index >= cstr_len ||
 		!safe_size_t_add(sub_index, sub_count, DSTR_NULLPTR) ||
 		sub_index + sub_count > cstr_len
@@ -1546,20 +1545,25 @@ static size_t find_str(
 	const char *p;
 	const char *find = DSTR_NULLPTR;
 	size_t find_count = 0;
+	const char *const end = dstr->data + dstr->len - sub_len + 1;
 
 	if (backward) {
-		p = dstr->data + dstr->len - sub_len;
+		p = end;
 
-		while (p >= dstr->data) {
-			if (memcmp(p, sub, sub_len) == 0) {
+		while (p > dstr->data) {
+			if (memcmp(p - 1, sub, sub_len) == 0) {
 				++find_count;
-				find = p;
+				find = p - 1;
 
 				if (find_count == n) {
 					break;
 				}
 
-				p -= sub_len;
+				if ((p - dstr->data) > sub_len) {
+					p -= sub_len;
+				} else {
+					break;
+				}
 			} else {
 				--p;
 			}
@@ -1567,7 +1571,7 @@ static size_t find_str(
 	} else {
 		p = dstr->data;
 
-		while (p < dstr->data + dstr->len) {
+		while (p < end) {
 			if (memcmp(p, sub, sub_len) == 0) {
 				++find_count;
 				find = p;
@@ -1607,41 +1611,41 @@ static dstr_status_t replace_str(
 		return DSTR_MEMORY_ALLOC_FAILED;
 	}
 
+	const char *p;
 	size_t find_count = 0;
-
+	const char *const end = dstr->data + dstr->len - old_str_len + 1;
 	if (backward) {
 		/* 从后向前搜索，找到的匹配顺序为逆序（最后匹配在前）。 */
-		const char *p = dstr->data + dstr->len - old_str_len;
+		p = end;
 
-		while (p >= dstr->data) {
-			if (memcmp(p, old_str, old_str_len) == 0) {
-				matches[find_count++] = p - dstr->data;
+		while (p > dstr->data) {
+			if (memcmp(p - 1, old_str, old_str_len) == 0) {
+				matches[find_count++] = p - 1 - dstr->data;
 
-				if (find_count == n) break;
+				if (find_count == n) {
+					break;
+				}
 
-				/* 跳过已匹配部分，避免重叠（可根据需要调整） */
-				if (p >= dstr->data + old_str_len) {
+				if ((p - dstr->data) > old_str_len) {
 					p -= old_str_len;
 				} else {
 					break;
 				}
-
-				p -= old_str_len;
 			} else {
-				if (p == dstr->data) break;
 				--p;
 			}
 		}
 	} else {
 		/* 从前向后搜索，匹配顺序为正序（第一个匹配在前）。 */
-		const char *p = dstr->data;
-		const char *const end = dstr->data + dstr->len - old_str_len;
+		p = dstr->data;
 
-		while (p <= end) {
+		while (p < end) {
 			if (memcmp(p, old_str, old_str_len) == 0) {
 				matches[find_count++] = p - dstr->data;
 
-				if (find_count == n) break;
+				if (find_count == n) {
+					break;
+				}
 
 				p += old_str_len;
 			} else {
@@ -1651,7 +1655,7 @@ static dstr_status_t replace_str(
 	}
 
 	/* 如果实际出现次数为 0，或不足 n 次（n 不为 0 时），则直接返回，一次替换都不进行。 */
-	if (find_count == 0 || (n > 0 && find_count < n)) {
+	if (find_count == 0 || find_count < n) {
 		free(matches);
 		return DSTR_INVALID_ARGUMENT;
 	}
@@ -1660,34 +1664,58 @@ static dstr_status_t replace_str(
 	if (new_str_len > old_str_len) {
 		/**
 		 * 安全计算 size_t 乘法：
-		 * (old_str_len - new_str_len) * find_count
+		 * (new_str_len - old_str_len) * find_count
 		 * 防止溢出。
 		 */
 		size_t add_len;
-		if (!safe_size_t_mul(old_str_len - new_str_len, find_count, &add_len)) {
+		if (!safe_size_t_mul(new_str_len - old_str_len, find_count, &add_len)) {
 			free(matches);
 			return DSTR_MEMORY_ALLOC_FAILED;
 		}
 
 		/**
 		 * 安全计算 size_t 加法：
-		 * (dstr->len + 1) + add_len
+		 * dstr->len + add_len
 		 * 防止溢出。
 		 */
 		size_t new_len;
-		if (!safe_size_t_add(dstr->len + 1, add_len, &new_len)) {
+		if (!safe_size_t_add(dstr->len, add_len, &new_len)) {
 			free(matches);
 			return DSTR_MEMORY_ALLOC_FAILED;
 		}
 
 		/* 扩容。 */
-		if (!capacity_resize_dynamic(dstr, new_len)) {
+		if (!safe_size_t_add(new_len, 1, DSTR_NULLPTR) ||
+			!capacity_resize_dynamic(dstr, new_len + 1)
+		) {
 			free(matches);
 			return DSTR_MEMORY_ALLOC_FAILED;
 		}
 	}
 
 	/* 执行替换。 */
+	const bool is_longer = new_str_len > old_str_len;
+	/**
+	 *  以下两种情况下，需要顺序遍历 matches 数组：
+	 *  1. new_str_len > old_str_len 且 backward；
+	 *  2. new_str_len < old_str_len 且 !backward。
+	 *  即，is_longer 与 backward 相等。
+	 *
+	 *  而以下两种情况则需逆序遍历 matches 数组：
+	 *  1. new_str_len > old_str_len 且 !backward；
+	 *  2. new_str_len < old_str_len 且 backward。
+	 *  即，is_longer 与 backward 不相等。
+	 */
+	if (is_longer == backward) {
+		for (size_t i = 0; i < find_count; ++i) {
+
+		}
+	} else {
+		for (size_t i = find_count; i > 0; --i) {
+
+		}
+	}
+
 	if (backward) {
 		const bool is_longer = new_str_len > old_str_len;
 		const size_t offset = is_longer
