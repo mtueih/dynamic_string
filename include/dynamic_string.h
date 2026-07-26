@@ -27,6 +27,7 @@
  * 头文件包含
  *----------------------------------------------------------------------------*/
 #include <errno.h>
+#include <stdarg.h>
 #include <stddef.h>
 
 /* C23 标准移除了 stdbool.h，因此仅在 C23 以下标准时包含此文件。 */
@@ -127,6 +128,16 @@ dstr_adt *dstr_sub(
 	const dstr_adt *dstr,
 	size_t sub_index,
 	size_t sub_count
+);
+
+dstr_adt *dstr_create_format(
+	const char *format,
+	...
+);
+
+dstr_adt *dstr_create_vformat(
+	const char *format,
+	va_list args
 );
 
 /* 属性获取与设置。 */
@@ -281,22 +292,16 @@ dstr_status_t dstr_cpy_sub(
 	size_t sub_count
 );
 
-/**
- * @brief 格式化写入字符串到一个「动态字符串」。
- *
- * @param dstr 目标「动态字符串」的指针。
- *             如果为空指针，则视为不合法参数。
- * @param format 格式「C 字符串」的指针。
- *               如果为空指针，则视为不合法参数。
- *               如果指向空「C 字符串」，则将写入空字符串。
- * @param ... 可变参数列表。
- *
- * @return 全局状态码。
- */
-dstr_status_t dstr_printf(
+dstr_status_t dstr_cpy_format(
 	dstr_adt *dstr,
 	const char *format,
 	...
+);
+
+dstr_status_t dstr_cpy_vformat(
+	dstr_adt *dstr,
+	const char *format,
+	va_list args
 );
 
 /**
@@ -373,22 +378,16 @@ dstr_status_t dstr_cat_sub(
 	size_t sub_count
 );
 
-/**
- * @brief 格式化追加字符串到一个「动态字符串」。
- *
- * @param dstr 目标「动态字符串」的指针。
- *             如果为空指针，则视为不合法参数。
- * @param format 格式「C 字符串」的指针。
- *               如果为空指针，则视为不合法参数。
- *               如果指向空「C 字符串」，则将写入空字符串。
- * @param ... 可变参数列表。
- *
- * @return 全局状态码。
- */
-dstr_status_t dstr_cat_printf(
+dstr_status_t dstr_cat_format(
 	dstr_adt *dstr,
 	const char *format,
 	...
+);
+
+dstr_status_t dstr_cat_vformat(
+	dstr_adt *dstr,
+	const char *format,
+	va_list args
 );
 
 /**
@@ -477,24 +476,18 @@ dstr_status_t dstr_insert_sub(
 	size_t sub_count
 );
 
-/**
- * @brief 格式化插入字符串到一个「动态字符串」。
- *
- * @param dstr 目标「动态字符串」的指针。
- *             如果为空指针，则视为不合法参数。
- * @param index
- * @param format 格式「C 字符串」的指针。
- *               如果为空指针，则视为不合法参数。
- *               如果指向空「C 字符串」，则将写入空字符串。
- * @param ... 可变参数列表。
- *
- * @return 全局状态码。
- */
-dstr_status_t dstr_insert_printf(
+dstr_status_t dstr_insert_format(
 	dstr_adt *dstr,
 	size_t index,
 	const char *format,
 	...
+);
+
+dstr_status_t dstr_insert_vformat(
+	dstr_adt *dstr,
+	size_t index,
+	const char *format,
+	va_list args
 );
 
 /**
