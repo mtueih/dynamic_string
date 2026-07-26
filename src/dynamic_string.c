@@ -164,6 +164,26 @@ static dstr_status_t insert_str(
 );
 
 /**
+ * @brief 格式化写入字符串到「动态字符串」缓冲区的指定位置。
+ *        写入前可选择性删除指定数量的字符。
+ *
+ * @param dstr 目标「动态字符串」的指针。
+ * @param index 写入起始位置的索引。
+ * @param delete_count 写入前先删除的字符数。
+ * @param format 格式「C 字符串」的指针。
+ * @param args 可变参数列表，类型为 va_list。
+ *
+ * @return 全局状态码。
+ */
+static dstr_status_t format_to_dstr(
+	dstr_adt *dstr,
+	size_t index,
+	size_t delete_count,
+	const char *format,
+	va_list args
+);
+
+/**
  * @brief 查找一个「动态字符串」中，指定子「C 字符串」第 n 次出现的位置，
  *        并返回直到第 n 次，一共出现的次数。
  *
@@ -279,6 +299,55 @@ dstr_adt *dstr_sub(
 	}
 
 	return create_dstr(dstr->data, dstr->len, sub_index, sub_count);
+}
+
+dstr_adt *dstr_create_format(
+	const char *const format,
+	...
+) {
+	if (format == DSTR_NULLPTR || format[0] == '\0') {
+		return create_dstr(DSTR_NULLPTR, 0, 0, 0);
+	}
+
+	dstr_adt *const new_dstr = create_dstr(DSTR_NULLPTR, 0, 0, 0);
+	if (new_dstr == DSTR_NULLPTR) {
+		return DSTR_NULLPTR;
+	}
+
+	va_list args;
+
+	va_start(args, format);
+	const dstr_status_t rc = format_to_dstr(new_dstr, 0, 0, format, args);
+	va_end(args);
+
+	if (rc != DSTR_SUCCESS) {
+		free(new_dstr);
+		return DSTR_NULLPTR;
+	}
+
+	return new_dstr;
+}
+
+dstr_adt *dstr_create_vformat(
+	const char *const format,
+	const va_list args
+) {
+	if (format == DSTR_NULLPTR || format[0] == '\0') {
+		return create_dstr(DSTR_NULLPTR, 0, 0, 0);
+	}
+
+	dstr_adt *const new_dstr = create_dstr(DSTR_NULLPTR, 0, 0, 0);
+	if (new_dstr == DSTR_NULLPTR) {
+		return DSTR_NULLPTR;
+	}
+
+	const dstr_status_t rc = format_to_dstr(new_dstr, 0, 0, format, args);
+	if (rc != DSTR_SUCCESS) {
+		free(new_dstr);
+		return DSTR_NULLPTR;
+	}
+
+	return new_dstr;
 }
 
 /* 属性获取与设置。 */
@@ -460,8 +529,7 @@ dstr_status_t dstr_cpy_sub(
 	return insert_str(dest, 0, dest->len, src->data, src->len, sub_index, sub_count);
 }
 
-/* 格式化写入字符串到一个「动态字符串」。 */
-dstr_status_t dstr_printf(
+dstr_status_t dstr_cpy_format(
 	dstr_adt *const dstr,
 	const char *const format,
 	...
@@ -470,80 +538,35 @@ dstr_status_t dstr_printf(
 		return DSTR_INVALID_ARGUMENT;
 	}
 
-	/* format 为空指针或指向空字符串，均视为写入空字符串。 */
+	/* format 为空指针或指向空字符串，均视为复制空字符串。 */
 	if (format == DSTR_NULLPTR || format[0] == '\0') {
-		dstr->len = 0;
-		capacity_resize_dynamic(dstr, 0);
-
-		if (dstr->cap > 0) {
-			dstr->data[0] = '\0';
-		}
-		return DSTR_SUCCESS;
+		return insert_str(dstr, 0, dstr->len, DSTR_NULLPTR, 0, 0, 0);
 	}
 
-	va_list args, temp_args; /* 变参列表。 */
-	size_t new_len;
+	va_list args;
 
-	/* 变参列表初始化。 */
 	va_start(args, format);
+	const dstr_status_t result = format_to_dstr(dstr, 0, dstr->len, format, args);
+	va_end(args);
 
-	/* 计算所需长度。 */
-	va_copy(temp_args, args);
-	const int temp_len = vsnprintf(DSTR_NULLPTR, 0, format, temp_args);
-	va_end(temp_args);
+	return result;
+}
 
-	if (temp_len < 0) {
-		va_end(args);
+dstr_status_t dstr_cpy_vformat(
+	dstr_adt *const dstr,
+	const char *const format,
+	const va_list args
+) {
+	if (dstr == DSTR_NULLPTR) {
 		return DSTR_INVALID_ARGUMENT;
 	}
 
-	new_len = temp_len;
-
-
-	/* 所需长度大于当前长度，尝试扩容。 */
-	if
-	(
-		!
-		safe_size_t_add(new_len, 1, DSTR_NULLPTR)
-	) {
-		va_end(args);
-		return DSTR_MEMORY_ALLOC_FAILED;
+	/* format 为空指针或指向空字符串，均视为复制空字符串。 */
+	if (format == DSTR_NULLPTR || format[0] == '\0') {
+		return insert_str(dstr, 0, dstr->len, DSTR_NULLPTR, 0, 0, 0);
 	}
 
-	if
-	(new_len
-		>
-		dstr
-		->
-		len
-	) {
-		if (!capacity_resize_dynamic(dstr, new_len + 1)) {
-			va_end(args);
-			return DSTR_MEMORY_ALLOC_FAILED;
-		}
-	}
-
-	/* 执行写入。 */
-	if
-	(new_len
-		>
-		0
-	) {
-		vsnprintf(dstr->data, new_len + 1, format, args);
-	}
-	va_end(args);
-
-	if
-	(new_len < dstr->len) {
-		capacity_resize_dynamic(dstr, (new_len > 0) ? (new_len + 1) : 0);
-	}
-
-	dstr
-		->
-		len = new_len;
-
-	return
-		DSTR_SUCCESS;
+	return format_to_dstr(dstr, 0, dstr->len, format, args);
 }
 
 /* 追加一个「C 字符串」到一个「动态字符串」。 */
@@ -635,7 +658,7 @@ dstr_status_t dstr_cat_sub(
 	return insert_str(dest, dest->len, 0, src->data, src->len, sub_index, sub_count);
 }
 
-dstr_status_t dstr_cat_printf(
+dstr_status_t dstr_cat_format(
 	dstr_adt *const dstr,
 	const char *const format,
 	...
@@ -644,56 +667,35 @@ dstr_status_t dstr_cat_printf(
 		return DSTR_INVALID_ARGUMENT;
 	}
 
-	va_list args; /* 变参列表。 */
-	size_t output_len;
+	/* format 为空指针或指向空字符串，均视为追加空字符串。 */
+	if (format == DSTR_NULLPTR || format[0] == '\0') {
+		return DSTR_SUCCESS;
+	}
 
-	/* 变参列表初始化。 */
+	va_list args;
+
 	va_start(args, format);
+	const dstr_status_t result = format_to_dstr(dstr, dstr->len, 0, format, args);
+	va_end(args);
+
+	return result;
+}
+
+dstr_status_t dstr_cat_vformat(
+	dstr_adt *const dstr,
+	const char *const format,
+	const va_list args
+) {
+	if (dstr == DSTR_NULLPTR) {
+		return DSTR_INVALID_ARGUMENT;
+	}
 
 	/* format 为空指针或指向空字符串，均视为追加空字符串。 */
 	if (format == DSTR_NULLPTR || format[0] == '\0') {
-		output_len = 0;
-	} else {
-		va_list temp_args;
-
-		va_copy(temp_args, args);
-		const int output_len_temp = vsnprintf(
-			DSTR_NULLPTR,
-			0,
-			format,
-			temp_args
-		);
-		va_end(temp_args);
-
-		if (output_len_temp < 0) {
-			va_end(args);
-			return DSTR_INVALID_ARGUMENT;
-		}
-
-		output_len = output_len_temp;
+		return DSTR_SUCCESS;
 	}
 
-	/* 所需长度大于当前长度，尝试扩容。 */
-	if (output_len > 0) {
-		if (!safe_size_t_add(output_len, 1, DSTR_NULLPTR) ||
-			!capacity_resize_dynamic(dstr, output_len)
-		) {
-			return DSTR_MEMORY_ALLOC_FAILED;
-		}
-	}
-
-	/* 执行写入。 */
-	if (output_len > 0) {
-		vsnprintf(dstr->data, output_len + 1, format, args);
-	}
-	va_end(args);
-
-	if (output_len < dstr->len) {
-		capacity_resize_dynamic(dstr, (output_len > 0) ? (output_len + 1) : 0);
-	}
-	dstr->len = output_len;
-
-	return DSTR_SUCCESS;
+	return format_to_dstr(dstr, dstr->len, 0, format, args);
 }
 
 /* 插入一个「C 字符串」到一个「动态字符串」。 */
@@ -789,54 +791,46 @@ dstr_status_t dstr_insert_sub(
 	return insert_str(dest, index, 0, src->data, src->len, sub_index, sub_count);
 }
 
-dstr_status_t dstr_insert_printf(
+dstr_status_t dstr_insert_format(
 	dstr_adt *const dstr,
 	const size_t index,
 	const char *const format,
 	...
 ) {
-	if (dstr == DSTR_NULLPTR || index > dstr->len ||
-		format == DSTR_NULLPTR
-	) {
+	if (dstr == DSTR_NULLPTR || index > dstr->len) {
 		return DSTR_INVALID_ARGUMENT;
 	}
 
-	va_list args, temp_args; /* 变参列表。 */
-	size_t needed_cap;       /* 容纳输出字符串所需容量。 */
+	/* format 为空指针或指向空字符串，均视为插入空字符串。 */
+	if (format == DSTR_NULLPTR || format[0] == '\0') {
+		return DSTR_SUCCESS;
+	}
 
-	/* 变参列表初始化。 */
+	va_list args;
+
 	va_start(args, format);
-
-	/* 计算输出长度。 */
-	va_copy(temp_args, args);
-	const int output_len = vsnprintf(DSTR_NULLPTR, 0, format, temp_args);
-	va_end(temp_args);
-
-	if (output_len < 0) {
-		va_end(args);
-		return DSTR_INVALID_ARGUMENT;
-	}
-
-	if (!safe_size_t_add(output_len, 1, &needed_cap)) {
-		return DSTR_MEMORY_ALLOC_FAILED;
-	}
-	/* 所需长度大于当前长度，尝试扩容。 */
-	if (output_len > dstr->len) {
-		if (!capacity_resize_dynamic(dstr, needed_cap)) {
-			return DSTR_MEMORY_ALLOC_FAILED;
-		}
-	}
-
-	/* 执行写入。 */
-	vsnprintf(dstr->data, needed_cap, format, args);
+	const dstr_status_t result = format_to_dstr(dstr, index, 0, format, args);
 	va_end(args);
 
-	if (output_len < dstr->len) {
-		capacity_resize_dynamic(dstr, (output_len > 0) ? needed_cap : 0);
-	}
-	dstr->len = output_len;
+	return result;
+}
 
-	return DSTR_SUCCESS;
+dstr_status_t dstr_insert_vformat(
+	dstr_adt *const dstr,
+	const size_t index,
+	const char *const format,
+	const va_list args
+) {
+	if (dstr == DSTR_NULLPTR || index > dstr->len) {
+		return DSTR_INVALID_ARGUMENT;
+	}
+
+	/* format 为空指针或指向空字符串，均视为插入空字符串。 */
+	if (format == DSTR_NULLPTR || format[0] == '\0') {
+		return DSTR_SUCCESS;
+	}
+
+	return format_to_dstr(dstr, index, 0, format, args);
 }
 
 /* 清空一个「动态字符串」。 */
@@ -1528,6 +1522,82 @@ static dstr_status_t insert_str(
 		 */
 		if (dest->cap > 0) {
 			dest->data[new_len] = '\0';
+		}
+	}
+
+	return DSTR_SUCCESS;
+}
+
+static dstr_status_t format_to_dstr(
+	dstr_adt *const dstr,
+	const size_t index,
+	const size_t delete_count,
+	const char *const format,
+	va_list args
+) {
+	va_list temp_args;
+
+	va_copy(temp_args, args);
+	const int temp_len = vsnprintf(DSTR_NULLPTR, 0, format, temp_args);
+	va_end(temp_args);
+
+	if (temp_len < 0) {
+		return DSTR_INVALID_ARGUMENT;
+	}
+
+	const size_t format_len = temp_len;
+	const size_t new_len = dstr->len - delete_count + format_len;
+
+	/* 当新长度大于当前长度时尝试扩容。 */
+	if (new_len > dstr->len) {
+		if (!safe_size_t_add(new_len, 1, DSTR_NULLPTR) ||
+			!capacity_resize_dynamic(dstr, new_len + 1)
+		) {
+			return DSTR_MEMORY_ALLOC_FAILED;
+		}
+	}
+
+	/* 当存在需要移动的尾部数据时，执行移动。 */
+	const size_t tail_len = dstr->len - index - delete_count;
+	if (tail_len > 0 && delete_count != format_len) {
+		memmove(
+			dstr->data + index + format_len,
+			dstr->data + index + delete_count,
+			tail_len
+		);
+	}
+
+	/**
+	 * vsnprintf 写入后会在末尾强制写入 '\0'。
+	 * 对于插入操作（tail_len > 0），该 '\0' 会覆盖被搬移到 format_len 末尾的第一个尾部字符。
+	 * 因此，在写入前暂存该字符，写入后恢复。
+	 */
+	char saved_char = '\0';
+	if (format_len > 0 && tail_len > 0) {
+		saved_char = dstr->data[index + format_len];
+	}
+
+	/* 当存在需要格式化的数据时，格式化写入到 dstr->data。 */
+	if (format_len > 0) {
+		vsnprintf(dstr->data + index, format_len + 1, format, args);
+
+		/* 恢复被 '\0' 覆盖的字符。 */
+		if (tail_len > 0) {
+			dstr->data[index + format_len] = saved_char;
+		}
+	}
+
+	/* 如果新长度小于当前长度，则在操作执行完后尝试缩容。 */
+	if (new_len < dstr->len) {
+		capacity_resize_dynamic(dstr, (new_len > 0) ? (new_len + 1) : 0);
+	}
+
+	/* 如果长度有变化，则更新长度。 */
+	if (new_len != dstr->len) {
+		dstr->len = new_len;
+
+		if (dstr->cap > 0) {
+			dstr->data[new_len] = '\0';
 		}
 	}
 
