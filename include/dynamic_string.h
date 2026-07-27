@@ -692,47 +692,66 @@ int dstr_compare(
 /* 查找、统计与替换。 */
 
 /**
- * @brief 查找一个「动态字符串」中指定子「C 字符串」首次出现的位置。
+ * @brief
+ * 查找一个「动态字符串」中指定子「C 字符串」首次出现的位置。
  *
- * @param dstr 目标「动态字符串」的指针。
- *             如果为空指针，则函数会直接返回 false。
- * @param sub 子「C 字符串」的指针。
- *            如果为空指针，则函数会直接返回 false。
- * @param out_index 存储查找结果（位置索引）的 size_t 变量的指针。
- *                  为空指针时不写入。
- * @param backward 是否从后向前查找。
+ * @param dstr
+ * 目标「动态字符串」的指针。
+ * 如果为空指针，则函数会直接返回 false。
  *
- * @return 找到则返回 true，否则返回 false。
+ * @param sub
+ * 子「C 字符串」的指针。
+ * 如果为空指针，则函数会直接返回 false。
+ *
+ * @param backward
+ * 是否从后向前查找。
+ *
+ * @param out_index
+ * 存储首次出现的位置索引的 size_t 变量的指针。
+ * 为空指针时不写入。
+ *
+ * @return
+ * 找到则返回 true，否则返回 false。
  */
 bool dstr_find_cstr(
 	const dstr_adt *dstr,
 	const char *sub,
-	size_t *out_index,
-	bool backward
+	bool backward,
+	size_t *out_index
 );
 
 /**
- * @brief 查找一个「动态字符串」中指定子「动态字符串」首次出现的位置。
+ * @brief
+ * 查找一个「动态字符串」中指定子「动态字符串」首次出现的位置。
  *
- * @param dstr 目标「动态字符串」的指针。
- *             如果为空指针，则函数会直接返回 false。
- * @param sub 子「动态字符串」的指针。
- *            如果为空指针，则函数会直接返回 false。
- * @param out_index 存储查找结果（位置索引）的 size_t 变量的指针。
- *                  为空指针时不写入。
- * @param backward 是否从后向前查找。
+ * @param dstr
+ * 目标「动态字符串」的指针。
+ * 如果为空指针，则函数会直接返回 false。
  *
- * @return 找到则返回 true，否则返回 false。
+ * @param sub
+ * 子「动态字符串」的指针。
+ * 如果为空指针，则函数会直接返回 false。
+ *
+ * @param backward
+ * 是否从后向前查找。
+ *
+ * @param out_index
+ * 存储首次出现的位置索引的 size_t 变量的指针。
+ * 为空指针时不写入。
+ *
+ * @return
+ * 找到则返回 true，否则返回 false。
  */
 bool dstr_find(
 	const dstr_adt *dstr,
 	const dstr_adt *sub,
-	size_t *out_index,
-	bool backward
+	bool backward,
+	size_t *out_index
 );
 
 /**
- * @brief 查找一个「动态字符串」中指定子「C 字符串」第 n 次出现的位置。
+ * @brief
+ * 查找一个「动态字符串」中指定子「C 字符串」第 n 次出现的位置。
  *
  * @param dstr 目标「动态字符串」的指针。
  *             如果为空指针，则函数会直接返回 false。
@@ -751,9 +770,9 @@ bool dstr_find(
 bool dstr_find_nth_cstr(
 	const dstr_adt *dstr,
 	const char *sub,
-	size_t *out_index,
 	size_t n,
-	bool backward
+	bool backward,
+	size_t *out_index
 );
 
 /**
@@ -776,9 +795,25 @@ bool dstr_find_nth_cstr(
 bool dstr_find_nth(
 	const dstr_adt *dstr,
 	const dstr_adt *sub,
-	size_t *out_index,
 	size_t n,
-	bool backward
+	bool backward,
+	size_t *out_index
+);
+
+bool dstr_find_all_cstr(
+	const dstr_adt *dstr,
+	const char *sub,
+	size_t n,
+	bool backward,
+	size_t *out_indexes
+);
+
+bool dstr_find_all(
+	const dstr_adt *dstr,
+	const dstr_adt *sub,
+	size_t n,
+	bool backward,
+	size_t *out_indexes
 );
 
 /**
@@ -874,13 +909,13 @@ dstr_adt **dstr_split(
 );
 
 dstr_adt *dstr_join_cstr(
-	const char **cstrs,
+	const char *const *cstrs,
 	size_t cstr_count,
 	const char *separator
 );
 
 dstr_adt *dstr_join(
-	const dstr_adt **dstrs,
+	const dstr_adt *const *dstrs,
 	size_t dstr_count,
 	const dstr_adt *separator
 );
