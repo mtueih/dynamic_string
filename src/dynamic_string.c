@@ -1144,26 +1144,18 @@ bool dstr_find_cstr(
 	const bool backward,
 	size_t *const out_index
 ) {
+	/* 参数合法性检查。 */
 	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
 		sub == DSTR_NULLPTR || sub[0] == '\0'
 	) {
 		return false;
 	}
 
-	const size_t sub_len = strlen(sub);
-	if (sub_len > dstr->len) {
-		return false;
-	}
-
 	return (find_str(
-		dstr->data,
-		dstr->len,
-		sub,
-		sub_len,
-		1,
-		backward,
-		out_index,
-		DSTR_NULLPTR
+		dstr->data, dstr->len,
+		sub, strlen(sub),
+		1, backward,
+		out_index,DSTR_NULLPTR
 	) > 0);
 }
 
@@ -1174,25 +1166,18 @@ bool dstr_find(
 	const bool backward,
 	size_t *const out_index
 ) {
+	/* 参数合法性检查。 */
 	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
 		sub == DSTR_NULLPTR || sub->len == 0
 	) {
 		return false;
 	}
 
-	if (sub->len > dstr->len) {
-		return false;
-	}
-
 	return (find_str(
-		dstr->data,
-		dstr->len,
-		sub->data,
-		sub->len,
-		1,
-		backward,
-		out_index,
-		DSTR_NULLPTR
+		dstr->data, dstr->len,
+		sub->data, sub->len,
+		1, backward,
+		out_index,DSTR_NULLPTR
 	) > 0);
 }
 
@@ -1204,26 +1189,18 @@ bool dstr_find_nth_cstr(
 	const bool backward,
 	size_t *const out_index
 ) {
+	/* 参数合法性检查。 */
 	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
 		sub == DSTR_NULLPTR || sub[0] == '\0'
 	) {
 		return false;
 	}
 
-	const size_t sub_len = strlen(sub);
-	if (sub_len > dstr->len) {
-		return false;
-	}
-
 	return (find_str(
-		dstr->data,
-		dstr->len,
-		sub,
-		sub_len,
-		n,
-		backward,
-		out_index,
-		DSTR_NULLPTR
+		dstr->data, dstr->len,
+		sub, strlen(sub),
+		n, backward,
+		out_index,DSTR_NULLPTR
 	) > 0);
 }
 
@@ -1235,25 +1212,18 @@ bool dstr_find_nth(
 	const bool backward,
 	size_t *const out_index
 ) {
+	/* 参数合法性检查。 */
 	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
 		sub == DSTR_NULLPTR || sub->len == 0
 	) {
 		return false;
 	}
 
-	if (sub->len > dstr->len) {
-		return false;
-	}
-
 	return (find_str(
-		dstr->data,
-		dstr->len,
-		sub->data,
-		sub->len,
-		n,
-		backward,
-		out_index,
-		DSTR_NULLPTR
+		dstr->data, dstr->len,
+		sub->data, sub->len,
+		n, backward,
+		out_index,DSTR_NULLPTR
 	) > 0);
 }
 
@@ -1264,26 +1234,18 @@ bool dstr_find_all_cstr(
 	const bool backward,
 	size_t *const out_indexes
 ) {
+	/* 参数合法性检查。 */
 	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
 		sub == DSTR_NULLPTR || sub[0] == '\0'
 	) {
 		return false;
 	}
 
-	const size_t sub_len = strlen(sub);
-	if (sub_len > dstr->len) {
-		return false;
-	}
-
 	return (find_str(
-		dstr->data,
-		dstr->len,
-		sub,
-		sub_len,
-		n,
-		backward,
-		DSTR_NULLPTR,
-		out_indexes
+		dstr->data, dstr->len,
+		sub, strlen(sub),
+		n, backward,
+		DSTR_NULLPTR, out_indexes
 	) > 0);
 }
 
@@ -1294,25 +1256,18 @@ bool dstr_find_all(
 	const bool backward,
 	size_t *const out_indexes
 ) {
+	/* 参数合法性检查。 */
 	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
 		sub == DSTR_NULLPTR || sub->len == 0
 	) {
 		return false;
 	}
 
-	if (sub->len > dstr->len) {
-		return false;
-	}
-
 	return (find_str(
-		dstr->data,
-		dstr->len,
-		sub->data,
-		sub->len,
-		n,
-		backward,
-		DSTR_NULLPTR,
-		out_indexes
+		dstr->data, dstr->len,
+		sub->data, sub->len,
+		n, backward,
+		DSTR_NULLPTR, out_indexes
 	) > 0);
 }
 
@@ -1322,26 +1277,18 @@ size_t dstr_count_cstr(
 	const dstr_adt *const dstr,
 	const char *const sub
 ) {
+	/* 参数合法性检查。 */
 	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
 		sub == DSTR_NULLPTR || sub[0] == '\0'
 	) {
 		return 0;
 	}
 
-	const size_t sub_len = strlen(sub);
-	if (sub_len > dstr->len) {
-		return 0;
-	}
-
 	return find_str(
-		dstr->data,
-		dstr->len,
-		sub,
-		sub_len,
-		0,
-		false,
-		DSTR_NULLPTR,
-		DSTR_NULLPTR
+		dstr->data, dstr->len,
+		sub, strlen(sub),
+		0, false,
+		DSTR_NULLPTR,DSTR_NULLPTR
 	);
 }
 
@@ -1350,25 +1297,18 @@ size_t dstr_count(
 	const dstr_adt *const dstr,
 	const dstr_adt *const sub
 ) {
+	/* 参数合法性检查。 */
 	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
 		sub == DSTR_NULLPTR || sub->len == 0
 	) {
 		return 0;
 	}
 
-	if (sub->len > dstr->len) {
-		return 0;
-	}
-
 	return find_str(
-		dstr->data,
-		dstr->len,
-		sub->data,
-		sub->len,
-		0,
-		false,
-		DSTR_NULLPTR,
-		DSTR_NULLPTR
+		dstr->data, dstr->len,
+		sub->data, sub->len,
+		0, false,
+		DSTR_NULLPTR,DSTR_NULLPTR
 	);
 }
 
@@ -1380,24 +1320,28 @@ dstr_status_t dstr_replace_cstr(
 	const size_t n,
 	const bool backward
 ) {
-	/* 参数检查。 */
+	/* 参数合法性检查。 */
 	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
 		old_str == DSTR_NULLPTR || old_str[0] == '\0'
 	) {
 		return DSTR_INVALID_ARGUMENT;
 	}
 
-	/* 计算 old_str 长度。 */
-	const size_t old_str_len = strlen(old_str);
-	if (old_str_len > dstr->len) {
-		return DSTR_INVALID_ARGUMENT;
-	}
-
 	if (new_str == DSTR_NULLPTR || new_str[0] == '\0') {
-		replace_str(dstr, old_str, old_str_len, DSTR_NULLPTR, 0, n, backward);
+		return replace_str(
+			dstr,
+			old_str, strlen(old_str),
+			DSTR_NULLPTR, 0,
+			n, backward
+		);
 	}
 
-	return replace_str(dstr, old_str, old_str_len, new_str, strlen(new_str), n, backward);
+	return replace_str(
+		dstr,
+		old_str, strlen(old_str),
+		new_str, strlen(new_str),
+		n, backward
+	);
 }
 
 /* 替换一个「动态字符串」中指定旧「动态字符串」为指定新「动态字符串」n 次。 */
@@ -1408,22 +1352,28 @@ dstr_status_t dstr_replace(
 	const size_t n,
 	const bool backward
 ) {
-	/* 参数检查。 */
+	/* 参数合法性检查。 */
 	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
 		old_str == DSTR_NULLPTR || old_str->len == 0
 	) {
 		return DSTR_INVALID_ARGUMENT;
 	}
 
-	if (old_str->len > dstr->len) {
-		return DSTR_INVALID_ARGUMENT;
-	}
-
 	if (new_str == DSTR_NULLPTR || new_str->len == 0) {
-		replace_str(dstr, old_str->data, old_str->len, DSTR_NULLPTR, 0, n, backward);
+		return replace_str(
+			dstr,
+			old_str->data, old_str->len,
+			DSTR_NULLPTR, 0,
+			n, backward
+		);
 	}
 
-	return replace_str(dstr, old_str->data, old_str->len, new_str->data, new_str->len, n, backward);
+	return replace_str(
+		dstr,
+		old_str->data, old_str->len,
+		new_str->data, new_str->len,
+		n, backward
+	);
 }
 
 
@@ -1435,118 +1385,19 @@ dstr_adt **dstr_split_cstr(
 	const char *const separator,
 	size_t *const out_dstr_count
 ) {
-	/* 输入为空指针或空字符串，返回空指针并将计数置为 0。 */
-	if (cstr == DSTR_NULLPTR || cstr[0] == '\0') {
-		if (out_dstr_count != DSTR_NULLPTR) {
-			*out_dstr_count = 0;
-		}
+	/* 参数合法性检查。 */
+	if (cstr == DSTR_NULLPTR || cstr[0] == '\0' ||
+		separator == DSTR_NULLPTR || separator[0] == '\0' ||
+		out_dstr_count == DSTR_NULLPTR
+	) {
 		return DSTR_NULLPTR;
 	}
 
-	const size_t cstr_len = strlen(cstr);
-
-	/* 分隔符为空指针或空字符串，或分隔符长度大于源字符串长度时，整个字符串作为一个元素。 */
-	const size_t separator_len =
-		(separator != DSTR_NULLPTR && separator[0] != '\0') ? strlen(separator) : 0;
-
-	if (separator_len == 0 || separator_len > cstr_len) {
-		dstr_adt **const result = malloc(sizeof(dstr_adt*));
-		if (result == DSTR_NULLPTR) {
-			if (out_dstr_count != DSTR_NULLPTR) {
-				*out_dstr_count = 0;
-			}
-			return DSTR_NULLPTR;
-		}
-
-		result[0] = create_dstr(cstr, cstr_len, 0, 0);
-		if (result[0] == DSTR_NULLPTR) {
-			free(result);
-			if (out_dstr_count != DSTR_NULLPTR) {
-				*out_dstr_count = 0;
-			}
-			return DSTR_NULLPTR;
-		}
-
-		if (out_dstr_count != DSTR_NULLPTR) {
-			*out_dstr_count = 1;
-		}
-		return result;
-	}
-
-	/* 第一遍扫描：统计分隔段数。 */
-	size_t part_count = 1;
-	const char *p = cstr;
-	const char *const cstr_end = cstr + cstr_len;
-
-	while (p < cstr_end) {
-		const char *const found = strstr(p, separator);
-		if (found == DSTR_NULLPTR) {
-			break;
-		}
-		++part_count;
-		p = found + separator_len;
-	}
-
-	/* 分配结果数组。 */
-	size_t result_size;
-	if (!safe_size_t_mul(part_count, sizeof(dstr_adt*), &result_size)) {
-		if (out_dstr_count != DSTR_NULLPTR) {
-			*out_dstr_count = 0;
-		}
-		return DSTR_NULLPTR;
-	}
-
-	dstr_adt **const result = malloc(result_size);
-	if (result == DSTR_NULLPTR) {
-		if (out_dstr_count != DSTR_NULLPTR) {
-			*out_dstr_count = 0;
-		}
-		return DSTR_NULLPTR;
-	}
-
-	/* 第二遍扫描：创建各段「动态字符串」。 */
-	size_t part_index = 0;
-	const char *start = cstr;
-	p = cstr;
-
-	while (part_index < part_count) {
-		const char *const found = strstr(p, separator);
-		const char *part_start;
-		size_t part_len;
-
-		if (found != DSTR_NULLPTR) {
-			part_start = start;
-			part_len = found - start;
-		} else {
-			part_start = start;
-			part_len = cstr_len - (start - cstr);
-		}
-
-		result[part_index] = create_dstr(part_start, part_len, 0, 0);
-		if (result[part_index] == DSTR_NULLPTR) {
-			/* 创建失败，清理已创建的资源。 */
-			for (size_t i = 0; i < part_index; ++i) {
-				dstr_destroy(result[i]);
-			}
-			free(result);
-			if (out_dstr_count != DSTR_NULLPTR) {
-				*out_dstr_count = 0;
-			}
-			return DSTR_NULLPTR;
-		}
-
-		++part_index;
-
-		if (found != DSTR_NULLPTR) {
-			start = found + separator_len;
-			p = found + separator_len;
-		}
-	}
-
-	if (out_dstr_count != DSTR_NULLPTR) {
-		*out_dstr_count = part_count;
-	}
-	return result;
+	return split_str(
+		cstr, strlen(cstr),
+		separator, strlen(separator),
+		out_dstr_count
+	);
 }
 
 /* 分隔一个「动态字符串」为「动态字符串」数组。 */
@@ -1555,119 +1406,19 @@ dstr_adt **dstr_split(
 	const dstr_adt *const separator,
 	size_t *const out_dstr_count
 ) {
-	/* 输入为空指针或空字符串，返回空指针并将计数置为 0。 */
-	if (dstr == DSTR_NULLPTR || dstr->len == 0) {
-		if (out_dstr_count != DSTR_NULLPTR) {
-			*out_dstr_count = 0;
-		}
+	/* 参数合法性检查。 */
+	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
+		separator == DSTR_NULLPTR || separator->len == 0 ||
+		out_dstr_count == DSTR_NULLPTR
+	) {
 		return DSTR_NULLPTR;
 	}
 
-	const size_t cstr_len = dstr->len;
-
-	/* 分隔符为空指针或空字符串，或分隔符长度大于源字符串长度时，整个字符串作为一个元素。 */
-	const size_t separator_len =
-		(separator != DSTR_NULLPTR && separator->len > 0) ? separator->len : 0;
-
-	if (separator_len == 0 || separator_len > dstr->len) {
-		dstr_adt **const result = malloc(sizeof(dstr_adt*));
-		if (result == DSTR_NULLPTR) {
-			if (out_dstr_count != DSTR_NULLPTR) {
-				*out_dstr_count = 0;
-			}
-			return DSTR_NULLPTR;
-		}
-
-		result[0] = create_dstr(dstr->data, dstr->len, 0, 0);
-		if (result[0] == DSTR_NULLPTR) {
-			free(result);
-			if (out_dstr_count != DSTR_NULLPTR) {
-				*out_dstr_count = 0;
-			}
-			return DSTR_NULLPTR;
-		}
-
-		if (out_dstr_count != DSTR_NULLPTR) {
-			*out_dstr_count = 1;
-		}
-		return result;
-	}
-
-	/* 第一遍扫描：统计分隔段数。 */
-	const char *const separator_data = separator->data;
-	size_t part_count = 1;
-	const char *p = dstr->data;
-	const char *const cstr_end = dstr->data + cstr_len;
-
-	while (p < cstr_end) {
-		const char *const found = strstr(p, separator_data);
-		if (found == DSTR_NULLPTR) {
-			break;
-		}
-		++part_count;
-		p = found + separator_len;
-	}
-
-	/* 分配结果数组。 */
-	size_t result_size;
-	if (!safe_size_t_mul(part_count, sizeof(dstr_adt*), &result_size)) {
-		if (out_dstr_count != DSTR_NULLPTR) {
-			*out_dstr_count = 0;
-		}
-		return DSTR_NULLPTR;
-	}
-
-	dstr_adt **const result = malloc(result_size);
-	if (result == DSTR_NULLPTR) {
-		if (out_dstr_count != DSTR_NULLPTR) {
-			*out_dstr_count = 0;
-		}
-		return DSTR_NULLPTR;
-	}
-
-	/* 第二遍扫描：创建各段「动态字符串」。 */
-	size_t part_index = 0;
-	const char *start = dstr->data;
-	p = dstr->data;
-
-	while (part_index < part_count) {
-		const char *const found = strstr(p, separator_data);
-		const char *part_start;
-		size_t part_len;
-
-		if (found != DSTR_NULLPTR) {
-			part_start = start;
-			part_len = found - start;
-		} else {
-			part_start = start;
-			part_len = cstr_len - (start - dstr->data);
-		}
-
-		result[part_index] = create_dstr(part_start, part_len, 0, 0);
-		if (result[part_index] == DSTR_NULLPTR) {
-			/* 创建失败，清理已创建的资源。 */
-			for (size_t i = 0; i < part_index; ++i) {
-				dstr_destroy(result[i]);
-			}
-			free(result);
-			if (out_dstr_count != DSTR_NULLPTR) {
-				*out_dstr_count = 0;
-			}
-			return DSTR_NULLPTR;
-		}
-
-		++part_index;
-
-		if (found != DSTR_NULLPTR) {
-			start = found + separator_len;
-			p = found + separator_len;
-		}
-	}
-
-	if (out_dstr_count != DSTR_NULLPTR) {
-		*out_dstr_count = part_count;
-	}
-	return result;
+	return split_str(
+		dstr->data, dstr->len,
+		separator->data, separator->len,
+		out_dstr_count
+	);
 }
 
 /* 将「C 字符串」数组合并为一个「动态字符串」。 */
@@ -2164,6 +1915,11 @@ static size_t find_str(
 	size_t *const out_index,
 	size_t *const out_indexes
 ) {
+	/* 如果 sub 长度大于 cstr 长度，则直接返回 0，避免越界访问。 */
+	if (sub_len > cstr_len) {
+		return 0;
+	}
+
 	/* 用于迭代的指针变量。 */
 	const char *p;
 	/* 用于存储当前出现位置的指针。 */
@@ -2240,7 +1996,8 @@ static dstr_status_t replace_str(
 ) {
 	/* 第一次扫描，统计 old_str 截止第 n 次出现的次数。 */
 	const size_t old_str_count = find_str(
-		dstr->data, dstr->len, old_str, old_str_len,
+		dstr->data, dstr->len,
+		old_str, old_str_len,
 		n, backward,
 		DSTR_NULLPTR,DSTR_NULLPTR
 	);
@@ -2259,10 +2016,12 @@ static dstr_status_t replace_str(
 
 	/* new_str 与 old_str 长度比较情况。 */
 	const int new_cmp_old = (new_str_len > old_str_len)
-		? 1 : ((new_str_len < old_str_len) ? -1 : 0);
+		? 1
+		: ((new_str_len < old_str_len) ? -1 : 0);
 	/* new_str_len 与 old_str_len 差绝对值。 */
 	const size_t len_diff = (new_cmp_old > 0)
-		? (new_str_len - old_str_len) : (old_str_len - new_str_len);
+		? (new_str_len - old_str_len)
+		: (old_str_len - new_str_len);
 
 	/* 新的字符串长度。 */
 	size_t new_len;
@@ -2291,7 +2050,8 @@ static dstr_status_t replace_str(
 
 	/* 第二次扫描，这次传入 indexes 以记录截止第 n 次每次出现的位置。 */
 	find_str(
-		dstr->data, dstr->len, old_str, old_str_len,
+		dstr->data, dstr->len,
+		old_str, old_str_len,
 		n, backward,
 		DSTR_NULLPTR, indexes
 	);
@@ -2390,7 +2150,8 @@ static dstr_adt **split_str(
 ) {
 	/* 第一遍扫描，统计 separator 在 cstr 中，出现的次数。 */
 	const size_t separator_count = find_str(
-		cstr, cstr_len, separator, separator_len,
+		cstr, cstr_len,
+		separator, separator_len,
 		0, false,
 		DSTR_NULLPTR, DSTR_NULLPTR
 	);
@@ -2400,11 +2161,67 @@ static dstr_adt **split_str(
 		return DSTR_NULLPTR;
 	}
 
-	/* 动态分配 dstr_adt * 数组。 */
-	dstr_adt **dstrs;
-	if (!safe_size_t_mul(separator_count, sizeof(dstr_adt*), DSTR_NULLPTR) ||
-		(dstrs = (dstr_adt**)malloc(separator_count * sizeof(dstr_adt*))) == DSTR_NULLPTR
-	) {
+	/* dstrs 数组元素个数（分隔后的子串个数）。 */
+	const size_t dstr_count = separator_count + 1;
 
+	/* 动态分配 dstr_adt * 数组（比 separator_count 多 1）。 */
+	dstr_adt **dstrs;
+	if (!safe_size_t_mul(dstr_count, sizeof(dstr_adt*), DSTR_NULLPTR) ||
+		(dstrs = (dstr_adt**)malloc(dstr_count * sizeof(dstr_adt*))) == DSTR_NULLPTR
+	) {
+		return DSTR_NULLPTR;
 	}
+
+	/* 动态分配 size_t 数组，用来存储每次出现的位置索引。 */
+	size_t *indexes;
+	if (!safe_size_t_mul(separator_count, sizeof(size_t), DSTR_NULLPTR) ||
+		(indexes = (size_t*)malloc(separator_count * sizeof(size_t))) == DSTR_NULLPTR
+	) {
+		free(dstrs);
+		return DSTR_NULLPTR;
+	}
+
+	/* 第二遍扫描，传入 indexes 以记录每次出现的位置。 */
+	find_str(
+		cstr, cstr_len,
+		separator, separator_len,
+		0, false,
+		DSTR_NULLPTR, indexes
+	);
+
+	/* 遍历分隔符的各个位置，依次创建各部分的「动态字符串」。 */
+	for (size_t i = 0; i < dstr_count; ++i) {
+		/* 计算当前部分的起始位置和结束位置。 */
+		const size_t part_start = (i == 0)
+			? 0
+			: indexes[i - 1] + separator_len;
+		const size_t part_end = (i < separator_count)
+			? indexes[i]
+			: cstr_len;
+		const size_t part_len = part_end - part_start;
+
+		/* 如果该部分为空字符串（边界重合），则存储空指针。 */
+		if (part_len == 0) {
+			dstrs[i] = DSTR_NULLPTR;
+		} else {
+			dstrs[i] = create_dstr(cstr, cstr_len, part_start, part_len);
+			if (dstrs[i] == DSTR_NULLPTR) {
+				/* 创建失败，释放之前已创建的「动态字符串」及其他资源。 */
+				for (size_t j = 0; j < i; ++j) {
+					if (dstrs[j] != DSTR_NULLPTR) {
+						free(dstrs[j]->data);
+						free(dstrs[j]);
+					}
+				}
+				free(indexes);
+				free(dstrs);
+				return DSTR_NULLPTR;
+			}
+		}
+	}
+
+	/* 释放 indexes 数组，写入输出计数并返回。 */
+	free(indexes);
+	*out_dstr_count = dstr_count;
+	return dstrs;
 }
