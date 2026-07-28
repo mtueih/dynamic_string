@@ -55,6 +55,20 @@ typedef enum {
 
 
 /*------------------------------------------------------------------------------
+ * 其他类型定义
+ *----------------------------------------------------------------------------*/
+
+/**
+ * 方向枚举类型。
+ * 主要用于查找与替换系列函数，表示查找/替换的方向。
+ */
+typedef enum {
+	DSTR_DIR_FORWARD, /* 从前往后。 */
+	DSTR_DIR_BACKWARD /* 从后往前。 */
+} dstr_direction_t;
+
+
+/*------------------------------------------------------------------------------
  * 接口函数原型（声明）
  *----------------------------------------------------------------------------*/
 
@@ -293,13 +307,13 @@ dstr_status_t dstr_cpy_sub(
 );
 
 dstr_status_t dstr_cpy_format(
-	dstr_adt *dstr,
+	dstr_adt *dest,
 	const char *format,
 	...
 );
 
 dstr_status_t dstr_cpy_vformat(
-	dstr_adt *dstr,
+	dstr_adt *dest,
 	const char *format,
 	va_list args
 );
@@ -379,13 +393,13 @@ dstr_status_t dstr_cat_sub(
 );
 
 dstr_status_t dstr_cat_format(
-	dstr_adt *dstr,
+	dstr_adt *dest,
 	const char *format,
 	...
 );
 
 dstr_status_t dstr_cat_vformat(
-	dstr_adt *dstr,
+	dstr_adt *dest,
 	const char *format,
 	va_list args
 );
@@ -477,14 +491,14 @@ dstr_status_t dstr_insert_sub(
 );
 
 dstr_status_t dstr_insert_format(
-	dstr_adt *dstr,
+	dstr_adt *dest,
 	size_t index,
 	const char *format,
 	...
 );
 
 dstr_status_t dstr_insert_vformat(
-	dstr_adt *dstr,
+	dstr_adt *dest,
 	size_t index,
 	const char *format,
 	va_list args
@@ -514,8 +528,8 @@ void dstr_clear(
  */
 void dstr_remove(
 	dstr_adt *dstr,
-	size_t index,
-	size_t count
+	size_t sub_index,
+	size_t sub_count
 );
 
 /**
@@ -626,67 +640,67 @@ bool dstr_contains(
 /**
  * @brief 判断一个「动态字符串」是否与一个「C 字符串」相等。
  *
- * @param dstr 「动态字符串」的指针。
- *             如果为空指针，则视其为「空字符串」。
- * @param cstr 「C 字符串」的指针。
- *             如果为空指针，则视其为「空字符串」。
+ * @param lhs 「动态字符串」的指针。
+ *            如果为空指针，则视其为「空字符串」。
+ * @param rhs 「C 字符串」的指针。
+ *            如果为空指针，则视其为「空字符串」。
  *
  * @return 相等则返回 true，否则返回 false。
  *         两者同为「空字符串」时，返回 true。
  */
 bool dstr_equals_cstr(
-	const dstr_adt *dstr,
-	const char *cstr
+	const dstr_adt *lhs,
+	const char *rhs
 );
 
 /**
  * @brief 判断两个「动态字符串」是否相等。
  *
- * @param dstr_1 第一个「动态字符串」的指针。
- *               如果为空指针，则视其为「空字符串」。
- * @param dstr_2 第二个「动态字符串」的指针。
- *               如果为空指针，则视其为「空字符串」。
+ * @param lhs 第一个「动态字符串」的指针。
+ *            如果为空指针，则视其为「空字符串」。
+ * @param rhs 第二个「动态字符串」的指针。
+ *            如果为空指针，则视其为「空字符串」。
  *
  * @return 相等则返回 true，否则返回 false。
  *         两者同为「空字符串」时，返回 true。
  */
 bool dstr_equals(
-	const dstr_adt *dstr_1,
-	const dstr_adt *dstr_2
+	const dstr_adt *lhs,
+	const dstr_adt *rhs
 );
 
 /**
  * @brief 比较一个「动态字符串」与一个「C 字符串」。
  *
- * @param dstr 「动态字符串」的指针。
- *             如果为空指针，则视其为「空字符串」。
- * @param cstr 「C 字符串」的指针。
- *             如果为空指针，则视其为「空字符串」。
+ * @param lhs 「动态字符串」的指针。
+ *            如果为空指针，则视其为「空字符串」。
+ * @param rhs 「C 字符串」的指针。
+ *            如果为空指针，则视其为「空字符串」。
  *
- * @return 两者相等返回 0，前者大于后者返回正值，前者小于后者返回负值。
+ * @return 两者相等返回 0，lhs 大于 rhs 返回正值，lhs 小于 rhs 返回负值。
  *         两者同为「空字符串」时，返回 0。
  *         两者只有一者为「空字符串」时，为「空字符串」者小于非「空字符串」者。
  */
 int dstr_compare_cstr(
-	const dstr_adt *dstr,
-	const char *cstr
+	const dstr_adt *lhs,
+	const char *rhs
 );
 
 /**
  * @brief 比较两个「动态字符串」。
  *
- * @param dstr_1 第一个「动态字符串」的指针。
- *               如果为空指针，则视其为「空字符串」。
- * @param dstr_2 第二个「动态字符串」的指针。
- *               如果为空指针，则视其为「空字符串」。
+ * @param lhs 第一个「动态字符串」的指针。
+ *            如果为空指针，则视其为「空字符串」。
+ * @param rhs 第二个「动态字符串」的指针。
+ *            如果为空指针，则视其为「空字符串」。
  *
  * @return 两者相等返回 0，前者大于后者返回正值，前者小于后者返回负值。
  *         两者同为「空字符串」时，返回 0。
  *         两者只有一者为「空字符串」时，为「空字符串」者小于非「空字符串」者。
  */
 int dstr_compare(
-	const dstr_adt *dstr_1,
-	const dstr_adt *dstr_2
+	const dstr_adt *lhs,
+	const dstr_adt *rhs
 );
 
 /* 查找、统计与替换。 */
@@ -703,12 +717,12 @@ int dstr_compare(
  * 子「C 字符串」的指针。
  * 如果为空指针，则函数会直接返回 false。
  *
- * @param backward
- * 是否从后向前查找。
- *
  * @param out_index
  * 存储首次出现的位置索引的 size_t 变量的指针。
  * 为空指针时不写入。
+ *
+ * @param direction
+ * 查找方向。
  *
  * @return
  * 找到则返回 true，否则返回 false。
@@ -716,8 +730,8 @@ int dstr_compare(
 bool dstr_find_cstr(
 	const dstr_adt *dstr,
 	const char *sub,
-	bool backward,
-	size_t *out_index
+	size_t *out_index,
+	dstr_direction_t direction
 );
 
 /**
@@ -732,12 +746,12 @@ bool dstr_find_cstr(
  * 子「动态字符串」的指针。
  * 如果为空指针，则函数会直接返回 false。
  *
- * @param backward
- * 是否从后向前查找。
- *
  * @param out_index
  * 存储首次出现的位置索引的 size_t 变量的指针。
  * 为空指针时不写入。
+ *
+ * @param direction
+ * 查找方向。
  *
  * @return
  * 找到则返回 true，否则返回 false。
@@ -745,8 +759,8 @@ bool dstr_find_cstr(
 bool dstr_find(
 	const dstr_adt *dstr,
 	const dstr_adt *sub,
-	bool backward,
-	size_t *out_index
+	size_t *out_index,
+	dstr_direction_t direction
 );
 
 /**
@@ -759,20 +773,20 @@ bool dstr_find(
  *            如果为空指针，则函数会直接返回 false。
  * @param out_index 存储查找结果（位置索引）的 size_t 变量的指针。
  *                  为空指针时不写入。
+ * @param direction 查找方向。
  * @param n 出现的次序。
  *          从 1 开始。
  *          为 0 表示最后一次。
  *          如果大于实际出现次数，则视为最后一次。
- * @param backward 是否从后向前查找。
  *
  * @return 找到则返回 true，否则返回 false。
  */
 bool dstr_find_nth_cstr(
 	const dstr_adt *dstr,
 	const char *sub,
-	size_t n,
-	bool backward,
-	size_t *out_index
+	size_t *out_index,
+	dstr_direction_t direction,
+	size_t n
 );
 
 /**
@@ -784,36 +798,36 @@ bool dstr_find_nth_cstr(
  *            如果为空指针，则函数会直接返回 false。
  * @param out_index 存储查找结果（位置索引）的 size_t 变量的指针。
  *                  为空指针时不写入。
+ * @param direction 查找方向。
  * @param n 出现的次序。
  *          从 1 开始。
  *          为 0 表示最后一次。
  *          如果大于实际出现次数，则视为最后一次。
- * @param backward 是否从后向前查找。
  *
  * @return 找到则返回 true，否则返回 false。
  */
 bool dstr_find_nth(
 	const dstr_adt *dstr,
 	const dstr_adt *sub,
-	size_t n,
-	bool backward,
-	size_t *out_index
+	size_t *out_index,
+	dstr_direction_t direction,
+	size_t n
 );
 
-bool dstr_find_all_cstr(
+size_t dstr_find_indexes_cstr(
 	const dstr_adt *dstr,
 	const char *sub,
-	size_t n,
-	bool backward,
-	size_t *out_indexes
+	size_t *out_indexes,
+	dstr_direction_t direction,
+	size_t n
 );
 
-bool dstr_find_all(
+size_t dstr_find_indexes(
 	const dstr_adt *dstr,
 	const dstr_adt *sub,
-	size_t n,
-	bool backward,
-	size_t *out_indexes
+	size_t *out_indexes,
+	dstr_direction_t direction,
+	size_t n
 );
 
 /**
@@ -863,11 +877,11 @@ size_t dstr_count(
  * @return 全局状态码。
  */
 dstr_status_t dstr_replace_cstr(
-	dstr_adt *dstr,
+	dstr_adt *dest,
 	const char *old_str,
 	const char *new_str,
-	size_t n,
-	bool backward
+	dstr_direction_t direction,
+	size_t n
 );
 
 /**
@@ -887,11 +901,11 @@ dstr_status_t dstr_replace_cstr(
  * @return 全局状态码。
  */
 dstr_status_t dstr_replace(
-	dstr_adt *dstr,
+	dstr_adt *dest,
 	const dstr_adt *old_str,
 	const dstr_adt *new_str,
-	size_t n,
-	bool backward
+	dstr_direction_t direction,
+	size_t n
 );
 
 /* 分隔与合并。 */
@@ -919,5 +933,6 @@ dstr_adt *dstr_join(
 	size_t dstr_count,
 	const dstr_adt *separator
 );
+
 
 #endif /* DYNAMIC_STRING_H */
