@@ -433,7 +433,8 @@ dstr_status_t dstr_set_capacity(
 
 	if (new_capacity <= dstr->len) {
 		if (new_capacity > 0) {
-			dstr->data[dstr->len = new_capacity - 1] = '\0';
+			dstr->len = new_capacity - 1;
+			dstr->data[dstr->len] = '\0';
 		} else {
 			dstr->len = 0;
 		}
@@ -783,6 +784,10 @@ void dstr_clear(
 	if (dstr == DSTR_NULLPTR) { return; }
 
 	dstr->len = 0;
+
+	if (dstr->cap > 0) {
+		dstr->data[0] = '\0';
+	}
 }
 
 /* 删除一个「动态字符串」的子串。 */
@@ -823,10 +828,10 @@ void dstr_trim(
 			--q;
 		}
 	} else {
-		while (isspace(*p)) {
+		while (isspace((unsigned char)*p)) {
 			++p;
 		}
-		while (q > p && isspace(*(q - 1))) {
+		while (q > p && isspace((unsigned char)*(q - 1))) {
 			--q;
 		}
 	}
@@ -1769,11 +1774,11 @@ static dstr_status_t replace_str(
 
 				if (move_len > 0) {
 					const size_t move_step = len_diff * (i + 1);
-					memmove(
-						dstr->data + move_start + move_step,
-						dstr->data + move_start,
-						move_len
-					);
+					void *const move_dest = (new_cmp_old > 0)
+						? (dstr->data + move_start + move_step)
+						: (dstr->data + move_start - move_step);
+
+					memmove(move_dest, dstr->data + move_start, move_len);
 				}
 			}
 
@@ -1799,17 +1804,17 @@ static dstr_status_t replace_str(
 
 				if (move_len > 0) {
 					const size_t move_step = len_diff * i;
-					memmove(
-						dstr->data + move_start + move_step,
-						dstr->data + move_start,
-						move_len
-					);
+					void *const move_dest = (new_cmp_old > 0)
+						? (dstr->data + move_start + move_step)
+						: (dstr->data + move_start - move_step);
+
+					memmove(move_dest, dstr->data + move_start, move_len);
 				}
 			}
 
 			/* 拷贝新数据。 */
 			if (new_str_len > 0) {
-				const size_t copy_target = indexes[i] - len_diff * (i - 1);
+				const size_t copy_target = indexes[i - 1] - len_diff * (i - 1);
 				memcpy(
 					dstr->data + copy_target,
 					new_str,
