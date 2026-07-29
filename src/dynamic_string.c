@@ -821,7 +821,7 @@ void dstr_trim(
 
 	/* 定位剩余区间。 */
 	if (is_specified_trim_chars) {
-		while (strchr(trim_chars, *p) != DSTR_NULLPTR) {
+		while (p < q && strchr(trim_chars, *p) != DSTR_NULLPTR) {
 			++p;
 		}
 		while (q > p && strchr(trim_chars, *(q - 1)) != DSTR_NULLPTR) {
