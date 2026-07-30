@@ -17,7 +17,7 @@
 
 
 /*==============================================================================
- * include/dynamic_string.c
+ * include/dynamic_string.c - 项目主库实现文件
  *============================================================================*/
 
 
@@ -325,6 +325,7 @@ dstr_adt *dstr_clone(
 	return create_dstr(dstr->data, dstr->len, 0, 0);
 }
 
+/* 提取一个「C 字符串」的子串。 */
 dstr_adt *dstr_sub_cstr(
 	const char *const cstr,
 	const size_t sub_index,
@@ -343,6 +344,7 @@ dstr_adt *dstr_sub_cstr(
 	return create_dstr(cstr, cstr_len, sub_index, sub_count);
 }
 
+/* 提取一个「动态字符串」的子串。 */
 dstr_adt *dstr_sub(
 	const dstr_adt *const dstr,
 	const size_t sub_index,
@@ -360,6 +362,7 @@ dstr_adt *dstr_sub(
 	return create_dstr(dstr->data, dstr->len, sub_index, sub_count);
 }
 
+/* 格式化创建一个「动态字符串」。 */
 dstr_adt *dstr_create_format(
 	const char *const format,
 	...
@@ -385,6 +388,7 @@ dstr_adt *dstr_create_format(
 	return new_dstr;
 }
 
+/* 格式化创建一个「动态字符串」（va_list 版本）。 */
 dstr_adt *dstr_create_vformat(
 	const char *const format,
 	va_list args
@@ -558,6 +562,7 @@ dstr_status_t dstr_cpy_sub(
 	return insert_str(dest, 0, dest->len, src->data, src->len, sub_index, sub_count);
 }
 
+/* 格式化复制一个字符串到一个「动态字符串」。 */
 dstr_status_t dstr_cpy_format(
 	dstr_adt *const dest,
 	const char *const format,
@@ -579,6 +584,7 @@ dstr_status_t dstr_cpy_format(
 	return result;
 }
 
+/* 格式化复制一个字符串到一个「动态字符串」（va_list 版本）。 */
 dstr_status_t dstr_cpy_vformat(
 	dstr_adt *const dest,
 	const char *const format,
@@ -663,6 +669,7 @@ dstr_status_t dstr_cat_sub(
 	return insert_str(dest, dest->len, 0, src->data, src->len, sub_index, sub_count);
 }
 
+/* 格式化追加一个字符串到一个「动态字符串」。 */
 dstr_status_t dstr_cat_format(
 	dstr_adt *const dest,
 	const char *const format,
@@ -682,6 +689,7 @@ dstr_status_t dstr_cat_format(
 	return result;
 }
 
+/* 格式化追加一个字符串到一个「动态字符串」（va_list 版本）。 */
 dstr_status_t dstr_cat_vformat(
 	dstr_adt *const dest,
 	const char *const format,
@@ -768,6 +776,7 @@ dstr_status_t dstr_insert_sub(
 	return insert_str(dest, index, 0, src->data, src->len, sub_index, sub_count);
 }
 
+/* 格式化插入一个字符串到一个「动态字符串」。 */
 dstr_status_t dstr_insert_format(
 	dstr_adt *const dest,
 	const size_t index,
@@ -788,6 +797,7 @@ dstr_status_t dstr_insert_format(
 	return result;
 }
 
+/* 格式化插入一个字符串到一个「动态字符串」（va_list 版本）。 */
 dstr_status_t dstr_insert_vformat(
 	dstr_adt *const dest,
 	const size_t index,
@@ -875,7 +885,6 @@ void dstr_trim(
 		dstr->data[dstr->len] = '\0';
 	}
 }
-
 
 /* 关系判断与比较。 */
 
@@ -1123,6 +1132,7 @@ bool dstr_find_nth(
 	) > 0);
 }
 
+/* 查找一个「动态字符串」中指定子「C 字符串」前 n 次出现的位置。 */
 size_t dstr_find_indexes_cstr(
 	const dstr_adt *const dstr,
 	const char *const sub,
@@ -1143,6 +1153,7 @@ size_t dstr_find_indexes_cstr(
 	);
 }
 
+/* 查找一个「动态字符串」中指定子「动态字符串」前 n 次出现的位置。 */
 size_t dstr_find_indexes(
 	const dstr_adt *const dstr,
 	const dstr_adt *const sub,
@@ -1162,7 +1173,6 @@ size_t dstr_find_indexes(
 		direction, n
 	);
 }
-
 
 /* 统计一个「动态字符串」中指定子「C 字符串」出现的次数。 */
 size_t dstr_count_cstr(
@@ -1202,20 +1212,20 @@ size_t dstr_count(
 
 /* 替换一个「动态字符串」中指定旧「C 字符串」为指定新「C 字符串」n 次。 */
 dstr_status_t dstr_replace_cstr(
-	dstr_adt *const dest,
+	dstr_adt *const dstr,
 	const char *const old_str,
 	const char *const new_str,
 	const dstr_direction_t direction,
 	const size_t n
 ) {
 	/* 参数合法性检查。 */
-	if (dest == DSTR_NULLPTR || dest->len == 0 ||
+	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
 		old_str == DSTR_NULLPTR || old_str[0] == '\0'
 	) { return DSTR_INVALID_ARGUMENT; }
 
 	if (new_str == DSTR_NULLPTR || new_str[0] == '\0') {
 		return replace_str(
-			dest,
+			dstr,
 			old_str, strlen(old_str),
 			DSTR_NULLPTR, 0,
 			direction, n
@@ -1223,7 +1233,7 @@ dstr_status_t dstr_replace_cstr(
 	}
 
 	return replace_str(
-		dest,
+		dstr,
 		old_str, strlen(old_str),
 		new_str, strlen(new_str),
 		direction, n
@@ -1232,20 +1242,20 @@ dstr_status_t dstr_replace_cstr(
 
 /* 替换一个「动态字符串」中指定旧「动态字符串」为指定新「动态字符串」n 次。 */
 dstr_status_t dstr_replace(
-	dstr_adt *const dest,
+	dstr_adt *const dstr,
 	const dstr_adt *const old_str,
 	const dstr_adt *const new_str,
 	const dstr_direction_t direction,
 	const size_t n
 ) {
 	/* 参数合法性检查。 */
-	if (dest == DSTR_NULLPTR || dest->len == 0 ||
+	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
 		old_str == DSTR_NULLPTR || old_str->len == 0
 	) { return DSTR_INVALID_ARGUMENT; }
 
 	if (new_str == DSTR_NULLPTR || new_str->len == 0) {
 		return replace_str(
-			dest,
+			dstr,
 			old_str->data, old_str->len,
 			DSTR_NULLPTR, 0,
 			direction, n
@@ -1253,17 +1263,16 @@ dstr_status_t dstr_replace(
 	}
 
 	return replace_str(
-		dest,
+		dstr,
 		old_str->data, old_str->len,
 		new_str->data, new_str->len,
 		direction, n
 	);
 }
 
-
 /* 分隔与合并。 */
 
-/* 分隔一个「C 字符串」为「动态字符串」数组。 */
+/* 分隔一个「C 字符串」。 */
 dstr_adt **dstr_split_cstr(
 	const char *const cstr,
 	const char *const separator,
@@ -1282,7 +1291,7 @@ dstr_adt **dstr_split_cstr(
 	);
 }
 
-/* 分隔一个「动态字符串」为「动态字符串」数组。 */
+/* 分隔一个「动态字符串」。 */
 dstr_adt **dstr_split(
 	const dstr_adt *const dstr,
 	const dstr_adt *const separator,
@@ -1301,7 +1310,7 @@ dstr_adt **dstr_split(
 	);
 }
 
-/* 将「C 字符串」数组合并为一个「动态字符串」。 */
+/* 合并多个「C 字符串」。 */
 dstr_adt *dstr_join_cstr(
 	const char *const *const cstrs,
 	const size_t cstr_count,
@@ -1325,7 +1334,7 @@ dstr_adt *dstr_join_cstr(
 	);
 }
 
-/* 将「动态字符串」数组合并为一个「动态字符串」。 */
+/* 合并多个「动态字符串」。 */
 dstr_adt *dstr_join(
 	const dstr_adt *const *const dstrs,
 	const size_t dstr_count,
