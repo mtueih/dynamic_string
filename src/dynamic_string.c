@@ -68,15 +68,19 @@ struct dynamic_string {
  *----------------------------------------------------------------------------*/
 
 /**
- * @brief 调整一个「动态字符串」的容量（基础版）。
- *        只是简单地封装了 realloc 操作。
- *        不做 new_cap 为 0 ，以及是否与原容量相等的检查。
- *        适用于确定所需容量不等于原容量，且不为 0 的情况。
+ * @brief
+ * 调整一个「动态字符串」的容量（基础版）。
+ * 只是简单地封装了 realloc 操作。
+ * 不做 new_cap 为 0 ，以及是否与原容量相等的检查。
+ * 适用于确定所需容量不等于原容量，且不为 0 的情况。
  *
- * @param dstr 目标「动态字符串」的指针。
- * @param new_cap 新的容量。
+ * @param dstr
+ * 目标「动态字符串」的指针。
+ * @param new_cap
+ * 新的容量。
  *
- * @return 调整成功返回 true，否则返回 false。
+ * @return
+ * 调整成功返回 true，否则返回 false。
  */
 static bool capacity_resize(
 	dstr_adt *dstr,
@@ -84,14 +88,18 @@ static bool capacity_resize(
 );
 
 /**
- * @brief 调整一个「动态字符串」的容量（常规版）。
- *        在基础版的基础上增加对 new_cap 为 0 ，以及是否与原容量相等的检查。
- *        适用于不能确定所需容量是否不等于原容量、是否不为 0 的情况。
+ * @brief
+ * 调整一个「动态字符串」的容量（常规版）。
+ * 在基础版的基础上增加对 new_cap 为 0 ，以及是否与原容量相等的检查。
+ * 适用于不能确定所需容量是否不等于原容量、是否不为 0 的情况。
  *
- * @param dstr 目标「动态字符串」的指针。
- * @param new_cap 新的容量。
+ * @param dstr
+ * 目标「动态字符串」的指针。
+ * @param new_cap
+ * 新的容量。
  *
- * @return 调整成功返回 true，否则返回 false。
+ * @return
+ * 调整成功返回 true，否则返回 false。
  */
 static bool capacity_resize_regular(
 	dstr_adt *dstr,
@@ -99,17 +107,21 @@ static bool capacity_resize_regular(
 );
 
 /**
- * @brief 调整一个「动态字符串」的容量（动态版）。
- *        在基础班的基础上增加对 new_cap 为 0 ，以及是否与原容量相等的检查。
- *        会确保容量不会低于目标「动态字符串」的容量保底值。
- *        会执行预分配、延迟减容、缓存行对齐等性能优化策略。
- *        所有由长度变化引起的容量调整都应该且只能使用此函数。
+ * @brief
+ * 调整一个「动态字符串」的容量（动态版）。
+ * 在基础班的基础上增加对 new_cap 为 0 ，以及是否与原容量相等的检查。
+ * 会确保容量不会低于目标「动态字符串」的容量保底值。
+ * 会执行预分配、延迟减容、缓存行对齐等性能优化策略。
+ * 所有由长度变化引起的容量调整都应该且只能使用此函数。
  *
- * @param dstr 目标「动态字符串」的指针。
- * @param new_cap 新的容量。
+ * @param dstr
+ * 目标「动态字符串」的指针。
+ * @param new_cap
+ * 新的容量。
  *
- * @return 调整成功返回 true，否则返回 false。
- *         “调整成功”只保证调整后的容量不低于 new_cap，不保证预分配等策略一定生效。
+ * @return
+ * 调整成功返回 true，否则返回 false。
+ * "调整成功"只保证调整后的容量不低于 new_cap，不保证预分配等策略一定生效。
  */
 static bool capacity_resize_dynamic(
 	dstr_adt *dstr,
@@ -117,16 +129,20 @@ static bool capacity_resize_dynamic(
 );
 
 /**
- * @brief 从一个「C 字符串」创建一个「动态字符串」。
+ * @brief
+ * 从一个「C 字符串」创建一个「动态字符串」。
  *
- * @param src 源「C 字符串」的指针。
- * @param src_len 源「C 字符串」的长度。
- *                为 0 时，创建空「动态字符串」。
+ * @param src
+ * 源「C 字符串」的指针。
+ * @param src_len
+ * 源「C 字符串」的长度。
+ * 为 0 时，创建空「动态字符串」。
  * @param sub_index
  * @param sub_count
  *
- * @return 所创建的「动态字符串」的指针。
- *         如果创建失败则返回空指针。
+ * @return
+ * 所创建的「动态字符串」的指针。
+ * 如果创建失败则返回空指针。
  */
 static dstr_adt *create_dstr(
 	const char *src,
@@ -136,19 +152,28 @@ static dstr_adt *create_dstr(
 );
 
 /**
- * @brief 先删除一个「动态字符串」中的指定位置处开始向后的指定个字符，
- *        然后向该位置插入一个「C 字符串」的子串。
+ * @brief
+ * 先删除一个「动态字符串」中的指定位置处开始向后的指定个字符，
+ * 然后向该位置插入一个「C 字符串」的子串。
  *
- * @param dest 目标「动态字符串」的指针。
- * @param index 目标位置的索引。
- * @param count 删除个数。
- * @param src 源「C 字符串」的指针。
- * @param src_len 源「C 字符串」的长度。
- * @param sub_index 子串的起始索引。
- * @param sub_count 字串的长度。
- *                  为 0 表示到末尾。
+ * @param dest
+ * 目标「动态字符串」的指针。
+ * @param index
+ * 目标位置的索引。
+ * @param count
+ * 删除个数。
+ * @param src
+ * 源「C 字符串」的指针。
+ * @param src_len
+ * 源「C 字符串」的长度。
+ * @param sub_index
+ * 子串的起始索引。
+ * @param sub_count
+ * 字串的长度。
+ * 为 0 表示到末尾。
  *
- * @return 全局状态码。
+ * @return
+ * 全局状态码。
  */
 static dstr_status_t insert_str(
 	dstr_adt *dest,
@@ -161,16 +186,23 @@ static dstr_status_t insert_str(
 );
 
 /**
- * @brief 格式化写入字符串到「动态字符串」缓冲区的指定位置。
- *        写入前可选择性删除指定数量的字符。
+ * @brief
+ * 格式化写入字符串到「动态字符串」缓冲区的指定位置。
+ * 写入前可选择性删除指定数量的字符。
  *
- * @param dstr 目标「动态字符串」的指针。
- * @param index 写入起始位置的索引。
- * @param delete_count 写入前先删除的字符数。
- * @param format 格式「C 字符串」的指针。
- * @param args 可变参数列表，类型为 va_list。
+ * @param dstr
+ * 目标「动态字符串」的指针。
+ * @param index
+ * 写入起始位置的索引。
+ * @param delete_count
+ * 写入前先删除的字符数。
+ * @param format
+ * 格式「C 字符串」的指针。
+ * @param args
+ * 可变参数列表，类型为 va_list。
  *
- * @return 全局状态码。
+ * @return
+ * 全局状态码。
  */
 static dstr_status_t format_to_dstr(
 	dstr_adt *dstr,
@@ -188,32 +220,25 @@ static dstr_status_t format_to_dstr(
  * @param cstr
  * 目标「C 字符串」的指针。
  * 不能为空指针。
- *
  * @param cstr_len
  * 目标「C 字符串」的长度。
  * 不能为 0。
- *
  * @param sub
  * 子「C 字符串」的指针。
  * 不能为空指针。
- *
  * @param sub_len
  * 子「C 字符串」的长度。
  * 不能为 0。
- *
  * @param n
  * 出现的次序。
  * 从 1 开始。
  * 为 0 表示最后一次。
  * 为 0 通常用于统计出现的次数。
- *
  * @param backward
  * 是否从后向前查找。
- *
  * @param out_index
  * 存储第 n 次出现的位置索引的 size_t 变量的指针。
  * 为空指针时不写入。
- *
  * @param out_indexes
  * 存储第 1 次到第 n 次出现的位置索引的 size_t 数组的指针。
  * 为空指针时不写入。
