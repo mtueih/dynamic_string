@@ -70,19 +70,28 @@ struct dynamic_string {
 /**
  * @brief
  * 调整一个「动态字符串」的容量（基础版）。
+ *
+ * @remark
  * 只是简单地封装了 realloc 操作。
  * 不做 new_cap 为 0 ，以及是否与原容量相等的检查。
  * 适用于确定所需容量不等于原容量，且不为 0 的情况。
+ *
+ * @warning
+ * 此函数不做 new_cap 是否为 0 的检查，new_cap 为 0 将导致
+ * realloc 可能的未定义行为。
+ * 如果不能确定所需容量不为 0，请使用 resize_capacity_regular()
+ * 或 resize_capacity_dynamic()。
  *
  * @param dstr
  * 目标「动态字符串」的指针。
  * @param new_cap
  * 新的容量。
+ * 不能为 0，会导致未定义行为！
  *
  * @return
- * 调整成功返回 true，否则返回 false。
+ * 如果调整成功则返回 true，否则返回 false。
  */
-static bool capacity_resize(
+static bool resize_capacity(
 	dstr_adt *dstr,
 	size_t new_cap
 );
@@ -90,6 +99,8 @@ static bool capacity_resize(
 /**
  * @brief
  * 调整一个「动态字符串」的容量（常规版）。
+ *
+ * @remark
  * 在基础版的基础上增加对 new_cap 为 0 ，以及是否与原容量相等的检查。
  * 适用于不能确定所需容量是否不等于原容量、是否不为 0 的情况。
  *
@@ -99,9 +110,9 @@ static bool capacity_resize(
  * 新的容量。
  *
  * @return
- * 调整成功返回 true，否则返回 false。
+ * 如果调整成功则返回 true，否则返回 false。
  */
-static bool capacity_resize_regular(
+static bool resize_capacity_regular(
 	dstr_adt *dstr,
 	size_t new_cap
 );
@@ -109,7 +120,7 @@ static bool capacity_resize_regular(
 /**
  * @brief
  * 调整一个「动态字符串」的容量（动态版）。
- * 在基础班的基础上增加对 new_cap 为 0 ，以及是否与原容量相等的检查。
+ * 在基础版的基础上增加对 new_cap 为 0，以及是否与原容量相等的检查。
  * 会确保容量不会低于目标「动态字符串」的容量保底值。
  * 会执行预分配、延迟减容、缓存行对齐等性能优化策略。
  * 所有由长度变化引起的容量调整都应该且只能使用此函数。
@@ -120,17 +131,17 @@ static bool capacity_resize_regular(
  * 新的容量。
  *
  * @return
- * 调整成功返回 true，否则返回 false。
- * "调整成功"只保证调整后的容量不低于 new_cap，不保证预分配等策略一定生效。
+ * 如果调整成功则返回 true，否则返回 false。
+ * “调整成功”只保证调整后的容量不低于 new_cap，不保证预分配等策略一定生效。
  */
-static bool capacity_resize_dynamic(
+static bool resize_capacity_dynamic(
 	dstr_adt *dstr,
 	size_t new_cap
 );
 
 /**
  * @brief
- * 从一个「C 字符串」创建一个「动态字符串」。
+ * 从一个「C 字符串」的子串创建一个新「动态字符串」。
  *
  * @param src
  * 源「C 字符串」的指针。
@@ -138,7 +149,10 @@ static bool capacity_resize_dynamic(
  * 源「C 字符串」的长度。
  * 为 0 时，创建空「动态字符串」。
  * @param sub_index
+ * 子串的起始索引。
  * @param sub_count
+ * 子串的长度。
+ * 为 0 表示到末尾。
  *
  * @return
  * 所创建的「动态字符串」的指针。
@@ -153,15 +167,16 @@ static dstr_adt *create_dstr(
 
 /**
  * @brief
- * 先删除一个「动态字符串」中的指定位置处开始向后的指定个字符，
- * 然后向该位置插入一个「C 字符串」的子串。
+ * 向一个「动态字符串」的指定位置处插入一个「C 字符串」的子串。
+ * 插入前可选择性删除目标位置向后的指定数量个字符，用于覆写和删除。
  *
  * @param dest
  * 目标「动态字符串」的指针。
  * @param index
- * 目标位置的索引。
- * @param count
- * 删除个数。
+ * 插入位置的索引。
+ * @param remove_count
+ * 插入前先删除的字符数。
+ * 0 不表示删除到末尾。
  * @param src
  * 源「C 字符串」的指针。
  * @param src_len
@@ -169,16 +184,17 @@ static dstr_adt *create_dstr(
  * @param sub_index
  * 子串的起始索引。
  * @param sub_count
- * 字串的长度。
+ * 子串的长度。
  * 为 0 表示到末尾。
  *
  * @return
  * 全局状态码。
  */
+/* 向一个「动态字符串」的指定位置处插入一个「C 字符串」的子串。 */
 static dstr_status_t insert_str(
 	dstr_adt *dest,
 	size_t index,
-	size_t count,
+	size_t remove_count,
 	const char *src,
 	size_t src_len,
 	size_t sub_index,
@@ -187,15 +203,16 @@ static dstr_status_t insert_str(
 
 /**
  * @brief
- * 格式化写入字符串到「动态字符串」缓冲区的指定位置。
- * 写入前可选择性删除指定数量的字符。
+ * 向一个「动态字符串」的指定位置处格式化插入一个字符串。
+ * 写入前可选择性删除目标位置向后的指定数量个字符，用于覆写和删除。
  *
  * @param dstr
  * 目标「动态字符串」的指针。
  * @param index
- * 写入起始位置的索引。
- * @param delete_count
- * 写入前先删除的字符数。
+ * 插入位置的索引。
+ * @param remove_count
+ * 插入前先删除的字符数。
+ * 0 不表示删除到末尾。
  * @param format
  * 格式「C 字符串」的指针。
  * @param args
@@ -207,7 +224,7 @@ static dstr_status_t insert_str(
 static dstr_status_t format_to_dstr(
 	dstr_adt *dstr,
 	size_t index,
-	size_t delete_count,
+	size_t remove_count,
 	const char *format,
 	va_list args
 );
@@ -215,36 +232,31 @@ static dstr_status_t format_to_dstr(
 /**
  * @brief
  * 查找一个「C 字符串」中，指定子「C 字符串」第 n 次出现的位置，
- * 并返回直到第 n 次，实际一共出现的次数。
+ * 并返回截止第 n 次，实际一共出现的次数。
  *
  * @param cstr
  * 目标「C 字符串」的指针。
- * 不能为空指针。
  * @param cstr_len
  * 目标「C 字符串」的长度。
- * 不能为 0。
  * @param sub
  * 子「C 字符串」的指针。
- * 不能为空指针。
  * @param sub_len
  * 子「C 字符串」的长度。
- * 不能为 0。
+ * @param out_index
+ * 存储查找结果（位置索引）的 size_t 变量的指针。
+ * 为空指针时不写入。
+ * @param out_indexes
+ * 存储查找结果（位置索引）的 size_t 数组的指针。
+ * 为空指针时不写入。
+ * 请确保容量足够。
+ * 通常需要先进行一次统计，获得确切出现次数后使用此参数，
+ * 也可预备一个足够大的数组，以减少一次查找。
+ * @param direction
+ * 查找方向。
  * @param n
  * 出现的次序。
  * 从 1 开始。
  * 为 0 表示最后一次。
- * 为 0 通常用于统计出现的次数。
- * @param backward
- * 是否从后向前查找。
- * @param out_index
- * 存储第 n 次出现的位置索引的 size_t 变量的指针。
- * 为空指针时不写入。
- * @param out_indexes
- * 存储第 1 次到第 n 次出现的位置索引的 size_t 数组的指针。
- * 为空指针时不写入。
- * 请确保容量足够。
- * 通常需要先进行一次统计，获得确切出现次数后使用此参数，
- * 也可预备一个足够大的数组，以减少一次统计。
  *
  * @return
  * 指定子「C 字符串」截止第 n 次，实际一共出现的次数。
@@ -260,6 +272,33 @@ static size_t find_str(
 	size_t n
 );
 
+/**
+ * @brief
+ * 将一个「动态字符串」中指定的旧「C 字符串」替换为指定的新「C 字符串」。
+ * 可指定替换方向和替换次数。
+ *
+ * @param dstr
+ * 目标「动态字符串」的指针。
+ * @param old_str
+ * 旧「C 字符串」的指针。
+ * @param old_str_len
+ * 旧「C 字符串」的长度。
+ * @param new_str
+ * 新「C 字符串」的指针。
+ * 为空指针时视为替换为空字符串（即删除旧字符串）。
+ * @param new_str_len
+ * 新「C 字符串」的长度。
+ * new_str 为空指针时该值应为 0。
+ * @param direction
+ * 替换方向。
+ * @param n
+ * 替换次数。
+ * 从 1 开始。
+ * 为 0 表示全部替换。
+ *
+ * @return
+ * 全局状态码。
+ */
 static dstr_status_t replace_str(
 	dstr_adt *dstr,
 	const char *old_str,
@@ -270,6 +309,26 @@ static dstr_status_t replace_str(
 	size_t n
 );
 
+/**
+ * @brief
+ * 将一个「C 字符串」按指定分隔符分割为多个「动态字符串」。
+ *
+ * @param cstr
+ * 目标「C 字符串」的指针。
+ * @param cstr_len
+ * 目标「C 字符串」的长度。
+ * @param separator
+ * 分隔「C 字符串」的指针。
+ * @param separator_len
+ * 分隔「C 字符串」的长度。
+ * @param out_dstr_count
+ * 存储分割后「动态字符串」个数的 size_t 变量的指针。
+ *
+ * @return
+ * 分割后「动态字符串」指针数组的指针。
+ * 如果分割失败则返回空指针。
+ * 注意：数组中的某些元素可能为空指针，表示该部分为空字符串。
+ */
 static dstr_adt **split_str(
 	const char *cstr,
 	size_t cstr_len,
@@ -278,6 +337,32 @@ static dstr_adt **split_str(
 	size_t *out_dstr_count
 );
 
+/**
+ * @brief
+ * 将多个「C 字符串」或「动态字符串」按指定分隔符连接合并为一个「动态字符串」。
+ *
+ * @remark
+ * cstrs 和 dstrs 互斥，每次调用仅其中一个有效，另一个应为空指针。
+ *
+ * @param cstrs
+ * 「C 字符串」常量指针数组的指针。
+ * 为空指针时表示使用 dstrs。
+ * @param dstrs
+ * 「动态字符串」常量指针数组的指针。
+ * 为空指针时表示使用 cstrs。
+ * @param str_count
+ * 字符串的数量。
+ * @param separator
+ * 分隔「C 字符串」的指针。
+ * 为空指针时表示不使用分隔符。
+ * @param separator_len
+ * 分隔「C 字符串」的长度。
+ * separator 为空指针时该值应为 0。
+ *
+ * @return
+ * 合并后「动态字符串」的指针。
+ * 如果合并失败则返回空指针。
+ */
 static dstr_adt *join_str(
 	const char *const *cstrs,
 	const dstr_adt *const *dstrs,
@@ -454,7 +539,7 @@ dstr_status_t dstr_set_capacity(
 ) {
 	if (dstr == DSTR_NULLPTR) { return DSTR_INVALID_ARGUMENT; }
 
-	if (!capacity_resize_regular(dstr, new_capacity)) {
+	if (!resize_capacity_regular(dstr, new_capacity)) {
 		return DSTR_MEMORY_ALLOC_FAILED;
 	}
 
@@ -480,7 +565,7 @@ void dstr_shrink_to_fit(
 
 	dstr->min_cap = 0;
 
-	capacity_resize_regular(dstr, (dstr->len > 0) ? (dstr->len + 1) : 0);
+	resize_capacity_regular(dstr, (dstr->len > 0) ? (dstr->len + 1) : 0);
 }
 
 /* 内容编辑。 */
@@ -880,7 +965,7 @@ void dstr_trim(
 		dstr->len = 0;
 	}
 
-	capacity_resize_dynamic(dstr, (dstr->len > 0) ? (dstr->len + 1) : 0);
+	resize_capacity_dynamic(dstr, (dstr->len > 0) ? (dstr->len + 1) : 0);
 	if (dstr->cap > 0) {
 		dstr->data[dstr->len] = '\0';
 	}
@@ -1364,7 +1449,7 @@ dstr_adt *dstr_join(
  *----------------------------------------------------------------------------*/
 
 /* 调整一个「动态字符串」的容量（基础版）。 */
-static bool capacity_resize(
+static bool resize_capacity(
 	dstr_adt *const dstr,
 	const size_t new_cap
 ) {
@@ -1378,7 +1463,7 @@ static bool capacity_resize(
 }
 
 /* 调整一个「动态字符串」的容量（常规版）。 */
-static bool capacity_resize_regular(
+static bool resize_capacity_regular(
 	dstr_adt *const dstr,
 	const size_t new_cap
 ) {
@@ -1392,15 +1477,16 @@ static bool capacity_resize_regular(
 		return true;
 	}
 
-	return capacity_resize(dstr, new_cap);
+	return resize_capacity(dstr, new_cap);
 }
 
 /* 调整一个「动态字符串」的容量（动态版）。 */
-static bool capacity_resize_dynamic(
+static bool resize_capacity_dynamic(
 	dstr_adt *const dstr,
 	const size_t new_cap
 ) {
-	size_t aligned_cap = 0; /* 对齐到缓存行大小的容量值。 */
+	/* 对齐到缓存行大小的容量值。 */
+	size_t aligned_cap = 0;
 
 	/**
 	 * 目标容量。
@@ -1413,8 +1499,8 @@ static bool capacity_resize_dynamic(
 	if (target_cap == dstr->cap) { return true; }
 
 	/**
-	 * 如果目标容量小于当前容量，则延迟减容。
-	 * 仅当目标容量小于当前容量的 1/4 时，才减容。
+	 * 如果目标容量小于当前容量，则延迟减容/几何缩容。
+	 * 仅当目标容量小于等于当前容量的 1/4 时，才实际减容。
 	 * 因此，当目标容量小于当前容量，且大于当前容量的 1/4 时，直接返回 true。
 	 */
 	if (target_cap < dstr->cap && target_cap > (dstr->cap >> 2)) { return true; }
@@ -1430,14 +1516,15 @@ static bool capacity_resize_dynamic(
 
 	/* 如果目标容量大于当前容量，则执行容量预分配、缓存行对齐。 */
 	if (target_cap > dstr->cap) {
-		size_t adjusted_cap = 0; /* 预分配后的容量值。 */
+		/* 预分配后的容量值。 */
+		size_t adjusted_cap = 0;
 
 		/* 尝试预分配内存。 */
 		if (safe_size_t_add(target_cap, target_cap >> 1, &adjusted_cap)) {
 			/* 尝试对齐到缓存行大小。 */
 			if (safe_size_t_align_up(adjusted_cap,DSTR_CACHELINE_SIZE, &aligned_cap)) {
 				/* 尝试调整 aligned_cap。 */
-				if (capacity_resize(dstr, aligned_cap)) { return true; }
+				if (resize_capacity(dstr, aligned_cap)) { return true; }
 			}
 
 			/**
@@ -1445,7 +1532,7 @@ static bool capacity_resize_dynamic(
 			 * 此时，仅在 aligned_cap 与 adjusted_cap 不相等时，尝试调整 adjusted_cap。
 			 */
 			if (aligned_cap != adjusted_cap) {
-				if (capacity_resize(dstr, adjusted_cap)) { return true; }
+				if (resize_capacity(dstr, adjusted_cap)) { return true; }
 			}
 		}
 
@@ -1454,7 +1541,7 @@ static bool capacity_resize_dynamic(
 		 * 此时，仅在 adjusted_cap 与 target_cap 不相等时，尝试调整 target_cap。
 		 */
 		if (adjusted_cap != target_cap) {
-			if (capacity_resize(dstr, target_cap)) { return true; }
+			if (resize_capacity(dstr, target_cap)) { return true; }
 		}
 
 		/* 上述尝试都失败，则返回 false。 */
@@ -1472,7 +1559,7 @@ static bool capacity_resize_dynamic(
 		if (aligned_cap == dstr->cap) { return true; }
 
 		/* 尝试调整 aligned_cap。 */
-		if (capacity_resize(dstr, aligned_cap)) { return true; }
+		if (resize_capacity(dstr, aligned_cap)) { return true; }
 	}
 
 	/**
@@ -1480,13 +1567,14 @@ static bool capacity_resize_dynamic(
 	 * 此时，仅在 aligned_cap 与 target_cap 不相等时，尝试调整 target_cap。
 	 */
 	if (aligned_cap != target_cap) {
-		if (capacity_resize(dstr, target_cap)) { return true; }
+		if (resize_capacity(dstr, target_cap)) { return true; }
 	}
 
 	/* 上述尝试都失败，则返回 false。 */
 	return false;
 }
 
+/* 从一个「C 字符串」的子串创建一个新「动态字符串」。 */
 static dstr_adt *create_dstr(
 	const char *const src,
 	const size_t src_len,
@@ -1504,7 +1592,7 @@ static dstr_adt *create_dstr(
 		const size_t copy_len = (sub_count > 0) ? sub_count : (src_len - sub_index);
 
 		if (!safe_size_t_add(copy_len, 1, DSTR_NULLPTR) ||
-			!capacity_resize(new_dstr, copy_len + 1)
+			!resize_capacity(new_dstr, copy_len + 1)
 		) {
 			free(new_dstr);
 			return DSTR_NULLPTR;
@@ -1521,10 +1609,11 @@ static dstr_adt *create_dstr(
 	return new_dstr;
 }
 
+/* 向一个「动态字符串」的指定位置处插入一个「C 字符串」的子串。 */
 static dstr_status_t insert_str(
 	dstr_adt *const dest,
 	const size_t index,
-	const size_t count,
+	const size_t remove_count,
 	const char *const src,
 	const size_t src_len,
 	const size_t sub_index,
@@ -1533,21 +1622,21 @@ static dstr_status_t insert_str(
 	const size_t copy_len = (src_len > 0)
 		? ((sub_count > 0) ? (sub_count) : (src_len - sub_index))
 		: 0;
-	const size_t new_len = dest->len - count + copy_len;
+	const size_t new_len = dest->len - remove_count + copy_len;
 
 	/* 当新长度大于当前长度时尝试扩容。 */
 	if (new_len > dest->len) {
 		if (!safe_size_t_add(new_len, 1, DSTR_NULLPTR) ||
-			!capacity_resize_dynamic(dest, new_len + 1)
+			!resize_capacity_dynamic(dest, new_len + 1)
 		) { return DSTR_MEMORY_ALLOC_FAILED; }
 	}
 
 	/* 当存在需要移动的尾部数据时，执行移动。 */
-	const size_t tail_len = dest->len - index - count;
-	if (tail_len > 0 && count != copy_len) {
+	const size_t tail_len = dest->len - index - remove_count;
+	if (tail_len > 0 && remove_count != copy_len) {
 		memmove(
 			dest->data + index + copy_len,
-			dest->data + index + count,
+			dest->data + index + remove_count,
 			tail_len
 		);
 	}
@@ -1564,7 +1653,7 @@ static dstr_status_t insert_str(
 	/* 如果新长度小于当前长度，则在操作执行完后，尝试缩容。 */
 	if (new_len < dest->len) {
 		/* 当长度为 0 时，所需容量为 0；当长度不为 0 时，所需容量为长度 + 1。 */
-		capacity_resize_dynamic(dest, (new_len > 0) ? (new_len + 1) : 0);
+		resize_capacity_dynamic(dest, (new_len > 0) ? (new_len + 1) : 0);
 	}
 
 	/* 如果长度有变化，则更新长度。 */
@@ -1583,10 +1672,11 @@ static dstr_status_t insert_str(
 	return DSTR_SUCCESS;
 }
 
+/* 向一个「动态字符串」的指定位置处格式化插入一个字符串。 */
 static dstr_status_t format_to_dstr(
 	dstr_adt *const dstr,
 	const size_t index,
-	const size_t delete_count,
+	const size_t remove_count,
 	const char *const format,
 	va_list args
 ) {
@@ -1599,21 +1689,21 @@ static dstr_status_t format_to_dstr(
 	if (temp_len < 0) { return DSTR_INVALID_ARGUMENT; }
 
 	const size_t format_len = temp_len;
-	const size_t new_len = dstr->len - delete_count + format_len;
+	const size_t new_len = dstr->len - remove_count + format_len;
 
 	/* 当新长度大于当前长度时尝试扩容。 */
 	if (new_len > dstr->len) {
 		if (!safe_size_t_add(new_len, 1, DSTR_NULLPTR) ||
-			!capacity_resize_dynamic(dstr, new_len + 1)
+			!resize_capacity_dynamic(dstr, new_len + 1)
 		) { return DSTR_MEMORY_ALLOC_FAILED; }
 	}
 
 	/* 当存在需要移动的尾部数据时，执行移动。 */
-	const size_t tail_len = dstr->len - index - delete_count;
-	if (tail_len > 0 && delete_count != format_len) {
+	const size_t tail_len = dstr->len - index - remove_count;
+	if (tail_len > 0 && remove_count != format_len) {
 		memmove(
 			dstr->data + index + format_len,
-			dstr->data + index + delete_count,
+			dstr->data + index + remove_count,
 			tail_len
 		);
 	}
@@ -1640,7 +1730,7 @@ static dstr_status_t format_to_dstr(
 
 	/* 如果新长度小于当前长度，则在操作执行完后尝试缩容。 */
 	if (new_len < dstr->len) {
-		capacity_resize_dynamic(dstr, (new_len > 0) ? (new_len + 1) : 0);
+		resize_capacity_dynamic(dstr, (new_len > 0) ? (new_len + 1) : 0);
 	}
 
 	/* 如果长度有变化，则更新长度。 */
@@ -1655,6 +1745,7 @@ static dstr_status_t format_to_dstr(
 	return DSTR_SUCCESS;
 }
 
+/* 查找一个「C 字符串」中，指定子「C 字符串」第 n 次出现的位置。 */
 static size_t find_str(
 	const char *const cstr,
 	const size_t cstr_len,
@@ -1728,6 +1819,7 @@ static size_t find_str(
 	return find_count;
 }
 
+/* 将一个「动态字符串」中指定的旧「C 字符串」替换为指定的新「C 字符串」。 */
 static dstr_status_t replace_str(
 	dstr_adt *const dstr,
 	const char *const old_str,
@@ -1780,7 +1872,7 @@ static dstr_status_t replace_str(
 			/* 安全计算 size_t 加法（new_len + 1），防止溢出。 */
 			!safe_size_t_add(new_len, 1, &required_cap) ||
 			/* 调整容量。 */
-			!capacity_resize_dynamic(dstr, required_cap)
+			!resize_capacity_dynamic(dstr, required_cap)
 		) {
 			free(indexes);
 			return DSTR_MEMORY_ALLOC_FAILED;
@@ -1867,7 +1959,7 @@ static dstr_status_t replace_str(
 			new_len = dstr->len - reduced_len;
 			required_cap = (new_len > 0) ? (new_len + 1) : 0;
 
-			capacity_resize_dynamic(dstr, required_cap);
+			resize_capacity_dynamic(dstr, required_cap);
 		}
 
 		dstr->len = new_len;
@@ -1880,6 +1972,7 @@ static dstr_status_t replace_str(
 	return DSTR_SUCCESS;
 }
 
+/* 将一个「C 字符串」按指定分隔符分割为多个「动态字符串」。 */
 static dstr_adt **split_str(
 	const char *const cstr,
 	const size_t cstr_len,
@@ -1961,6 +2054,7 @@ static dstr_adt **split_str(
 	return dstrs;
 }
 
+/* 将多个「C 字符串」或「动态字符串」按指定分隔符连接合并为一个「动态字符串」。 */
 static dstr_adt *join_str(
 	const char *const *const cstrs,
 	const dstr_adt *const *const dstrs,
@@ -2040,7 +2134,7 @@ static dstr_adt *join_str(
 
 	/* 调整容量（包含空终止符）。 */
 	if (!safe_size_t_add(target_len, 1, DSTR_NULLPTR) ||
-		!capacity_resize(result, target_len + 1)
+		!resize_capacity(result, target_len + 1)
 	) {
 		free(cstr_lens);
 		free(result);
