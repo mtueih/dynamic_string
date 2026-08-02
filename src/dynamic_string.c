@@ -908,7 +908,7 @@ void dstr_clear(
 
 	dstr->len = 0;
 
-	if (dstr->cap > 0) {
+	if (dstr->data != DSTR_NULLPTR) {
 		dstr->data[0] = '\0';
 	}
 }
@@ -938,6 +938,7 @@ void dstr_trim(
 
 	/* trim_chars 为空指针或指向空字符串时，均视为没有指定字符。 */
 	const bool is_specified_trim_chars = (trim_chars != DSTR_NULLPTR && trim_chars[0] != '\0');
+
 	/* 用于迭代和区间定位。 */
 	const char *p = dstr->data;
 	const char *q = p + dstr->len;
@@ -947,6 +948,7 @@ void dstr_trim(
 		while (p < q && strchr(trim_chars, *p) != DSTR_NULLPTR) {
 			++p;
 		}
+
 		while (q > p && strchr(trim_chars, *(q - 1)) != DSTR_NULLPTR) {
 			--q;
 		}
@@ -954,6 +956,7 @@ void dstr_trim(
 		while (isspace((unsigned char)*p)) {
 			++p;
 		}
+
 		while (q > p && isspace((unsigned char)*(q - 1))) {
 			--q;
 		}
@@ -961,6 +964,7 @@ void dstr_trim(
 
 	if (p < q) {
 		dstr->len = q - p;
+
 		if (p > dstr->data) {
 			memmove(dstr->data, p, dstr->len);
 		}
@@ -969,7 +973,8 @@ void dstr_trim(
 	}
 
 	resize_capacity_dynamic(dstr, (dstr->len > 0) ? (dstr->len + 1) : 0);
-	if (dstr->cap > 0) {
+
+	if (dstr->data != DSTR_NULLPTR) {
 		dstr->data[dstr->len] = '\0';
 	}
 }
@@ -1103,7 +1108,7 @@ bool dstr_equals(
 
 	if (lhs->len != rhs->len) { return false; }
 
-	return (memcmp(lhs->data, rhs->data, lhs->len) == 0);
+	return (memcmp(lhs->data, rhs->data, rhs->len) == 0);
 }
 
 /* 比较一个「动态字符串」与一个「C 字符串」。 */
@@ -2176,7 +2181,7 @@ end: /* 收尾工作。 */
 	}
 
 	if (dstr->data != DSTR_NULLPTR) {
-		dstr->data[new_len] = '\0';
+		dstr->data[dstr->len] = '\0';
 	}
 
 	return DSTR_SUCCESS;
