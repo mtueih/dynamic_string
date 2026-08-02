@@ -2303,14 +2303,14 @@ static dstr_adt *join_str(
 	}
 
 	/* 判断输入是 cstrs 还是 dstrs。 */
-	const bool is_cstr = (cstrs != DSTR_NULLPTR);
+	const bool is_cstrs = (cstrs != DSTR_NULLPTR);
 
 	/**
 	 * 如果是 cstrs，动态分配一个 size_t 数组，用于缓存每个 C 字符串的长度。
 	 * 如果分配失败，则不进行缓存，后续重新计算，不视为致命错误。
 	 */
 	size_t *cstr_lens = DSTR_NULLPTR;
-	if (is_cstr) {
+	if (is_cstrs && safe_size_t_mul(str_count, sizeof(size_t), DSTR_NULLPTR)) {
 		cstr_lens = malloc(str_count * sizeof(size_t));
 	}
 
@@ -2321,34 +2321,44 @@ static dstr_adt *join_str(
 	 * 不为空时长度也可能为 0；
 	 * 对于 cstrs，通过 cstrs[i][0] == '\0' 判断，以减少不必要的 strlen 调用。
 	 */
-	for (size_t i = 0; i < str_count; ++i) {
-		size_t s_len = 0;
+	if (is_cstrs) {
+		for (size_t i = 0; i < str_count; ++i) {
+			const size_t cstr_len = (cstrs[i] != DSTR_NULLPTR && cstrs[i][0] != '\0')
+				? strlen(cstrs[i])
+				: 0;
 
-		if (is_cstr) {
-			const char *const s = cstrs[i];
-			if (s != DSTR_NULLPTR && s[0] != '\0') {
-				s_len = strlen(s);
-			}
 			/* 如果长度缓存数组分配成功，记录长度。 */
 			if (cstr_lens != DSTR_NULLPTR) {
-				cstr_lens[i] = s_len;
+				cstr_lens[i] = cstr_len;
 			}
-		} else {
-			const dstr_adt *const d = dstrs[i];
-			if (d != DSTR_NULLPTR) {
-				s_len = d->len;
+
+			/* 累加到 target_len，检测溢出。 */
+			if (!safe_size_t_add(target_len, cstr_len, &target_len)) {
+				free(cstr_lens);
+				free(result);
+				return DSTR_NULLPTR;
 			}
 		}
-
-		/* 累加到 target_len，检测溢出。 */
-		if (!safe_size_t_add(target_len, s_len, &target_len)) {
-			free(cstr_lens);
-			free(result);
-			return DSTR_NULLPTR;
+	} else {
+		for (size_t i = 0; i < str_count; ++i) {
+			if (!safe_size_t_add(
+				target_len,
+				(dstrs[i] != DSTR_NULLPTR) ? dstrs[i]->len : 0,
+				&target_len
+			)) {
+				free(result);
+				return DSTR_NULLPTR;
+			}
 		}
 	}
 
-	/* 调整容量（包含空终止符）。 */
+	/* 如果 target_len 为 0，则释放资源后直接返回 result。 */
+	if (target_len == 0) {
+		free(cstr_lens);
+		return result;
+	}
+
+	/* 扩容。 */
 	if (!safe_size_t_add(target_len, 1, DSTR_NULLPTR) ||
 		!resize_capacity(result, target_len + 1)
 	) {
@@ -2363,41 +2373,41 @@ static dstr_adt *join_str(
 	 * 否则重新计算每个 C 字符串的长度。
 	 */
 	char *dest = result->data;
-	for (size_t i = 0; i < str_count; ++i) {
-		/* 如果不是第一个元素，先拷贝 separator。 */
-		if (i > 0 && separator_len > 0) {
-			memcpy(dest, separator, separator_len);
-			dest += separator_len;
-		}
 
-		size_t s_len = 0;
-		const char *src = DSTR_NULLPTR;
-
-		if (is_cstr) {
-			if (cstr_lens != DSTR_NULLPTR) {
-				/* 复用缓存。 */
-				s_len = cstr_lens[i];
-				if (s_len > 0) {
-					src = cstrs[i];
-				}
-			} else {
-				const char *const s = cstrs[i];
-				if (s != DSTR_NULLPTR && s[0] != '\0') {
-					s_len = strlen(s);
-					src = s;
-				}
+	if (is_cstrs) {
+		for (size_t i = 0; i < str_count; ++i) {
+			/* 如果不是第一个元素，先拷贝 separator。 */
+			if (i > 0 && separator_len > 0) {
+				memcpy(dest, separator, separator_len);
+				dest += separator_len;
 			}
-		} else {
-			const dstr_adt *const d = dstrs[i];
-			if (d != DSTR_NULLPTR && d->len > 0) {
-				s_len = d->len;
-				src = d->data;
+
+			/* 从缓存获取或重新计算长度。 */
+			const size_t cstr_len = (cstr_lens != DSTR_NULLPTR)
+				? cstr_lens[i]
+				: ((cstrs[i] != DSTR_NULLPTR && cstrs[i][0] != '\0')
+					? strlen(cstrs[i])
+					: 0);
+
+			/* 拷贝 cstr。 */
+			if (cstr_len > 0) {
+				memcpy(dest, cstrs[i], cstr_len);
+				dest += cstr_len;
 			}
 		}
+	} else {
+		for (size_t i = 0; i < str_count; ++i) {
+			/* 如果不是第一个元素，先拷贝 separator。 */
+			if (i > 0 && separator_len > 0) {
+				memcpy(dest, separator, separator_len);
+				dest += separator_len;
+			}
 
-		if (s_len > 0) {
-			memcpy(dest, src, s_len);
-			dest += s_len;
+			/* 拷贝 dstr。 */
+			if (dstrs[i] != DSTR_NULLPTR && dstrs[i]->len > 0) {
+				memcpy(dest, dstrs[i]->data, dstrs[i]->len);
+				dest += dstrs[i]->len;
+			}
 		}
 	}
 
