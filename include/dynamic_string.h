@@ -137,10 +137,10 @@ dstr_adt *dstr_clone(
  * @param cstr
  * 源「C 字符串」的指针。
  * 为空指针或指向空「C 字符串」时创建空「动态字符串」。
- * @param sub_index
+ * @param sub_start
  * 子串的起始索引。
  * 如果越界，则函数会直接返回空指针。
- * @param sub_count
+ * @param sub_length
  * 子串的长度。
  * 为 0 表示到末尾。
  * 如果越界，则函数会直接返回空指针。
@@ -151,8 +151,8 @@ dstr_adt *dstr_clone(
  */
 dstr_adt *dstr_sub_cstr(
 	const char *cstr,
-	size_t sub_index,
-	size_t sub_count
+	size_t sub_start,
+	size_t sub_length
 );
 
 /**
@@ -165,10 +165,10 @@ dstr_adt *dstr_sub_cstr(
  * @param dstr
  * 源「动态字符串」的指针。
  * 为空指针或指向空「动态字符串」时创建空「动态字符串」。
- * @param sub_index
+ * @param sub_start
  * 子串的起始索引。
  * 如果越界，则函数会直接返回空指针。
- * @param sub_count
+ * @param sub_length
  * 子串的长度。
  * 为 0 表示到末尾。
  * 如果越界，则函数会直接返回空指针。
@@ -179,8 +179,8 @@ dstr_adt *dstr_sub_cstr(
  */
 dstr_adt *dstr_sub(
 	const dstr_adt *dstr,
-	size_t sub_index,
-	size_t sub_count
+	size_t sub_start,
+	size_t sub_length
 );
 
 /**
@@ -381,10 +381,10 @@ dstr_status_t dstr_cpy(
  * @param src
  * 源「C 字符串」的指针。
  * 为空指针或指向空「C 字符串」时复制空字符串。
- * @param sub_index
+ * @param sub_start
  * 子串的起始索引。
  * 如果越界，则视为不合法参数。
- * @param sub_count
+ * @param sub_length
  * 子串的长度。
  * 为 0 表示到末尾。
  * 如果越界，则视为不合法参数。
@@ -395,8 +395,8 @@ dstr_status_t dstr_cpy(
 dstr_status_t dstr_cpy_sub_cstr(
 	dstr_adt *dest,
 	const char *src,
-	size_t sub_index,
-	size_t sub_count
+	size_t sub_start,
+	size_t sub_length
 );
 
 /**
@@ -409,10 +409,10 @@ dstr_status_t dstr_cpy_sub_cstr(
  * @param src
  * 源「动态字符串」的指针。
  * 为空指针或指向空「动态字符串」时复制空字符串。
- * @param sub_index
+ * @param sub_start
  * 子串的起始索引。
  * 如果越界，则视为不合法参数。
- * @param sub_count
+ * @param sub_length
  * 子串的长度。
  * 为 0 表示到末尾。
  * 如果越界，则视为不合法参数。
@@ -423,8 +423,8 @@ dstr_status_t dstr_cpy_sub_cstr(
 dstr_status_t dstr_cpy_sub(
 	dstr_adt *dest,
 	const dstr_adt *src,
-	size_t sub_index,
-	size_t sub_count
+	size_t sub_start,
+	size_t sub_length
 );
 
 /**
@@ -520,10 +520,10 @@ dstr_status_t dstr_cat(
  * @param src
  * 源「C 字符串」的指针。
  * 为空指针或指向空「C 字符串」时追加空字符串。
- * @param sub_index
+ * @param sub_start
  * 子串的起始索引。
  * 如果越界，则视为不合法参数。
- * @param sub_count
+ * @param sub_length
  * 子串的长度。
  * 为 0 表示到末尾。
  * 如果越界，则视为不合法参数。
@@ -534,8 +534,8 @@ dstr_status_t dstr_cat(
 dstr_status_t dstr_cat_sub_cstr(
 	dstr_adt *dest,
 	const char *src,
-	size_t sub_index,
-	size_t sub_count
+	size_t sub_start,
+	size_t sub_length
 );
 
 /**
@@ -548,10 +548,10 @@ dstr_status_t dstr_cat_sub_cstr(
  * @param src
  * 源「动态字符串」的指针。
  * 为空指针或指向空「动态字符串」时追加空字符串。
- * @param sub_index
+ * @param sub_start
  * 子串的起始索引。
  * 如果越界，则视为不合法参数。
- * @param sub_count
+ * @param sub_length
  * 子串的长度。
  * 为 0 表示到末尾。
  * 如果越界，则视为不合法参数。
@@ -562,8 +562,8 @@ dstr_status_t dstr_cat_sub_cstr(
 dstr_status_t dstr_cat_sub(
 	dstr_adt *dest,
 	const dstr_adt *src,
-	size_t sub_index,
-	size_t sub_count
+	size_t sub_start,
+	size_t sub_length
 );
 
 /**
@@ -670,10 +670,10 @@ dstr_status_t dstr_insert(
  * @param src
  * 源「C 字符串」的指针。
  * 为空指针或指向空「C 字符串」时插入空字符串。
- * @param sub_index
+ * @param sub_start
  * 子串的起始索引。
  * 如果越界，则视为不合法参数。
- * @param sub_count
+ * @param sub_length
  * 子串的长度。
  * 为 0 表示到末尾。
  * 如果越界，则视为不合法参数。
@@ -685,8 +685,8 @@ dstr_status_t dstr_insert_sub_cstr(
 	dstr_adt *dest,
 	size_t index,
 	const char *src,
-	size_t sub_index,
-	size_t sub_count
+	size_t sub_start,
+	size_t sub_length
 );
 
 /**
@@ -702,10 +702,10 @@ dstr_status_t dstr_insert_sub_cstr(
  * @param src
  * 源「动态字符串」的指针。
  * 为空指针或指向空「动态字符串」时插入空字符串。
- * @param sub_index
+ * @param sub_start
  * 子串的起始索引。
  * 如果越界，则视为不合法参数。
- * @param sub_count
+ * @param sub_length
  * 子串的长度。
  * 为 0 表示到末尾。
  * 如果越界，则视为不合法参数。
@@ -717,8 +717,8 @@ dstr_status_t dstr_insert_sub(
 	dstr_adt *dest,
 	size_t index,
 	const dstr_adt *src,
-	size_t sub_index,
-	size_t sub_count
+	size_t sub_start,
+	size_t sub_length
 );
 
 /**
@@ -796,18 +796,18 @@ void dstr_clear(
  * @param dstr
  * 目标「动态字符串」的指针。
  * 如果为空指针或指向空「动态字符串」，则函数会直接返回。
- * @param sub_index
+ * @param sub_start
  * 子串的起始索引。
  * 如果越界，则函数会直接返回。
- * @param sub_count
+ * @param sub_length
  * 子串的长度。
  * 为 0 表示到末尾。
  * 如果越界，则函数会直接返回。
  */
 void dstr_remove(
 	dstr_adt *dstr,
-	size_t sub_index,
-	size_t sub_count
+	size_t sub_start,
+	size_t sub_length
 );
 
 /**

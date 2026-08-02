@@ -151,9 +151,9 @@ static bool resize_capacity_dynamic(
  * @param src_len
  * 源「C 字符串」的长度。
  * 为 0 时，创建空「动态字符串」。
- * @param sub_index
+ * @param sub_start
  * 子串的起始索引。
- * @param sub_count
+ * @param sub_length
  * 子串的长度。
  * 为 0 表示到末尾。
  *
@@ -164,8 +164,8 @@ static bool resize_capacity_dynamic(
 static dstr_adt *create_dstr(
 	const char *src,
 	size_t src_len,
-	size_t sub_index,
-	size_t sub_count
+	size_t sub_start,
+	size_t sub_length
 );
 
 /**
@@ -184,9 +184,9 @@ static dstr_adt *create_dstr(
  * 源「C 字符串」的指针。
  * @param src_len
  * 源「C 字符串」的长度。
- * @param sub_index
+ * @param sub_start
  * 子串的起始索引。
- * @param sub_count
+ * @param sub_length
  * 子串的长度。
  * 为 0 表示到末尾。
  *
@@ -200,8 +200,8 @@ static dstr_status_t insert_str(
 	size_t remove_count,
 	const char *src,
 	size_t src_len,
-	size_t sub_index,
-	size_t sub_count
+	size_t sub_start,
+	size_t sub_length
 );
 
 /**
@@ -416,38 +416,38 @@ dstr_adt *dstr_clone(
 /* 提取一个「C 字符串」的子串。 */
 dstr_adt *dstr_sub_cstr(
 	const char *const cstr,
-	const size_t sub_index,
-	const size_t sub_count
+	const size_t sub_start,
+	const size_t sub_length
 ) {
 	if (cstr == DSTR_NULLPTR || cstr[0] == '\0') {
 		return create_dstr(DSTR_NULLPTR, 0, 0, 0);
 	}
 
 	const size_t cstr_len = strlen(cstr);
-	if (sub_index >= cstr_len ||
-		!safe_size_t_add(sub_index, sub_count, DSTR_NULLPTR) ||
-		sub_index + sub_count > cstr_len
+	if (sub_start >= cstr_len ||
+		!safe_size_t_add(sub_start, sub_length, DSTR_NULLPTR) ||
+		sub_start + sub_length > cstr_len
 	) { return DSTR_NULLPTR; }
 
-	return create_dstr(cstr, cstr_len, sub_index, sub_count);
+	return create_dstr(cstr, cstr_len, sub_start, sub_length);
 }
 
 /* 提取一个「动态字符串」的子串。 */
 dstr_adt *dstr_sub(
 	const dstr_adt *const dstr,
-	const size_t sub_index,
-	const size_t sub_count
+	const size_t sub_start,
+	const size_t sub_length
 ) {
 	if (dstr == DSTR_NULLPTR || dstr->len == 0) {
 		return create_dstr(DSTR_NULLPTR, 0, 0, 0);
 	}
 
-	if (sub_index >= dstr->len ||
-		!safe_size_t_add(sub_index, sub_count, DSTR_NULLPTR) ||
-		sub_index + sub_count > dstr->len
+	if (sub_start >= dstr->len ||
+		!safe_size_t_add(sub_start, sub_length, DSTR_NULLPTR) ||
+		sub_start + sub_length > dstr->len
 	) { return DSTR_NULLPTR; }
 
-	return create_dstr(dstr->data, dstr->len, sub_index, sub_count);
+	return create_dstr(dstr->data, dstr->len, sub_start, sub_length);
 }
 
 /* 格式化创建一个「动态字符串」。 */
@@ -607,8 +607,8 @@ dstr_status_t dstr_cpy(
 dstr_status_t dstr_cpy_sub_cstr(
 	dstr_adt *const dest,
 	const char *const src,
-	const size_t sub_index,
-	const size_t sub_count
+	const size_t sub_start,
+	const size_t sub_length
 ) {
 	if (dest == DSTR_NULLPTR) { return DSTR_INVALID_ARGUMENT; }
 
@@ -619,20 +619,20 @@ dstr_status_t dstr_cpy_sub_cstr(
 
 	/* 越界检查。 */
 	const size_t src_len = strlen(src);
-	if (sub_index >= src_len ||
-		!safe_size_t_add(sub_index, sub_count, DSTR_NULLPTR) ||
-		sub_index + sub_count > src_len
+	if (sub_start >= src_len ||
+		!safe_size_t_add(sub_start, sub_length, DSTR_NULLPTR) ||
+		sub_start + sub_length > src_len
 	) { return DSTR_INVALID_ARGUMENT; }
 
-	return insert_str(dest, 0, dest->len, src, src_len, sub_index, sub_count);
+	return insert_str(dest, 0, dest->len, src, src_len, sub_start, sub_length);
 }
 
 /* 复制一个「动态字符串」的子串到另一个「动态字符串」。 */
 dstr_status_t dstr_cpy_sub(
 	dstr_adt *const dest,
 	const dstr_adt *const src,
-	const size_t sub_index,
-	const size_t sub_count
+	const size_t sub_start,
+	const size_t sub_length
 ) {
 	if (dest == DSTR_NULLPTR) { return DSTR_INVALID_ARGUMENT; }
 
@@ -642,12 +642,12 @@ dstr_status_t dstr_cpy_sub(
 	}
 
 	/* 越界检查。 */
-	if (sub_index >= src->len ||
-		!safe_size_t_add(sub_index, sub_count, DSTR_NULLPTR) ||
-		sub_index + sub_count > src->len
+	if (sub_start >= src->len ||
+		!safe_size_t_add(sub_start, sub_length, DSTR_NULLPTR) ||
+		sub_start + sub_length > src->len
 	) { return DSTR_INVALID_ARGUMENT; }
 
-	return insert_str(dest, 0, dest->len, src->data, src->len, sub_index, sub_count);
+	return insert_str(dest, 0, dest->len, src->data, src->len, sub_start, sub_length);
 }
 
 /* 格式化复制一个字符串到一个「动态字符串」。 */
@@ -718,8 +718,8 @@ dstr_status_t dstr_cat(
 dstr_status_t dstr_cat_sub_cstr(
 	dstr_adt *const dest,
 	const char *const src,
-	const size_t sub_index,
-	const size_t sub_count
+	const size_t sub_start,
+	const size_t sub_length
 ) {
 	if (dest == DSTR_NULLPTR) { return DSTR_INVALID_ARGUMENT; }
 
@@ -728,20 +728,20 @@ dstr_status_t dstr_cat_sub_cstr(
 
 	/* 越界检查。 */
 	const size_t src_len = strlen(src);
-	if (sub_index >= src_len ||
-		!safe_size_t_add(sub_index, sub_count, DSTR_NULLPTR) ||
-		sub_index + sub_count > src_len
+	if (sub_start >= src_len ||
+		!safe_size_t_add(sub_start, sub_length, DSTR_NULLPTR) ||
+		sub_start + sub_length > src_len
 	) { return DSTR_INVALID_ARGUMENT; }
 
-	return insert_str(dest, dest->len, 0, src, src_len, sub_index, sub_count);
+	return insert_str(dest, dest->len, 0, src, src_len, sub_start, sub_length);
 }
 
 /* 追加一个「动态字符串」的子串到另一个「动态字符串」。 */
 dstr_status_t dstr_cat_sub(
 	dstr_adt *const dest,
 	const dstr_adt *const src,
-	const size_t sub_index,
-	const size_t sub_count
+	const size_t sub_start,
+	const size_t sub_length
 ) {
 	if (dest == DSTR_NULLPTR) { return DSTR_INVALID_ARGUMENT; }
 
@@ -749,12 +749,12 @@ dstr_status_t dstr_cat_sub(
 	if (src == DSTR_NULLPTR || src->len == 0) { return DSTR_SUCCESS; }
 
 	/* 越界检查。 */
-	if (sub_index >= src->len ||
-		!safe_size_t_add(sub_index, sub_count, DSTR_NULLPTR) ||
-		sub_index + sub_count > src->len
+	if (sub_start >= src->len ||
+		!safe_size_t_add(sub_start, sub_length, DSTR_NULLPTR) ||
+		sub_start + sub_length > src->len
 	) { return DSTR_INVALID_ARGUMENT; }
 
-	return insert_str(dest, dest->len, 0, src->data, src->len, sub_index, sub_count);
+	return insert_str(dest, dest->len, 0, src->data, src->len, sub_start, sub_length);
 }
 
 /* 格式化追加一个字符串到一个「动态字符串」。 */
@@ -824,8 +824,8 @@ dstr_status_t dstr_insert_sub_cstr(
 	dstr_adt *const dest,
 	const size_t index,
 	const char *const src,
-	const size_t sub_index,
-	const size_t sub_count
+	const size_t sub_start,
+	const size_t sub_length
 ) {
 	if (dest == DSTR_NULLPTR || index > dest->len) { return DSTR_INVALID_ARGUMENT; }
 
@@ -834,12 +834,12 @@ dstr_status_t dstr_insert_sub_cstr(
 
 	/* 越界检查。 */
 	const size_t src_len = strlen(src);
-	if (sub_index >= src_len ||
-		!safe_size_t_add(sub_index, sub_count, DSTR_NULLPTR) ||
-		sub_index + sub_count > src_len
+	if (sub_start >= src_len ||
+		!safe_size_t_add(sub_start, sub_length, DSTR_NULLPTR) ||
+		sub_start + sub_length > src_len
 	) { return DSTR_INVALID_ARGUMENT; }
 
-	return insert_str(dest, index, 0, src, src_len, sub_index, sub_count);
+	return insert_str(dest, index, 0, src, src_len, sub_start, sub_length);
 }
 
 /* 插入一个「动态字符串」的子串到另一个「动态字符串」。 */
@@ -847,8 +847,8 @@ dstr_status_t dstr_insert_sub(
 	dstr_adt *const dest,
 	const size_t index,
 	const dstr_adt *const src,
-	const size_t sub_index,
-	const size_t sub_count
+	const size_t sub_start,
+	const size_t sub_length
 ) {
 	if (dest == DSTR_NULLPTR || index > dest->len) { return DSTR_INVALID_ARGUMENT; }
 
@@ -856,12 +856,12 @@ dstr_status_t dstr_insert_sub(
 	if (src == DSTR_NULLPTR || src->len == 0) { return DSTR_SUCCESS; }
 
 	/* 越界检查。 */
-	if (sub_index >= src->len ||
-		!safe_size_t_add(sub_index, sub_count, DSTR_NULLPTR) ||
-		sub_index + sub_count > src->len
+	if (sub_start >= src->len ||
+		!safe_size_t_add(sub_start, sub_length, DSTR_NULLPTR) ||
+		sub_start + sub_length > src->len
 	) { return DSTR_INVALID_ARGUMENT; }
 
-	return insert_str(dest, index, 0, src->data, src->len, sub_index, sub_count);
+	return insert_str(dest, index, 0, src->data, src->len, sub_start, sub_length);
 }
 
 /* 格式化插入一个字符串到一个「动态字符串」。 */
@@ -916,17 +916,17 @@ void dstr_clear(
 /* 删除一个「动态字符串」的子串。 */
 void dstr_remove(
 	dstr_adt *const dstr,
-	const size_t sub_index,
-	const size_t sub_count
+	const size_t sub_start,
+	const size_t sub_length
 ) {
 	if (dstr == DSTR_NULLPTR || dstr->len == 0 ||
-		sub_index >= dstr->len ||
-		!safe_size_t_add(sub_index, sub_count, DSTR_NULLPTR) ||
-		sub_index + sub_count > dstr->len
+		sub_start >= dstr->len ||
+		!safe_size_t_add(sub_start, sub_length, DSTR_NULLPTR) ||
+		sub_start + sub_length > dstr->len
 	) { return; }
 
-	const size_t remove_count = (sub_count > 0) ? sub_count : (dstr->len - sub_index);
-	insert_str(dstr, sub_index, remove_count, DSTR_NULLPTR, 0, 0, 0);
+	const size_t remove_count = (sub_length > 0) ? sub_length : (dstr->len - sub_start);
+	insert_str(dstr, sub_start, remove_count, DSTR_NULLPTR, 0, 0, 0);
 }
 
 /* 删除一个「动态字符串」首尾的空白字符或指定字符。 */
@@ -1581,8 +1581,8 @@ static bool resize_capacity_dynamic(
 static dstr_adt *create_dstr(
 	const char *const src,
 	const size_t src_len,
-	const size_t sub_index,
-	const size_t sub_count
+	const size_t sub_start,
+	const size_t sub_length
 ) {
 	dstr_adt *const new_dstr = malloc(sizeof(dstr_adt));
 	if (new_dstr == DSTR_NULLPTR) { return DSTR_NULLPTR; }
@@ -1592,7 +1592,7 @@ static dstr_adt *create_dstr(
 
 	/* capacity_resize 操作如果成功，会更新成员变量 data、cap。 */
 	if (src_len > 0) {
-		const size_t copy_len = (sub_count > 0) ? sub_count : (src_len - sub_index);
+		const size_t copy_len = (sub_length > 0) ? sub_length : (src_len - sub_start);
 
 		if (!safe_size_t_add(copy_len, 1, DSTR_NULLPTR) ||
 			!resize_capacity(new_dstr, copy_len + 1)
@@ -1601,7 +1601,7 @@ static dstr_adt *create_dstr(
 			return DSTR_NULLPTR;
 		}
 
-		memcpy(new_dstr->data, src + sub_index, copy_len);
+		memcpy(new_dstr->data, src + sub_start, copy_len);
 
 		/* 更新成员变量 len 并在结尾补 '\0'。 */
 		new_dstr->len = copy_len;
@@ -1623,11 +1623,11 @@ static dstr_status_t insert_str(
 	const size_t remove_count,
 	const char *const src,
 	const size_t src_len,
-	const size_t sub_index,
-	const size_t sub_count
+	const size_t sub_start,
+	const size_t sub_length
 ) {
 	const size_t copy_len = (src_len > 0)
-		? ((sub_count > 0) ? (sub_count) : (src_len - sub_index))
+		? ((sub_length > 0) ? (sub_length) : (src_len - sub_start))
 		: 0;
 	const size_t new_len = dest->len - remove_count + copy_len;
 
@@ -1650,7 +1650,7 @@ static dstr_status_t insert_str(
 
 	/* 当存在需要拷贝的数据时，执行拷贝。 */
 	if (copy_len > 0) {
-		memcpy(dest->data + index, src + sub_index, copy_len);
+		memcpy(dest->data + index, src + sub_start, copy_len);
 	}
 
 	/* 如果新长度小于当前长度，则在操作执行完后，尝试缩容。 */
