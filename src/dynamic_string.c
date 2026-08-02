@@ -177,7 +177,7 @@ static dstr_adt *create_dstr(
  * 目标「动态字符串」的指针。
  * @param index
  * 插入位置的索引。
- * @param remove_count
+ * @param remove_length
  * 插入前先删除的字符数。
  * 0 不表示删除到末尾。
  * @param src
@@ -197,7 +197,7 @@ static dstr_adt *create_dstr(
 static dstr_status_t insert_str(
 	dstr_adt *dest,
 	size_t index,
-	size_t remove_count,
+	size_t remove_length,
 	const char *src,
 	size_t src_len,
 	size_t sub_start,
@@ -213,7 +213,7 @@ static dstr_status_t insert_str(
  * 目标「动态字符串」的指针。
  * @param index
  * 插入位置的索引。
- * @param remove_count
+ * @param remove_length
  * 插入前先删除的字符数。
  * 0 不表示删除到末尾。
  * @param format
@@ -227,7 +227,7 @@ static dstr_status_t insert_str(
 static dstr_status_t insert_str_format(
 	dstr_adt *dstr,
 	size_t index,
-	size_t remove_count,
+	size_t remove_length,
 	const char *format,
 	va_list args
 );
@@ -925,8 +925,8 @@ void dstr_remove(
 		sub_start + sub_length > dstr->len
 	) { return; }
 
-	const size_t remove_count = (sub_length > 0) ? sub_length : (dstr->len - sub_start);
-	insert_str(dstr, sub_start, remove_count, DSTR_NULLPTR, 0, 0, 0);
+	const size_t remove_length = (sub_length > 0) ? sub_length : (dstr->len - sub_start);
+	insert_str(dstr, sub_start, remove_length, DSTR_NULLPTR, 0, 0, 0);
 }
 
 /* 删除一个「动态字符串」首尾的空白字符或指定字符。 */
@@ -1620,7 +1620,7 @@ static dstr_adt *create_dstr(
 static dstr_status_t insert_str(
 	dstr_adt *const dest,
 	const size_t index,
-	const size_t remove_count,
+	const size_t remove_length,
 	const char *const src,
 	const size_t src_len,
 	const size_t sub_start,
@@ -1629,7 +1629,7 @@ static dstr_status_t insert_str(
 	const size_t copy_len = (src_len > 0)
 		? ((sub_length > 0) ? (sub_length) : (src_len - sub_start))
 		: 0;
-	const size_t new_len = dest->len - remove_count + copy_len;
+	const size_t new_len = dest->len - remove_length + copy_len;
 
 	/* 当新长度大于当前长度时尝试扩容。 */
 	if (new_len > dest->len) {
@@ -1639,11 +1639,11 @@ static dstr_status_t insert_str(
 	}
 
 	/* 当存在需要移动的尾部数据时，执行移动。 */
-	const size_t tail_len = dest->len - index - remove_count;
-	if (tail_len > 0 && remove_count != copy_len) {
+	const size_t tail_len = dest->len - index - remove_length;
+	if (tail_len > 0 && remove_length != copy_len) {
 		memmove(
 			dest->data + index + copy_len,
-			dest->data + index + remove_count,
+			dest->data + index + remove_length,
 			tail_len
 		);
 	}
@@ -1679,7 +1679,7 @@ static dstr_status_t insert_str(
 static dstr_status_t insert_str_format(
 	dstr_adt *const dstr,
 	const size_t index,
-	const size_t remove_count,
+	const size_t remove_length,
 	const char *const format,
 	va_list args
 ) {
@@ -1692,7 +1692,7 @@ static dstr_status_t insert_str_format(
 	if (temp_len < 0) { return DSTR_INVALID_ARGUMENT; }
 
 	const size_t format_len = temp_len;
-	const size_t new_len = dstr->len - remove_count + format_len;
+	const size_t new_len = dstr->len - remove_length + format_len;
 
 	/* 当新长度大于当前长度时尝试扩容。 */
 	if (new_len > dstr->len) {
@@ -1702,11 +1702,11 @@ static dstr_status_t insert_str_format(
 	}
 
 	/* 当存在需要移动的尾部数据时，执行移动。 */
-	const size_t tail_len = dstr->len - index - remove_count;
-	if (tail_len > 0 && remove_count != format_len) {
+	const size_t tail_len = dstr->len - index - remove_length;
+	if (tail_len > 0 && remove_length != format_len) {
 		memmove(
 			dstr->data + index + format_len,
-			dstr->data + index + remove_count,
+			dstr->data + index + remove_length,
 			tail_len
 		);
 	}
