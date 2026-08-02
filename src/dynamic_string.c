@@ -51,6 +51,9 @@
 /* 缓存行大小。 */
 #define DSTR_CACHELINE_SIZE 64
 
+/* 静态函数 replace_str 中，indexes 数组缩容绝对阈值。 */
+#define INDEXES_SHRINK_BYTES 4096
+
 
 /*------------------------------------------------------------------------------
  * ADT 类型定义
@@ -221,7 +224,7 @@ static dstr_status_t insert_str(
  * @return
  * 全局状态码。
  */
-static dstr_status_t format_to_dstr(
+static dstr_status_t insert_str_format(
 	dstr_adt *dstr,
 	size_t index,
 	size_t remove_count,
@@ -462,7 +465,7 @@ dstr_adt *dstr_create_format(
 	va_list args;
 
 	va_start(args, format);
-	const dstr_status_t rc = format_to_dstr(new_dstr, 0, 0, format, args);
+	const dstr_status_t rc = insert_str_format(new_dstr, 0, 0, format, args);
 	va_end(args);
 
 	if (rc != DSTR_SUCCESS) {
@@ -485,7 +488,7 @@ dstr_adt *dstr_create_vformat(
 	dstr_adt *const new_dstr = create_dstr(DSTR_NULLPTR, 0, 0, 0);
 	if (new_dstr == DSTR_NULLPTR) { return DSTR_NULLPTR; }
 
-	const dstr_status_t rc = format_to_dstr(new_dstr, 0, 0, format, args);
+	const dstr_status_t rc = insert_str_format(new_dstr, 0, 0, format, args);
 	if (rc != DSTR_SUCCESS) {
 		free(new_dstr);
 		return DSTR_NULLPTR;
@@ -663,7 +666,7 @@ dstr_status_t dstr_cpy_format(
 	va_list args;
 
 	va_start(args, format);
-	const dstr_status_t result = format_to_dstr(dest, 0, dest->len, format, args);
+	const dstr_status_t result = insert_str_format(dest, 0, dest->len, format, args);
 	va_end(args);
 
 	return result;
@@ -682,7 +685,7 @@ dstr_status_t dstr_cpy_vformat(
 		return insert_str(dest, 0, dest->len, DSTR_NULLPTR, 0, 0, 0);
 	}
 
-	return format_to_dstr(dest, 0, dest->len, format, args);
+	return insert_str_format(dest, 0, dest->len, format, args);
 }
 
 /* 追加一个「C 字符串」到一个「动态字符串」。 */
@@ -768,7 +771,7 @@ dstr_status_t dstr_cat_format(
 	va_list args;
 
 	va_start(args, format);
-	const dstr_status_t result = format_to_dstr(dest, dest->len, 0, format, args);
+	const dstr_status_t result = insert_str_format(dest, dest->len, 0, format, args);
 	va_end(args);
 
 	return result;
@@ -785,7 +788,7 @@ dstr_status_t dstr_cat_vformat(
 	/* format 为空指针或指向空字符串，均视为追加空字符串。 */
 	if (format == DSTR_NULLPTR || format[0] == '\0') { return DSTR_SUCCESS; }
 
-	return format_to_dstr(dest, dest->len, 0, format, args);
+	return insert_str_format(dest, dest->len, 0, format, args);
 }
 
 /* 插入一个「C 字符串」到一个「动态字符串」。 */
@@ -876,7 +879,7 @@ dstr_status_t dstr_insert_format(
 	va_list args;
 
 	va_start(args, format);
-	const dstr_status_t result = format_to_dstr(dest, index, 0, format, args);
+	const dstr_status_t result = insert_str_format(dest, index, 0, format, args);
 	va_end(args);
 
 	return result;
@@ -894,7 +897,7 @@ dstr_status_t dstr_insert_vformat(
 	/* format 为空指针或指向空字符串，均视为插入空字符串。 */
 	if (format == DSTR_NULLPTR || format[0] == '\0') { return DSTR_SUCCESS; }
 
-	return format_to_dstr(dest, index, 0, format, args);
+	return insert_str_format(dest, index, 0, format, args);
 }
 
 /* 清空一个「动态字符串」。 */
@@ -1548,7 +1551,7 @@ static bool resize_capacity_dynamic(
 		return false;
 	}
 
-	/* 目标容量小于当前容量的 1/4，执行减容。 */
+	/* 目标容量小于等于当前容量的 1/4，执行减容。 */
 
 	/* 尝试对齐到缓存行大小。 */
 	if (safe_size_t_align_up(target_cap, DSTR_CACHELINE_SIZE, &aligned_cap)) {
@@ -1599,8 +1602,12 @@ static dstr_adt *create_dstr(
 		}
 
 		memcpy(new_dstr->data, src + sub_index, copy_len);
-		new_dstr->data[new_dstr->len = copy_len] = '\0';
+
+		/* 更新成员变量 len 并在结尾补 '\0'。 */
+		new_dstr->len = copy_len;
+		new_dstr->data[copy_len] = '\0';
 	} else {
+		/* 在此分支中，手动初始化成员变量 cap、len。 */
 		new_dstr->cap = 0;
 		new_dstr->len = 0;
 	}
@@ -1643,11 +1650,7 @@ static dstr_status_t insert_str(
 
 	/* 当存在需要拷贝的数据时，执行拷贝。 */
 	if (copy_len > 0) {
-		memcpy(
-			dest->data + index,
-			src + sub_index,
-			copy_len
-		);
+		memcpy(dest->data + index, src + sub_index, copy_len);
 	}
 
 	/* 如果新长度小于当前长度，则在操作执行完后，尝试缩容。 */
@@ -1664,7 +1667,7 @@ static dstr_status_t insert_str(
 		 * 当新的长度为 0 时，容量有可能为 0，dest->data 为空指针。
 		 * 为避免空指针解引用，仅当容量不为 0 时，于 dest->data[new_len] 处写入 '\0'。
 		 */
-		if (dest->cap > 0) {
+		if (dest->data != DSTR_NULLPTR) {
 			dest->data[new_len] = '\0';
 		}
 	}
@@ -1673,7 +1676,7 @@ static dstr_status_t insert_str(
 }
 
 /* 向一个「动态字符串」的指定位置处格式化插入一个字符串。 */
-static dstr_status_t format_to_dstr(
+static dstr_status_t insert_str_format(
 	dstr_adt *const dstr,
 	const size_t index,
 	const size_t remove_count,
@@ -1708,18 +1711,18 @@ static dstr_status_t format_to_dstr(
 		);
 	}
 
-	/**
-	 * vsnprintf 写入后会在末尾强制写入 '\0'。
-	 * 对于插入操作（tail_len > 0），该 '\0' 会覆盖被搬移到 format_len 末尾的第一个尾部字符。
-	 * 因此，在写入前暂存该字符，写入后恢复。
-	 */
-	char saved_char = '\0';
-	if (format_len > 0 && tail_len > 0) {
-		saved_char = dstr->data[index + format_len];
-	}
-
 	/* 当存在需要格式化的数据时，格式化写入到 dstr->data。 */
 	if (format_len > 0) {
+		/**
+	 	 * vsnprintf 写入后会在末尾强制写入 '\0'。
+	 	 * 对于插入操作（tail_len > 0），该 '\0' 会覆盖被搬移到 format_len 末尾的第一个尾部字符。
+	 	 * 因此，在写入前暂存该字符，写入后恢复。
+	 	 */
+		char saved_char;
+		if (tail_len > 0) {
+			saved_char = dstr->data[index + format_len];
+		}
+
 		vsnprintf(dstr->data + index, format_len + 1, format, args);
 
 		/* 恢复被 '\0' 覆盖的字符。 */
@@ -1737,7 +1740,7 @@ static dstr_status_t format_to_dstr(
 	if (new_len != dstr->len) {
 		dstr->len = new_len;
 
-		if (dstr->cap > 0) {
+		if (dstr->data != DSTR_NULLPTR) {
 			dstr->data[new_len] = '\0';
 		}
 	}
@@ -1778,10 +1781,13 @@ static size_t find_str(
 		p = end;
 
 		while (p > cstr) {
-			if (memcmp(p - 1, sub, sub_len) == 0) {
-				find = p - 1;
+			const char *const cur = p - 1;
+
+			if (memcmp(cur, sub, sub_len) == 0) {
+				find = cur;
+
 				if (out_indexes != DSTR_NULLPTR) {
-					out_indexes[find_count] = find - cstr;
+					out_indexes[find_count] = cur - cstr;
 				}
 
 				if (++find_count == n) { break; }
@@ -1799,6 +1805,7 @@ static size_t find_str(
 		while (p < end) {
 			if (memcmp(p, sub, sub_len) == 0) {
 				find = p;
+
 				if (out_indexes != DSTR_NULLPTR) {
 					out_indexes[find_count] = find - cstr;
 				}
@@ -1829,35 +1836,109 @@ static dstr_status_t replace_str(
 	const dstr_direction_t direction,
 	const size_t n
 ) {
-	/* 第一次扫描，统计 old_str 截止第 n 次出现的次数。 */
-	const size_t old_str_count = find_str(
-		dstr->data, dstr->len,
-		old_str, old_str_len,
-		DSTR_NULLPTR, DSTR_NULLPTR,
-		direction, n
-	);
-	/* 如果 old_str 没有出现过，或不足 n 次，则视为参数不合法。 */
-	if (old_str_count == 0 || old_str_count < n) { return DSTR_INVALID_ARGUMENT; }
+	/* old_str 在 dstr 中最多可能出现的次数。 */
+	const size_t max_possible = dstr->len / old_str_len;
+	/* 提前返回：不可能有匹配（max_possible == 0）或 n 超出理论上界。 */
+	if (max_possible == 0 || n > max_possible) { return DSTR_INVALID_ARGUMENT; }
 
-	/* 动态分配 size_t 数组，用来存储每次出现的位置索引。 */
-	size_t *indexes;
-	if (!safe_size_t_mul(old_str_count, sizeof(size_t), DSTR_NULLPTR) ||
-		(indexes = malloc(old_str_count * sizeof(size_t))) == DSTR_NULLPTR
-	) { return DSTR_MEMORY_ALLOC_FAILED; }
+	/* 指向“用于存储 old_str 在 dstr 中出现的位置的动态数组”的指针。 */
+	size_t *indexes = DSTR_NULLPTR;
+	/* old_str 在 dstr 中出现的实际次数。 */
+	size_t old_str_count = 0;
+
+	/**
+	 * 最优路径下（用空间换时间），indexes 数组的元素个数。
+	 * 当 n 不为 0，即用户指定了替换的次数时，为 n 个，否则为 max_possible;
+	 */
+	const size_t indexes_count = (n > 0) ? n : max_possible;
+	/* 尝试分配 indexes_count 个元素的动态数组。 */
+	/* 【indexes_count * sizeof(size_t)】不会溢出。 */
+	const bool indexes_count_ok = safe_size_t_mul(indexes_count, sizeof(size_t), DSTR_NULLPTR);
+	if (indexes_count_ok) {
+		indexes = malloc(indexes_count * sizeof(size_t));
+	}
+
+	/**
+	 * 如果分配失败，回退到次优路径，先统计一次实际出现的次数（old_str_count），
+	 * 然后分配 old_str_count 个元素的动态数组。
+	 */
+	if (indexes == DSTR_NULLPTR) {
+		old_str_count = find_str(
+			dstr->data, dstr->len,
+			old_str, old_str_len,
+			DSTR_NULLPTR, DSTR_NULLPTR,
+			direction, n
+		);
+
+		/* 如果 old_str 实际出现次数为 0 次或不足 n 次，视为参数不合法并返回。 */
+		if (old_str_count == 0 || old_str_count < n) { return DSTR_INVALID_ARGUMENT; }
+
+		/**
+		 * 尝试分配 old_str_count 个元素的动态数组。
+		 * 如果【indexes_count * sizeof(size_t)】不会溢出，
+		 * 那【old_str_count * sizeof(size_t)】也一定不会溢出，
+		 * 因为 old_str_count <= indexes_count。
+		 * 如果 old_str_count == indexes_count，那就没有尝试的必要了。
+		 */
+		if (old_str_count < indexes_count && (indexes_count_ok ||
+			safe_size_t_mul(old_str_count, sizeof(size_t), DSTR_NULLPTR)
+		)) {
+			indexes = malloc(old_str_count * sizeof(size_t));
+		}
+	}
+
+	/* 此时，如果 indexes 不是空指针，则进行二次/一次查找以记录出现位置。*/
+	if (indexes != DSTR_NULLPTR) {
+		/* 二次查找（次优路径下）或一次查找（最优路径下），记录出现的位置。 */
+		const size_t temp_count = find_str(
+			dstr->data, dstr->len,
+			old_str, old_str_len,
+			DSTR_NULLPTR, indexes,
+			direction, n
+		);
+
+		/* 如果 old_str_count 为 0，则说明走的是最优路径。 */
+		if (old_str_count == 0) {
+			/* 此时，由于是第一次查找，需要对统计次数做判断。 */
+			if (temp_count == 0 || temp_count < n) {
+				free(indexes);
+				return DSTR_INVALID_ARGUMENT;
+			}
+
+			/* 此时，分配的数组大小有可能远大于需要，因此需要按需缩容以释放多余空间。 */
+			/**
+			 * 缩容策略：双重阈值，绝对阈值与相对阈值。
+			 * 绝对阈值：多余内存大小大于 INDEXES_SHRINK_BYTES 时，
+			 * 即多余元素个数大于 INDEXES_SHRINK_BYTES / sizeof(size_t) 时，才缩容；
+			 * 相对阈值：利用率小于 50%，即，实际元素个数小于 indexes_count 的一半时，才缩容。
+			 * 双重阈值：以上两条件同时满足时才缩容。
+			 */
+			if (temp_count < (indexes_count >> 1) &&
+				indexes_count - temp_count > INDEXES_SHRINK_BYTES / sizeof(size_t)
+			) {
+				size_t *const temp_data = realloc(indexes, temp_count * sizeof(size_t));
+
+				if (temp_data != DSTR_NULLPTR) {
+					indexes = temp_data;
+				}
+			}
+
+			/* 更新 old_str_count 的值。 */
+			old_str_count = temp_count;
+		}
+	}
 
 	/* new_str 与 old_str 长度比较情况。 */
 	const int new_cmp_old = (new_str_len > old_str_len)
 		? 1
 		: ((new_str_len < old_str_len) ? -1 : 0);
-	/* new_str_len 与 old_str_len 差绝对值。 */
+	/* new_str_len 与 old_str_len 差的绝对值。 */
 	const size_t len_diff = (new_cmp_old > 0)
 		? (new_str_len - old_str_len)
 		: (old_str_len - new_str_len);
 
-	/* 新的字符串长度。 */
+	/* 替换完成后新的字符串长度。 */
 	size_t new_len;
-	/* 新的所需容量。 */
-	size_t required_cap;
 
 	/* 扩容缓冲区。 */
 	if (new_cmp_old > 0) {
@@ -1870,47 +1951,61 @@ static dstr_status_t replace_str(
 			/* 安全计算 size_t 加法（dstr->len + increased_length），防止溢出。 */
 			!safe_size_t_add(dstr->len, increased_length, &new_len) ||
 			/* 安全计算 size_t 加法（new_len + 1），防止溢出。 */
-			!safe_size_t_add(new_len, 1, &required_cap) ||
+			!safe_size_t_add(new_len, 1, DSTR_NULLPTR) ||
 			/* 调整容量。 */
-			!resize_capacity_dynamic(dstr, required_cap)
+			!resize_capacity_dynamic(dstr, new_len + 1)
 		) {
 			free(indexes);
 			return DSTR_MEMORY_ALLOC_FAILED;
 		}
 	}
 
-	/* 第二次扫描，这次传入 indexes 以记录截止第 n 次每次出现的位置。 */
-	find_str(
-		dstr->data, dstr->len,
-		old_str, old_str_len,
-		DSTR_NULLPTR, indexes,
-		direction, n
-	);
+	/* 此时，如果 indexes 是空指针，则放弃空间换时间，回退到最坏路径。*/
+	if (indexes == DSTR_NULLPTR) { goto worst_case; }
 
-	/* 执行替换。 */
+	/**
+	 * 执行替换。
+	 * 当 new_str_len > old_str_len 时，需要先搬移后面的数据，防止覆盖，
+	 * 即遍历时要从大索引到小索引，而 find_str 写入索引的大小顺序取决于查找方向 direction，
+	 * 当从前往后遍历时，索引按从小到大顺序写入，反之从大到小的顺序写入；
+	 * 因此，当 new_str_len > old_str_len 时，如果索引是按从大到小顺序写入的，
+	 * 即 (direction == DSTR_DIR_BACKWARD)，那么就要正向遍历数组，
+	 * 由此总结规律，当（new_str_len > old_str_len）与（direction == DSTR_DIR_BACKWARD）同为真时，
+	 * 正向遍历数组，否则逆向遍历。
+	 */
 	if ((new_cmp_old > 0) == (direction == DSTR_DIR_BACKWARD)) {
 		for (size_t i = 0; i < old_str_count; ++i) {
 			/* 如果 new_str 与 old_str 长度不等，则需移动数据。 */
 			if (new_cmp_old != 0) {
+				/* 被搬移数据的起始索引。 */
 				const size_t move_start = indexes[i] + old_str_len;
+				/**
+				 * 被搬移数据的结束索引。
+				 * 如果此块被搬移数据，是最后一块（从前往后），
+				 * 那么值应该为 dstr->len，否则就是后一次 old_str 出现位置。
+				 */
 				const size_t move_end = (direction == DSTR_DIR_BACKWARD)
 					? ((i == 0) ? dstr->len : indexes[i - 1])
 					: ((i == (old_str_count - 1)) ? dstr->len : indexes[i + 1]);
+				/* 被搬移数据的长度。 */
 				const size_t move_len = move_end - move_start;
 
 				if (move_len > 0) {
 					const size_t move_step = len_diff * (i + 1);
-					void *const move_dest = (new_cmp_old > 0)
-						? (dstr->data + move_start + move_step)
-						: (dstr->data + move_start - move_step);
 
-					memmove(move_dest, dstr->data + move_start, move_len);
+					char *const move_src = dstr->data + move_start;
+					char *const move_dest = (new_cmp_old > 0)
+						? (move_src + move_step)
+						: (move_src - move_step);
+
+					memmove(move_dest, move_src, move_len);
 				}
 			}
 
 			/* 拷贝新数据。 */
 			if (new_str_len > 0) {
 				const size_t copy_target = indexes[i] - len_diff * i;
+
 				memcpy(
 					dstr->data + copy_target,
 					new_str,
@@ -1920,27 +2015,32 @@ static dstr_status_t replace_str(
 		}
 	} else {
 		for (size_t i = old_str_count; i > 0; --i) {
+			const size_t cur = i - 1;
+
 			/* 如果 new_str 与 old_str 长度不等，则需移动数据。 */
 			if (new_cmp_old != 0) {
-				const size_t move_start = indexes[i - 1] + old_str_len;
+				const size_t move_start = indexes[cur] + old_str_len;
 				const size_t move_end = (direction == DSTR_DIR_BACKWARD)
-					? ((i == 1) ? dstr->len : indexes[i - 2])
+					? ((cur == 0) ? dstr->len : indexes[cur - 1])
 					: ((i == old_str_count) ? dstr->len : indexes[i]);
 				const size_t move_len = move_end - move_start;
 
 				if (move_len > 0) {
 					const size_t move_step = len_diff * i;
-					void *const move_dest = (new_cmp_old > 0)
-						? (dstr->data + move_start + move_step)
-						: (dstr->data + move_start - move_step);
 
-					memmove(move_dest, dstr->data + move_start, move_len);
+					char *const move_src = dstr->data + move_start;
+					char *const move_dest = (new_cmp_old > 0)
+						? (move_src + move_step)
+						: (move_src - move_step);
+
+					memmove(move_dest, move_src, move_len);
 				}
 			}
 
 			/* 拷贝新数据。 */
 			if (new_str_len > 0) {
-				const size_t copy_target = indexes[i - 1] - len_diff * (i - 1);
+				const size_t copy_target = indexes[cur] - len_diff * cur;
+
 				memcpy(
 					dstr->data + copy_target,
 					new_str,
@@ -1952,21 +2052,131 @@ static dstr_status_t replace_str(
 
 	free(indexes);
 
+	/* 长度有变化时，更新长度。 */
 	if (new_cmp_old != 0) {
-		/* 长度变短，尝试缩容。 */
+		/* 之前仅在 new_cmp_old > 0 分支计算了 new_len，因此此处进行计算。 */
 		if (new_cmp_old < 0) {
-			const size_t reduced_len = len_diff * old_str_count;
-			new_len = dstr->len - reduced_len;
-			required_cap = (new_len > 0) ? (new_len + 1) : 0;
-
-			resize_capacity_dynamic(dstr, required_cap);
+			new_len = dstr->len - len_diff * old_str_count;
 		}
 
 		dstr->len = new_len;
+	}
 
-		if (dstr->cap > 0) {
-			dstr->data[new_len] = '\0';
+	goto end;
+
+worst_case: {
+		/**
+		 * 最坏路径：所有分配均失败，使用边查找边替换的算法（最笨算法），完全的时间换空间算法。
+		 * 边查找边替换：每找到一个匹配就立即执行 memmove + memcpy。
+		 */
+
+		/* 用于迭代。 */
+		char *p;
+		/* 迭代中的边界指针，在边查找边替换的逻辑中，每次迭代都有可能改变其值。 */
+		char *end = dstr->data + dstr->len - old_str_len + 1;
+		/* 已替换的次数。用于在等于 n 时跳出循环。 */
+		size_t replaced_count = 0;
+
+		if (direction == DSTR_DIR_BACKWARD) {
+			p = end;
+
+			while (p > dstr->data) {
+				/* 指向当前待比较数据指针。 */
+				char *const cur = p - 1;
+
+				if (memcmp(cur, old_str, old_str_len) == 0) {
+					/* 移动尾部数据。 */
+					if (new_cmp_old != 0) {
+						const char *const move_src = cur + old_str_len;
+
+						if (move_src < end) {
+							memmove(
+								cur + new_str_len,
+								move_src,
+								dstr->data + dstr->len - move_src
+							);
+						}
+					}
+
+					/* 拷贝新数据。 */
+					if (new_str_len > 0) {
+						memcpy(cur, new_str, new_str_len);
+					}
+
+					/* 更新 dstr->len。 */
+					if (new_cmp_old < 0) {
+						dstr->len -= len_diff;
+					} else {
+						dstr->len += len_diff;
+					}
+
+					/* 如果替换足够次数则跳出循环。 */
+					if (++replaced_count == n) { break; }
+
+					/* 如果 (p - dstr->data) > old_str_len 则继续迭代，否则跳出。 */
+					if ((p - dstr->data) > old_str_len) {
+						p -= old_str_len;
+					} else { break; }
+				} else {
+					--p;
+				}
+			}
+		} else {
+			p = dstr->data;
+
+			while (p < end) {
+				if (memcmp(p, old_str, old_str_len) == 0) {
+					/* 移动尾部数据。 */
+					if (new_cmp_old != 0) {
+						const char *const move_src = p + old_str_len;
+
+						if (move_src < end) {
+							memmove(
+								p + new_str_len,
+								move_src,
+								dstr->data + dstr->len - move_src
+							);
+						}
+					}
+
+					/* 拷贝新数据。 */
+					if (new_str_len > 0) {
+						memcpy(p, new_str, new_str_len);
+					}
+
+					/* 更新 dstr->len。 */
+					if (new_cmp_old < 0) {
+						dstr->len -= len_diff;
+					} else {
+						dstr->len += len_diff;
+					}
+
+					/* 如果替换足够次数则跳出循环。 */
+					if (++replaced_count == n) { break; }
+
+					/* 更新 end 指针。 */
+					if (new_cmp_old < 0) {
+						end -= len_diff;
+					} else {
+						end += len_diff;
+					}
+
+					p += new_str_len;
+				} else {
+					++p;
+				}
+			}
 		}
+	}
+
+end: /* 收尾工作。 */
+	/* 长度变短，尝试缩容。 */
+	if (new_cmp_old < 0) {
+		resize_capacity_dynamic(dstr, (dstr->len > 0) ? (dstr->len + 1) : 0);
+	}
+
+	if (dstr->data != DSTR_NULLPTR) {
+		dstr->data[new_len] = '\0';
 	}
 
 	return DSTR_SUCCESS;
@@ -1980,7 +2190,7 @@ static dstr_adt **split_str(
 	const size_t separator_len,
 	size_t *const out_dstr_count
 ) {
-	/* 第一遍扫描，统计 separator 在 cstr 中，出现的次数。 */
+	/* 第一遍查找，统计 separator 在 cstr 中，出现的次数。 */
 	const size_t separator_count = find_str(
 		cstr, cstr_len,
 		separator, separator_len,
@@ -1997,19 +2207,19 @@ static dstr_adt **split_str(
 	/* 动态分配 dstr_adt * 数组（比 separator_count 多 1）。 */
 	dstr_adt **dstrs;
 	if (!safe_size_t_mul(dstr_count, sizeof(dstr_adt*), DSTR_NULLPTR) ||
-		(dstrs = (dstr_adt**)malloc(dstr_count * sizeof(dstr_adt*))) == DSTR_NULLPTR
+		(dstrs = malloc(dstr_count * sizeof(dstr_adt*))) == DSTR_NULLPTR
 	) { return DSTR_NULLPTR; }
 
 	/* 动态分配 size_t 数组，用来存储每次出现的位置索引。 */
 	size_t *indexes;
 	if (!safe_size_t_mul(separator_count, sizeof(size_t), DSTR_NULLPTR) ||
-		(indexes = (size_t*)malloc(separator_count * sizeof(size_t))) == DSTR_NULLPTR
+		(indexes = malloc(separator_count * sizeof(size_t))) == DSTR_NULLPTR
 	) {
 		free(dstrs);
 		return DSTR_NULLPTR;
 	}
 
-	/* 第二遍扫描，传入 indexes 以记录每次出现的位置。 */
+	/* 第二遍查找，传入 indexes 以记录每次出现的位置。 */
 	find_str(
 		cstr, cstr_len,
 		separator, separator_len,
@@ -2033,6 +2243,7 @@ static dstr_adt **split_str(
 			dstrs[i] = DSTR_NULLPTR;
 		} else {
 			dstrs[i] = create_dstr(cstr, cstr_len, part_start, part_len);
+
 			if (dstrs[i] == DSTR_NULLPTR) {
 				/* 创建失败，释放之前已创建的「动态字符串」及其他资源。 */
 				for (size_t j = 0; j < i; ++j) {
