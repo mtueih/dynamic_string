@@ -2215,57 +2215,63 @@ static dstr_adt **split_str(
 		(dstrs = malloc(dstr_count * sizeof(dstr_adt*))) == DSTR_NULLPTR
 	) { return DSTR_NULLPTR; }
 
-	/* 动态分配 size_t 数组，用来存储每次出现的位置索引。 */
-	size_t *indexes;
-	if (!safe_size_t_mul(separator_count, sizeof(size_t), DSTR_NULLPTR) ||
-		(indexes = malloc(separator_count * sizeof(size_t))) == DSTR_NULLPTR
-	) {
-		free(dstrs);
-		return DSTR_NULLPTR;
-	}
+	/* 执行一次边查找边创建。 */
+	/* 指针变量，用于迭代。 */
+	const char *p = cstr;
+	/* 指针常量，指向查找区间的后一个位置。用于迭代边界。 */
+	const char *const end = p + cstr_len - separator_len + 1;
+	/* 找到的次数。 */
+	size_t find_count = 0;
+	/* 记录上一次找到的位置指针。 */
+	const char *last = p;
 
-	/* 第二遍查找，传入 indexes 以记录每次出现的位置。 */
-	find_str(
-		cstr, cstr_len,
-		separator, separator_len,
-		DSTR_NULLPTR, indexes,
-		DSTR_DIR_FORWARD, 0
-	);
+	while (p < end) {
+		if (memcmp(p, separator, separator_len) == 0) {
+create_sub:
+			/* 以当前区间子串创建动态字符串。 */
+			const char *const sub_start = (find_count > 0)
+				? last + separator_len
+				: cstr;
+			const char *const sub_end = (find_count == separator_count)
+				? cstr + cstr_len
+				: p;
+			const size_t sub_len = sub_end - sub_start;
 
-	/* 遍历分隔符的各个位置，依次创建各部分的「动态字符串」。 */
-	for (size_t i = 0; i < dstr_count; ++i) {
-		/* 计算当前部分的起始位置和结束位置。 */
-		const size_t part_start = (i == 0)
-			? 0
-			: indexes[i - 1] + separator_len;
-		const size_t part_end = (i < separator_count)
-			? indexes[i]
-			: cstr_len;
-		const size_t part_len = part_end - part_start;
+			if (sub_len > 0) {
+				dstrs[find_count] = create_dstr(sub_start, sub_len, 0, 0);
 
-		/* 如果该部分为空字符串（边界重合），则存储空指针。 */
-		if (part_len == 0) {
-			dstrs[i] = DSTR_NULLPTR;
-		} else {
-			dstrs[i] = create_dstr(cstr, cstr_len, part_start, part_len);
-
-			if (dstrs[i] == DSTR_NULLPTR) {
-				/* 创建失败，释放之前已创建的「动态字符串」及其他资源。 */
-				for (size_t j = 0; j < i; ++j) {
-					if (dstrs[j] != DSTR_NULLPTR) {
-						free(dstrs[j]->data);
-						free(dstrs[j]);
+				if (dstrs[find_count] == DSTR_NULLPTR) {
+					/* 创建失败，释放之前已创建的「动态字符串」。 */
+					for (size_t j = 0; j < find_count; ++j) {
+						if (dstrs[j] != DSTR_NULLPTR) {
+							free(dstrs[j]->data);
+							free(dstrs[j]);
+						}
 					}
+					free(dstrs);
+					return DSTR_NULLPTR;
 				}
-				free(indexes);
-				free(dstrs);
-				return DSTR_NULLPTR;
+			} else {
+				dstrs[find_count] = DSTR_NULLPTR;
 			}
+
+			++find_count;
+			last = p;
+
+			if (find_count == separator_count) {
+				goto create_sub;
+			}
+
+			if (find_count > separator_count) {
+				break;
+			}
+
+			p += separator_len;
+		} else {
+			++p;
 		}
 	}
 
-	/* 释放 indexes 数组，写入输出计数并返回。 */
-	free(indexes);
 	*out_dstr_count = dstr_count;
 	return dstrs;
 }
