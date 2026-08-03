@@ -80,7 +80,7 @@ jobs:
           -DCMAKE_C_STANDARD_REQUIRED=ON
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           -DCMAKE_C_EXTENSIONS=OFF
-          -DSAFE_CALC_INSTALL=OFF
+          -DDYNAMIC_STRING_INSTALL=OFF
           -DCMAKE_C_COMPILER_LAUNCHER=sccache
 
       - name: CMake Build
