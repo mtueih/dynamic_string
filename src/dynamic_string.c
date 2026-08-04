@@ -1365,7 +1365,7 @@ dstr_status_t dstr_replace(
 
 /* 分隔与合并。 */
 
-/* 分隔一个「C 字符串」。 */
+/* 分隔一个「C 字符串」为多个「动态字符串」。 */
 dstr_adt **dstr_split_cstr(
 	const char *const cstr,
 	const char *const separator,
@@ -1384,7 +1384,7 @@ dstr_adt **dstr_split_cstr(
 	);
 }
 
-/* 分隔一个「动态字符串」。 */
+/* 分隔一个「动态字符串」为多个「动态字符串」。 */
 dstr_adt **dstr_split(
 	const dstr_adt *const dstr,
 	const dstr_adt *const separator,
@@ -1403,7 +1403,7 @@ dstr_adt **dstr_split(
 	);
 }
 
-/* 合并多个「C 字符串」。 */
+/* 合并多个「C 字符串」为一个「动态字符串」。 */
 dstr_adt *dstr_join_cstr(
 	const char *const *const cstrs,
 	const size_t cstr_count,
@@ -1427,7 +1427,7 @@ dstr_adt *dstr_join_cstr(
 	);
 }
 
-/* 合并多个「动态字符串」。 */
+/* 合并多个「动态字符串」为一个「动态字符串」。 */
 dstr_adt *dstr_join(
 	const dstr_adt *const *const dstrs,
 	const size_t dstr_count,
