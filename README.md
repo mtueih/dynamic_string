@@ -40,7 +40,7 @@ include(${PROJECT_SOURCE_DIR}/cmake/CPM.cmake)
 CPMAddPackage(
 	NAME dynamic_string
 	GITHUB_REPOSITORY mtueih/dynamic_string
-	GIT_TAG v1.0.0
+	GIT_TAG v1.1.0
 	OPTIONS "DYNAMIC_STRING_INSTALL OFF" "BUILD_TESTING OFF"
 )
 ```
