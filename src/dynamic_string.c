@@ -497,6 +497,29 @@ dstr_adt *dstr_create_vformat(
 	return new_dstr;
 }
 
+/* 通过接管一个堆内存「C 字符串」所有权的方式创建一个「动态字符串」（移动语义）。 */
+dstr_adt *dstr_create_move(
+	char *const data,
+	const size_t length
+) {
+	dstr_adt *const new_dstr = malloc(sizeof(dstr_adt));
+	if (new_dstr == DSTR_NULLPTR) { return DSTR_NULLPTR; }
+
+	if (data == DSTR_NULLPTR) {
+		new_dstr->data = DSTR_NULLPTR;
+		new_dstr->min_cap = new_dstr->cap = new_dstr->len = 0;
+	} else {
+		new_dstr->data = data;
+
+		new_dstr->len = (data[length] == '\0') ? length : strlen(data);
+		new_dstr->cap = new_dstr->len + 1;
+
+		new_dstr->min_cap = 0;
+	}
+
+	return new_dstr;
+}
+
 /* 属性获取与设置。 */
 
 /* 获取一个「动态字符串」的内部「C 字符串」指针。 */
