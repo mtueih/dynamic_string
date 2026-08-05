@@ -7,9 +7,11 @@
 
 ## 安装
 
+### CMake
+
 **环境要求**：
 
-- CMake 3.21 或更高版本。
+- [CMake](https://cmake.org/) 3.21 或更高版本。
 
 **依赖**（由 CMake 自身通过 [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake) 处理，不用手动安装。）：
 
@@ -32,7 +34,7 @@ cmake --install build
 
 - [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake)。
 
-在 CMakeLists.txt 中添加以下内容：
+在 `CMakeLists.txt` 中添加以下内容：
 
 ```cmake
 include(${PROJECT_SOURCE_DIR}/cmake/CPM.cmake)
