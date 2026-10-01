@@ -159,8 +159,8 @@ dstr_adt *dstr_create_vformat(const char *format, va_list args);
  *
  * @warning 参数 data 不为空指针时，必须是指向有效堆内存的指针。
  *
- * @param data[in] 指向位于堆内存的「C 字符串」的指针。为空指针或指向空「C 字符串」时创建空「动态字符串」。
- * @param length[in] 源「C 字符串」的长度。为 0 时由函数内部计算。
+ * @param data[in] 指向位于堆内存的「C 字符串」的指针。为空指针视为非法参数，函数会直接返回空指针。
+ * @param length[in] 源「C 字符串」的长度。为 0 或不正确时由函数内部计算。
  *
  * @return 所创建的「动态字符串」的指针。如果创建失败则返回空指针。
  */
@@ -171,9 +171,10 @@ dstr_adt *dstr_create_move(char *data, size_t length);
  *
  * @remark 此函数会将内部堆内存容量调整到刚合适。
  *
- * @param dstr[in] 目标「动态字符串」的指针。如果为空指针，则函数会直接返回。
- * @param out_data[out] 存储内部堆内存「C 字符串」指针的 char * 变量的指针。
- *                      如果为空指针，则函数会正常销毁内部数据，效果等同于 dstr_destroy()。
+ * @attention 此函数出现错误时，写入空指针到 *out_data，并不会释放 dstr，调用者还需手动释放。
+ *
+ * @param dstr[in] 目标「动态字符串」的指针。为空指针视为非法参数，函数会直接返回。
+ * @param out_data[out] 存储内部堆内存「C 字符串」指针的 char * 变量的指针。为空指针视为非法参数，函数会直接返回。
  *                      dstr 长度为 0 或出现错误时，将写入空指针。
  * @param out_length[out] 存储内部堆内存「C 字符串」长度的 size_t 变量的指针。为空指针时不写入。
  */
