@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2026 mtueih
+ * SPDX-License-Identifier: ISC
+ */
+
 /*======================================================================================================================
  * tests/test_dynamic_string.c - dynamic_string 单元测试（Unity）
  *
