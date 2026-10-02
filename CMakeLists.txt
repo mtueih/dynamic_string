@@ -42,11 +42,6 @@ set(MAIN_LIB_TARGET_NAME ${PROJECT_NAME})
 
 include(cmake/CPM.cmake)
 
-# 提供测试支持。
-if(PROJECT_IS_TOP_LEVEL)
-    include(CTest)
-endif()
-
 
 #-------------------------------------------------------------------------------
 # 库构建
@@ -62,33 +57,37 @@ target_sources(
     FILES include/${MAIN_PACKAGE_NAME}/${MAIN_LIB_TARGET_NAME}.h
 )
 
-CPMAddPackage("gh:mtueih/safe_calc#v1.0.0")
+CPMAddPackage("gh:mtueih/safe_calc#v1.0.1")
 target_link_libraries(${MAIN_LIB_TARGET_NAME} PRIVATE safe_calc::safe_calc)
 
 
 #-------------------------------------------------------------------------------
 # 测试构建
 #-------------------------------------------------------------------------------
-if(BUILD_TESTING)
-    # 主库的单元测试可执行文件的目标名称列表。
-    set(TEST_NAMES ${MAIN_LIB_TARGET_NAME})
+if(PROJECT_IS_TOP_LEVEL)
+    include(CTest)
 
-    # CPM.cmake 集成 Unity 测试框架。
-    CPMAddPackage("gh:ThrowTheSwitch/Unity#v2.7.0")
+    if(BUILD_TESTING)
+        # 主库的单元测试可执行文件的目标名称列表。
+        set(TEST_NAMES ${MAIN_LIB_TARGET_NAME})
 
-    foreach(TEST_NAME ${TEST_NAMES})
-        set(TEST_TARGET_NAME test_${TEST_NAME})
+        # CPM.cmake 集成 Unity 测试框架。
+        CPMAddPackage("gh:ThrowTheSwitch/Unity#v2.7.0")
 
-        # 构建测试可执行文件。
-        add_executable(${TEST_TARGET_NAME} tests/${TEST_TARGET_NAME}.c)
+        foreach(TEST_NAME ${TEST_NAMES})
+            set(TEST_TARGET_NAME test_${TEST_NAME})
 
-        # 链接项目主库与 Unity 测试框架。
-        target_link_libraries(${TEST_TARGET_NAME} PRIVATE ${MAIN_LIB_TARGET_NAME})
-        target_link_libraries(${TEST_TARGET_NAME} PRIVATE unity::framework)
+            # 构建测试可执行文件。
+            add_executable(${TEST_TARGET_NAME} tests/${TEST_TARGET_NAME}.c)
 
-        # 注册测试可执行文件到 CTest。
-        add_test(NAME ${TEST_TARGET_NAME} COMMAND ${TEST_TARGET_NAME})
-    endforeach()
+            # 链接项目主库与 Unity 测试框架。
+            target_link_libraries(${TEST_TARGET_NAME} PRIVATE ${MAIN_LIB_TARGET_NAME})
+            target_link_libraries(${TEST_TARGET_NAME} PRIVATE unity::framework)
+
+            # 注册测试可执行文件到 CTest。
+            add_test(NAME ${TEST_TARGET_NAME} COMMAND ${TEST_TARGET_NAME})
+        endforeach()
+    endif()
 endif()
 
 
