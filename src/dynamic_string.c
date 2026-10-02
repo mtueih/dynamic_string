@@ -595,7 +595,7 @@ static dstr_status_t replace_str(struct dynamic_string *const dstr, const char *
                     const size_t copy_offset = len_diff * cur;
 
                     /* 拷贝目的位置指针。new_str 长度大于 old_str 长度时，应向后偏移。 */
-                    char *const copy_dest = dstr->data + indexes[latter] + copy_offset;
+                    char *const copy_dest = dstr->data + indexes[cur] + copy_offset;
 
                     memcpy(copy_dest, new_str, new_str_len);
                 }
@@ -638,7 +638,7 @@ static dstr_status_t replace_str(struct dynamic_string *const dstr, const char *
                         const size_t copy_offset = len_diff * (old_str_count - latter);
 
                         /* 拷贝目的位置指针。new_str 长度小于 old_str 长度时，应向前偏移。 */
-                        char *const copy_dest = dstr->data + indexes[latter] - copy_offset;
+                        char *const copy_dest = dstr->data + indexes[cur] - copy_offset;
 
                         memcpy(copy_dest, new_str, new_str_len);
                     }
@@ -923,13 +923,13 @@ static struct dynamic_string **split_str(const char *const cstr, const size_t cs
                 dstrs[find_count] = NULL;
             }
 
+            cur += separator_len;
+            sub_start += sub_len + separator_len;
+
             if (++find_count == separator_count)
             {
                 break;
             }
-
-            cur += separator_len;
-            sub_start += sub_len + separator_len;
         }
         else
         {
@@ -2372,13 +2372,13 @@ char **cstr_split(const char *const cstr, const char *const separator, size_t *c
                 cstrs[find_count] = NULL;
             }
 
+            cur += separator_len;
+            sub_start += sub_len + separator_len;
+
             if (++find_count == separator_count)
             {
                 break;
             }
-
-            cur += separator_len;
-            sub_start += sub_len + separator_len;
         }
         else
         {
