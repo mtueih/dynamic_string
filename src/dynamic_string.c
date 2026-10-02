@@ -44,9 +44,6 @@
  */
 #define DYNAMIC_STRING_SSO_BUF_SIZE (sizeof(size_t) * 2)
 
-/* 静态函数 replace_str 中，indexes 数组缩容绝对阈值。 */
-#define INDEXES_SHRINK_BYTES 4096
-
 /*----------------------------------------------------------------------------------------------------------------------
  * ADT 类型定义
  *--------------------------------------------------------------------------------------------------------------------*/
@@ -788,7 +785,7 @@ static dstr_status_t replace_str_nth(struct dynamic_string *const dstr, const ch
                                      const dstr_direction_t direction, const size_t n)
 {
     /* 查找第 n 次出现的位置。 */
-    size_t index = 0;
+    size_t index;
     const size_t old_str_count = find_str(dstr->data, dstr->len, old_str, old_str_len, &index, NULL, direction, n);
 
     /* 如果 old_str 实际出现次数为 0 次或不足 n 次，视为参数不合法并返回。 */
@@ -802,30 +799,22 @@ static dstr_status_t replace_str_nth(struct dynamic_string *const dstr, const ch
 }
 
 /**
- * @brief
- * 将一个「C 字符串」按指定分隔符分割为多个「动态字符串」。
+ * @brief 将一个「C 字符串」按指定分隔符分割为多个「动态字符串」。
  *
- * @param cstr
- * 目标「C 字符串」的指针。
- * @param cstr_len
- * 目标「C 字符串」的长度。
- * @param separator
- * 分隔「C 字符串」的指针。
- * @param separator_len
- * 分隔「C 字符串」的长度。
- * @param out_dstr_count
- * 存储分割后「动态字符串」个数的 size_t 变量的指针。
+ * @param cstr 目标「C 字符串」的指针。
+ * @param cstr_len 目标「C 字符串」的长度。
+ * @param separator 分隔「C 字符串」的指针。
+ * @param separator_len 分隔「C 字符串」的长度。
+ * @param out_dstr_count 存储分割后「动态字符串」个数的 size_t 变量的指针。
  *
- * @return
- * 分割后「动态字符串」指针数组的指针。
- * 如果分割失败则返回空指针。
- * 注意：数组中的某些元素可能为空指针，表示该部分为空字符串。
+ * @return 分割后「动态字符串」指针数组的指针。如果分割失败则返回空指针。
+ *         注意：数组中的某些元素可能为空指针，表示该部分为空字符串。
  */
 static struct dynamic_string **split_str(const char *const cstr, const size_t cstr_len, const char *const separator,
                                          const size_t separator_len, size_t *const out_dstr_count)
 {
     /* 第一遍查找，统计 separator 在 cstr 中，出现的次数。 */
-    const size_t separator_count = find_str(cstr, cstr_len, separator, separator_len, NULL, NULL, 0, NULL, NULL);
+    const size_t separator_count = find_str(cstr, cstr_len, separator, separator_len, NULL, NULL, DSTR_DIR_FORWARD, 0);
 
     /* 如果 separator 在 cstr 中一次都没有出现，则直接返回空指针。  */
     if (separator_count == 0)
@@ -837,32 +826,28 @@ static struct dynamic_string **split_str(const char *const cstr, const size_t cs
     const size_t dstr_count = separator_count + 1;
 
     /* 动态分配 struct dynamic_string * 数组（比 separator_count 多 1）。 */
-    struct dynamic_string **dstrs;
-    if (!safe_size_t_mul(dstr_count, sizeof(struct dynamic_string *), NULL) ||
-        (dstrs = malloc(dstr_count * sizeof(struct dynamic_string *))) == NULL)
+    struct dynamic_string **const dstrs =
+        (safe_size_mul(dstr_count, sizeof(struct dynamic_string *), NULL) == SAFE_CALC_OK)
+            ? malloc(dstr_count * sizeof(struct dynamic_string *))
+            : NULL;
+
+    if (dstrs == NULL)
     {
         return NULL;
     }
 
     /* 执行一次边查找边创建。 */
-    /* 指针变量，用于迭代。 */
-    const char *p = cstr;
-    /* 指针常量，指向查找区间的后一个位置。用于迭代边界。 */
-    const char *const end = p + cstr_len - separator_len + 1;
-    /* 找到的次数。 */
-    size_t find_count = 0;
-    /* 记录上一次找到的位置指针。 */
-    const char *last = p;
+    const char *p, *sub_start;
+    size_t sub_len, find_count;
 
-    while (p < end)
+    /* 指针常量，指向查找区间的后一个位置。用于迭代边界。 */
+    const char *const end = cstr + cstr_len - separator_len + 1;
+    for (p = cstr, sub_start = cstr, find_count = 0; p < end && find_count < separator_count;)
     {
         if (memcmp(p, separator, separator_len) == 0)
         {
-        create_sub:
-            /* 以当前区间子串创建动态字符串。 */
-            const char *const sub_start = (find_count > 0) ? last + separator_len : cstr;
-            const char *const sub_end = (find_count == separator_count) ? cstr + cstr_len : p;
-            const size_t sub_len = sub_end - sub_start;
+            const char *const sub_end = p;
+            sub_len = sub_end - sub_start;
 
             if (sub_len > 0)
             {
@@ -873,11 +858,7 @@ static struct dynamic_string **split_str(const char *const cstr, const size_t cs
                     /* 创建失败，释放之前已创建的「动态字符串」。 */
                     for (size_t j = 0; j < find_count; ++j)
                     {
-                        if (dstrs[j] != NULL)
-                        {
-                            free(dstrs[j]->data);
-                            free(dstrs[j]);
-                        }
+                        dstr_destroy(dstrs[j]);
                     }
                     free(dstrs);
                     return NULL;
@@ -889,24 +870,34 @@ static struct dynamic_string **split_str(const char *const cstr, const size_t cs
             }
 
             ++find_count;
-            last = p;
-
-            if (find_count == separator_count)
-            {
-                goto create_sub;
-            }
-
-            if (find_count > separator_count)
-            {
-                break;
-            }
-
             p += separator_len;
+            sub_start += sub_len + separator_len;
         }
         else
         {
             ++p;
         }
+    }
+
+    /* 处理最后一个区间。 */
+    sub_len = cstr + cstr_len - sub_start;
+    if (sub_len > 0)
+    {
+        dstrs[find_count] = create_dstr(sub_start, sub_len);
+
+        if (dstrs[find_count] == NULL)
+        {
+            for (size_t j = 0; j < find_count; ++j)
+            {
+                dstr_destroy(dstrs[j]);
+            }
+            free(dstrs);
+            return NULL;
+        }
+    }
+    else
+    {
+        dstrs[find_count] = NULL;
     }
 
     *out_dstr_count = dstr_count;
@@ -1005,11 +996,9 @@ struct dynamic_string *dstr_create_format(const char *const format, ...)
     }
 
     /* 参数检查。 */
-    /**
-     * 如果 format 为空指针或指向空「C 字符串」，则创建空的「动态字符串」。
+    /* 如果 format 为空指针或指向空「C 字符串」，则创建空的「动态字符串」。
      * 而在此函数中，不论 format 情况如何，都要经历一次 create_dstr() 创建空「动态字符串」的过程，
-     * 因此先执行 create_dstr() 操作，后判断，如果 format 为空，则直接返回创建好的空「动态字符串」。
-     */
+     * 因此先执行 create_dstr() 操作，后判断，如果 format 为空，则直接返回创建好的空「动态字符串」。 */
     if (format == NULL || format[0] == '\0')
     {
         return new_dstr;
@@ -1043,11 +1032,9 @@ struct dynamic_string *dstr_create_vformat(const char *const format, va_list arg
     }
 
     /* 参数检查。 */
-    /**
-     * 如果 format 为空指针或指向空「C 字符串」，则创建空的「动态字符串」。
+    /* 如果 format 为空指针或指向空「C 字符串」，则创建空的「动态字符串」。
      * 而在此函数中，不论 format 情况如何，都要经历一次 create_dstr() 创建空「动态字符串」的过程，
-     * 因此先执行 create_dstr() 操作，后判断，如果 format 为空，则直接返回创建好的空「动态字符串」。
-     */
+     * 因此先执行 create_dstr() 操作，后判断，如果 format 为空，则直接返回创建好的空「动态字符串」。 */
     if (format == NULL || format[0] == '\0')
     {
         return new_dstr;
@@ -1108,8 +1095,7 @@ dstr_status_t dstr_set_capacity(struct dynamic_string *const dstr, size_t new_ca
     }
 
     /* resize_capacity() 函数如果调用成功，目前的 dstr 有两种情况，取决于 new_capacity 的值。
-     * 如果 new_capacity ≤ 栈缓冲区大小，那么目前一定是栈缓冲区模式，否则一定是堆缓冲区模式。
-     */
+     * 如果 new_capacity ≤ 栈缓冲区大小，那么目前一定是栈缓冲区模式，否则一定是堆缓冲区模式。 */
     /* 如果是堆缓冲区模式，则更新保底容量。 */
     if (dstr->data != dstr->storage.sso_buf)
     {
@@ -1117,8 +1103,7 @@ dstr_status_t dstr_set_capacity(struct dynamic_string *const dstr, size_t new_ca
     }
     /* 否则，是栈缓冲区模式，说明 new_capacity <= 栈缓冲区大小，
      * 此时就要更新 new_capacity 的值为栈缓冲区大小，以使得 new_capacity 的值不小于栈缓冲区大小，
-     * 避免后续截断字符串时，进行大量判断。
-     */
+     * 避免后续截断字符串时，进行大量判断。 */
     else
     {
         new_capacity = DYNAMIC_STRING_SSO_BUF_SIZE;
@@ -1127,8 +1112,7 @@ dstr_status_t dstr_set_capacity(struct dynamic_string *const dstr, size_t new_ca
     /* 如果 new_capacity <= 当前长度，则截断字符串。
      * new_capacity > 栈缓冲区大小时，无条件执行截断：长度更新为 new_capacity - 1，数据于新长度处补 '\0'；
      * new_capacity <= 栈缓冲区大小时，长度应最多截断到栈缓冲区大小 - 1，因为理论上，容量下限为栈缓冲区的大小。
-     * 为避免此处，进行这些关于 new_capacity 的判断，在这之前确保 new_capacity 的值 >= 栈缓冲区大小。
-     */
+     * 为避免此处，进行这些关于 new_capacity 的判断，在这之前确保 new_capacity 的值 >= 栈缓冲区大小。 */
     if (new_capacity <= dstr->len)
     {
         dstr->len = new_capacity - 1;
@@ -1609,19 +1593,15 @@ void dstr_trim(struct dynamic_string *const dstr, const char *const trim_chars)
             mask[(unsigned char)*c] = true;
         }
 
-        /**
-         * p 向后寻找第一个非待删除元素。
-         * 结束后，p 指向第一个非待删除元素，或者结尾 '\0'。
-         */
+        /* p 向后寻找第一个非待删除元素。
+         * 结束后，p 指向第一个非待删除元素，或者结尾 '\0'。 */
         while (mask[(unsigned char)*p])
         {
             ++p;
         }
 
-        /**
-         * q 向前寻找最后一个非待删除元素。
-         * 结束后，q 指向最后一个非待删除元素的下一个位置，或者结尾 '\0'。。
-         */
+        /* q 向前寻找最后一个非待删除元素。
+         * 结束后，q 指向最后一个非待删除元素的下一个位置，或者结尾 '\0'。 */
         while (q > p && mask[(unsigned char)*(q - 1)])
         {
             --q;
@@ -1631,19 +1611,15 @@ void dstr_trim(struct dynamic_string *const dstr, const char *const trim_chars)
     {
         /* 未指定字符分支。 */
 
-        /**
-         * p 向后寻找第一个非待删除元素。
-         * 结束后，p 指向第一个非待删除元素，或者结尾 '\0'。
-         */
+        /* p 向后寻找第一个非待删除元素。
+         * 结束后，p 指向第一个非待删除元素，或者结尾 '\0'。 */
         while (isspace((unsigned char)*p))
         {
             ++p;
         }
 
-        /**
-         * q 向前寻找最后一个非待删除元素。
-         * 结束后，q 指向最后一个非待删除元素的下一个位置，或者结尾 '\0'。。
-         */
+        /* q 向前寻找最后一个非待删除元素。
+         * 结束后，q 指向最后一个非待删除元素的下一个位置，或者结尾 '\0'。 */
         while (q > p && isspace((unsigned char)*(q - 1)))
         {
             --q;
@@ -1651,10 +1627,8 @@ void dstr_trim(struct dynamic_string *const dstr, const char *const trim_chars)
     }
 
     /* 收尾工作。 */
-    /**
-     * 计算剩余区间的长度。
-     * q 一定大于等于 p，因此可放心执行减法。
-     */
+    /* 计算剩余区间的长度。
+     * q 一定大于等于 p，因此可放心执行减法。 */
     const size_t new_len = q - p;
     /* 长度不变，提前返回。 */
     if (new_len == dstr->len)
@@ -1801,8 +1775,7 @@ bool dstr_contains_cstr(const struct dynamic_string *const dstr, const char *con
         return true;
     }
 
-    /**
-     * 由于要访问 dstr->data，因此需要对 dstr 做非空指针检查；
+    /* 由于要访问 dstr->data，因此需要对 dstr 做非空指针检查；
      * 由于 strstr() 靠 '\0' 标识字符串结束，
      * 而仅在 dstr->len 不为 0 时，dstr->data 才保证以 '\0' 结尾，
      * 且 dstr->len 不为 0 时，dstr->data 保证不为空指针，
@@ -1810,8 +1783,7 @@ bool dstr_contains_cstr(const struct dynamic_string *const dstr, const char *con
      *
      * 以上两检查合起来正好是对 dstr 做非「空字符串」检查，
      * 而当 sub 不为「空字符串」，而 dstr 为「空字符串」时，
-     * dstr 一定不包含 sub，因此返回 false。
-     */
+     * dstr 一定不包含 sub，因此返回 false。 */
     if (dstr == NULL || dstr->len == 0)
     {
         return false;
@@ -1829,8 +1801,7 @@ bool dstr_contains(const struct dynamic_string *const dstr, const struct dynamic
         return true;
     }
 
-    /**
-     * 由于要访问 dstr->data，因此需要对 dstr 做非空指针检查；
+    /* 由于要访问 dstr->data，因此需要对 dstr 做非空指针检查；
      * 由于 strstr() 靠 '\0' 标识字符串结束，
      * 而仅在 dstr->len 不为 0 时，dstr->data 才保证以 '\0' 结尾，
      * 且 dstr->len 不为 0 时，dstr->data 保证不为空指针，
@@ -1838,8 +1809,7 @@ bool dstr_contains(const struct dynamic_string *const dstr, const struct dynamic
      *
      * 以上两检查合起来正好是对 dstr 做非「空字符串」检查，
      * 而当 sub 不为「空字符串」，而 dstr 为「空字符串」时，
-     * dstr 一定不包含 sub，因此返回 false。
-     */
+     * dstr 一定不包含 sub，因此返回 false。 */
     if (dstr == NULL || dstr->len == 0)
     {
         return false;
@@ -1857,10 +1827,8 @@ bool cstr_contains(const char *const cstr, const char *const sub)
         return true;
     }
 
-    /**
-     * 当 sub 不为「空字符串」，而 cstr 为「空字符串」时，
-     * cstr 一定不包含 sub，因此返回 false。
-     */
+    /* 当 sub 不为「空字符串」，而 cstr 为「空字符串」时，
+     * cstr 一定不包含 sub，因此返回 false。 */
     if (cstr == NULL || cstr[0] == '\0')
     {
         return false;
@@ -1935,10 +1903,8 @@ int dstr_compare_cstr(const struct dynamic_string *const lhs, const char *const 
     /* 存在无效串时，需要提前返回。 */
     if (str_1_valid + str_2_valid < 2)
     {
-        /**
-         * 都为无效串视为相等，否则视为不相等，
-         * 且有效者大于无效者。
-         */
+        /* 都为无效串视为相等，否则视为不相等，
+         * 且有效者大于无效者。 */
         return str_1_valid - str_2_valid;
     }
 
@@ -1955,10 +1921,8 @@ int dstr_compare(const struct dynamic_string *const lhs, const struct dynamic_st
     /* 存在无效串时，需要提前返回。 */
     if (str_1_valid + str_2_valid < 2)
     {
-        /**
-         * 都为无效串视为相等，否则视为不相等，
-         * 且有效者大于无效者。
-         */
+        /* 都为无效串视为相等，否则视为不相等，
+         * 且有效者大于无效者。 */
         return str_1_valid - str_2_valid;
     }
 
@@ -1975,10 +1939,8 @@ int cstr_compare(const char *const lhs, const char *const rhs)
     /* 存在无效串时，需要提前返回。 */
     if (str_1_valid + str_2_valid < 2)
     {
-        /**
-         * 都为无效串视为相等，否则视为不相等，
-         * 且有效者大于无效者。
-         */
+        /* 都为无效串视为相等，否则视为不相等，
+         * 且有效者大于无效者。 */
         return str_1_valid - str_2_valid;
     }
 
@@ -2363,7 +2325,7 @@ struct dynamic_string **dstr_split_cstr(const char *const cstr, const char *cons
         return NULL;
     }
 
-    /* 委托 split_str 函数，完成分隔。 */
+    /* 委托 split_str() 函数，完成分隔。 */
     return split_str(cstr, cstr_len, separator, separator_len, out_dstr_count);
 }
 
@@ -2383,18 +2345,123 @@ struct dynamic_string **dstr_split(const struct dynamic_string *const dstr,
         return NULL;
     }
 
-    /* 委托 split_str 函数，完成分隔。 */
+    /* 委托 split_str() 函数，完成分隔。 */
     return split_str(dstr->data, dstr->len, separator->data, separator->len, out_dstr_count);
 }
 
 /* 分隔一个「C 字符串」为多个「C 字符串」。 */
 char **cstr_split(const char *const cstr, const char *const separator, size_t *const out_cstr_count)
 {
-    /* TODO: 待静态辅助函数按方向拆分后实现。 */
-    (void)cstr;
-    (void)separator;
-    (void)out_cstr_count;
-    return NULL;
+    /* 参数合法性检查。 */
+    if (cstr == NULL || cstr[0] == '\0' || separator == NULL || separator[0] == '\0' || out_cstr_count == NULL)
+    {
+        return NULL;
+    }
+
+    /* 计算 cstr 长度。 */
+    const size_t cstr_len = strlen(cstr);
+    /* 计算 separator 长度。 */
+    const size_t separator_len = strlen(separator);
+
+    /* 如果 separator 长度大于 cstr，则视为不合法参数，直接返回。  */
+    if (separator_len > cstr_len)
+    {
+        return NULL;
+    }
+
+    /* 第一遍查找，统计 separator 在 cstr 中，出现的次数。 */
+    const size_t separator_count = find_str(cstr, cstr_len, separator, separator_len, NULL, NULL, DSTR_DIR_FORWARD, 0);
+
+    /* 如果 separator 在 cstr 中一次都没有出现，则直接返回空指针。  */
+    if (separator_count == 0)
+    {
+        return NULL;
+    }
+
+    /* cstrs 数组元素个数（分隔后的子串个数）。 */
+    const size_t cstr_count = separator_count + 1;
+
+    /* 动态分配 char * 数组（比 separator_count 多 1）。 */
+    char **const cstrs =
+        (safe_size_mul(cstr_count, sizeof(char *), NULL) == SAFE_CALC_OK) ? malloc(cstr_count * sizeof(char *)) : NULL;
+
+    if (cstrs == NULL)
+    {
+        return NULL;
+    }
+
+    /* 执行一次边查找边创建。 */
+    const char *p, *sub_start;
+    size_t sub_len, find_count;
+
+    /* 指针常量，指向查找区间的后一个位置。用于迭代边界。 */
+    const char *const end = cstr + cstr_len - separator_len + 1;
+    for (p = cstr, sub_start = cstr, find_count = 0; p < end && find_count < separator_count;)
+    {
+        if (memcmp(p, separator, separator_len) == 0)
+        {
+            const char *const sub_end = p;
+            sub_len = sub_end - sub_start;
+
+            if (sub_len > 0)
+            {
+                cstrs[find_count] = malloc(sub_len + 1);
+
+                if (cstrs[find_count] == NULL)
+                {
+                    /* 创建失败，释放之前已创建的「动态字符串」。 */
+                    for (size_t j = 0; j < find_count; ++j)
+                    {
+                        free(cstrs[j]);
+                    }
+                    free(cstrs);
+                    return NULL;
+                }
+
+                memcpy(cstrs[find_count], sub_start, sub_len);
+                cstrs[find_count][sub_len] = '\0';
+            }
+            else
+            {
+                cstrs[find_count] = NULL;
+            }
+
+            ++find_count;
+            p += separator_len;
+            sub_start += sub_len + separator_len;
+        }
+        else
+        {
+            ++p;
+        }
+    }
+
+    /* 处理最后一个区间。 */
+    sub_len = cstr + cstr_len - sub_start;
+    if (sub_len > 0)
+    {
+        cstrs[find_count] = malloc(sub_len + 1);
+
+        if (cstrs[find_count] == NULL)
+        {
+            for (size_t j = 0; j < find_count; ++j)
+            {
+                free(cstrs[j]);
+            }
+            free(cstrs);
+            return NULL;
+        }
+
+        memcpy(cstrs[find_count], sub_start, sub_len);
+        cstrs[find_count][sub_len] = '\0';
+    }
+    else
+    {
+        cstrs[find_count] = NULL;
+    }
+
+    *out_cstr_count = cstr_count;
+    return cstrs;
 }
 
 /* 合并多个「C 字符串」为一个「动态字符串」。 */
@@ -2414,28 +2481,23 @@ struct dynamic_string *dstr_join_cstr(const char *const *const cstrs, const size
     size_t target_len = 0;
 
     /* 计算 separator 多次出现的总长度。 */
-    if (separator_len > 0 && !safe_size_t_mul(separator_len, cstr_count - 1, &target_len))
+    if (separator_len > 0 && safe_size_mul(separator_len, cstr_count - 1, &target_len) != SAFE_CALC_OK)
     {
         return NULL;
     }
 
-    /**
-     * 尝试分配一个 size_t 数组，用于缓存每个「C 字符串」的长度，
-     * 避免在第一遍累加和第二遍拷贝时各执行一次 strlen。
-     * 分配失败则不缓存，后续重新计算，不视为致命错误。
-     */
+    /* 尝试分配一个 size_t 数组，用于缓存每个「C 字符串」的长度，
+     * 避免在第一遍累加和第二遍拷贝时各执行一次 strlen()。
+     * 分配失败则不缓存，后续重新计算，不视为致命错误。 */
     size_t *cstr_lens = NULL;
-    if (safe_size_t_mul(cstr_count, sizeof(size_t), NULL))
+    if (safe_size_mul(cstr_count, sizeof(size_t), NULL) == SAFE_CALC_OK)
     {
         cstr_lens = malloc(cstr_count * sizeof(size_t));
     }
 
-    /**
-     * 第一遍遍历：累加每个「C 字符串」的长度，
-     * 以计算合并后的字符串长度。
+    /* 第一遍遍历：累加每个「C 字符串」的长度，以计算合并后的字符串长度。
      * 指针本身可能为空（视为长度 0）；不为空时长度也可能为 0；
-     * 通过 cstrs[i][0] == '\0' 判断，以减少不必要的 strlen 调用。
-     */
+     * 通过 cstrs[i][0] == '\0' 判断，以减少不必要的 strlen() 调用。 */
     for (size_t i = 0; i < cstr_count; ++i)
     {
         const size_t cstr_len = (cstrs[i] != NULL && cstrs[i][0] != '\0') ? strlen(cstrs[i]) : 0;
@@ -2447,7 +2509,7 @@ struct dynamic_string *dstr_join_cstr(const char *const *const cstrs, const size
         }
 
         /* 累加到 target_len，检测溢出。 */
-        if (!safe_size_t_add(target_len, cstr_len, &target_len))
+        if (safe_size_add(target_len, cstr_len, &target_len) != SAFE_CALC_OK)
         {
             free(cstr_lens);
             return NULL;
@@ -2470,7 +2532,7 @@ struct dynamic_string *dstr_join_cstr(const char *const *const cstrs, const size
     }
 
     /* 扩容。 */
-    if (!safe_size_t_add(target_len, 1, NULL) || !resize_capacity(result, target_len + 1, false))
+    if (safe_size_add(target_len, 1, NULL) != SAFE_CALC_OK || !resize_capacity(result, target_len + 1, false))
     {
         free(cstr_lens);
         free(result);
@@ -2526,7 +2588,7 @@ struct dynamic_string *dstr_join(const struct dynamic_string *const *const dstrs
     size_t target_len = 0;
 
     /* 计算 separator 多次出现的总长度。 */
-    if (separator_len > 0 && !safe_size_t_mul(separator_len, dstr_count - 1, &target_len))
+    if (separator_len > 0 && safe_size_mul(separator_len, dstr_count - 1, &target_len) != SAFE_CALC_OK)
     {
         return NULL;
     }
@@ -2534,7 +2596,7 @@ struct dynamic_string *dstr_join(const struct dynamic_string *const *const dstrs
     /* 第一遍遍历：累加每个「动态字符串」的长度。 */
     for (size_t i = 0; i < dstr_count; ++i)
     {
-        if (!safe_size_t_add(target_len, (dstrs[i] != NULL) ? dstrs[i]->len : 0, &target_len))
+        if (safe_size_add(target_len, (dstrs[i] != NULL) ? dstrs[i]->len : 0, &target_len) != SAFE_CALC_OK)
         {
             return NULL;
         }
@@ -2554,7 +2616,7 @@ struct dynamic_string *dstr_join(const struct dynamic_string *const *const dstrs
     }
 
     /* 扩容。 */
-    if (!safe_size_t_add(target_len, 1, NULL) || !resize_capacity(result, target_len + 1, false))
+    if (safe_size_add(target_len, 1, NULL) != SAFE_CALC_OK || !resize_capacity(result, target_len + 1, false))
     {
         free(result);
         return NULL;
@@ -2590,9 +2652,96 @@ struct dynamic_string *dstr_join(const struct dynamic_string *const *const dstrs
 /* 合并多个「C 字符串」为一个「C 字符串」。 */
 char *cstr_join(const char *const *const cstrs, const size_t cstr_count, const char *const separator)
 {
-    /* TODO: 待静态辅助函数按方向拆分后实现。 */
-    (void)cstrs;
-    (void)cstr_count;
-    (void)separator;
-    return NULL;
+    /* 参数合法性检查。 */
+    if (cstrs == NULL || cstr_count == 0)
+    {
+        return NULL;
+    }
+
+    /* separator 为空指针或指向空字符串，则使用空串连接。 */
+    const size_t separator_len = (separator != NULL && separator[0] != '\0') ? strlen(separator) : 0;
+
+    /* 合并后的字符串的长度。 */
+    size_t target_len = 0;
+
+    /* 计算 separator 多次出现的总长度。 */
+    if (separator_len > 0 && safe_size_mul(separator_len, cstr_count - 1, &target_len) != SAFE_CALC_OK)
+    {
+        return NULL;
+    }
+
+    /* 尝试分配一个 size_t 数组，用于缓存每个「C 字符串」的长度，
+     * 避免在第一遍累加和第二遍拷贝时各执行一次 strlen()。
+     * 分配失败则不缓存，后续重新计算，不视为致命错误。 */
+    size_t *cstr_lens = NULL;
+    if (safe_size_mul(cstr_count, sizeof(size_t), NULL) == SAFE_CALC_OK)
+    {
+        cstr_lens = malloc(cstr_count * sizeof(size_t));
+    }
+
+    /* 第一遍遍历：累加每个「C 字符串」的长度，以计算合并后的字符串长度。
+     * 指针本身可能为空（视为长度 0）；不为空时长度也可能为 0；
+     * 通过 cstrs[i][0] == '\0' 判断，以减少不必要的 strlen() 调用。 */
+    for (size_t i = 0; i < cstr_count; ++i)
+    {
+        const size_t cstr_len = (cstrs[i] != NULL && cstrs[i][0] != '\0') ? strlen(cstrs[i]) : 0;
+
+        /* 缓存长度。 */
+        if (cstr_lens != NULL)
+        {
+            cstr_lens[i] = cstr_len;
+        }
+
+        /* 累加到 target_len，检测溢出。 */
+        if (safe_size_add(target_len, cstr_len, &target_len) != SAFE_CALC_OK)
+        {
+            free(cstr_lens);
+            return NULL;
+        }
+    }
+
+    /* 如果合并后的长度为 0，则直接返回空的「C 字符串」。 */
+    if (target_len == 0)
+    {
+        free(cstr_lens);
+        return NULL;
+    }
+
+    /* 为新堆内存「C 字符串」分配内存。 */
+    char *const result = malloc(target_len + 1);
+    if (result == NULL)
+    {
+        free(cstr_lens);
+        return NULL;
+    }
+
+    /* 第二遍遍历：执行拷贝。 */
+    char *dest = result;
+
+    for (size_t i = 0; i < cstr_count; ++i)
+    {
+        /* 如果不是第一个元素，先拷贝 separator。 */
+        if (i > 0 && separator_len > 0)
+        {
+            memcpy(dest, separator, separator_len);
+            dest += separator_len;
+        }
+
+        /* 从缓存获取，或重新计算长度。 */
+        const size_t cstr_len =
+            (cstr_lens != NULL) ? cstr_lens[i] : ((cstrs[i] != NULL && cstrs[i][0] != '\0') ? strlen(cstrs[i]) : 0);
+
+        /* 拷贝 cstr。 */
+        if (cstr_len > 0)
+        {
+            memcpy(dest, cstrs[i], cstr_len);
+            dest += cstr_len;
+        }
+    }
+
+    /* 设置终止符。 */
+    *dest = '\0';
+
+    free(cstr_lens);
+    return result;
 }
