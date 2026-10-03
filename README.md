@@ -15,6 +15,7 @@
 
 ## Table of Contents
 
+- [API](#api)
 - [Use in Other Projects](#use-in-other-projects)
   - [Add Dependencies](#use-in-other-projects-add-dependencies)
     - [CPM.cmake](#use-in-other-projects-add-dependencies-cpm-cmake)
@@ -29,6 +30,26 @@
     - [Clone the Repository](#build-from-source-code-build-steps-clone-repository)
     - [Configure, Build and Install](#build-from-source-code-build-steps-configure-build-and-install)
 - [License](#license)
+
+<a id="api"></a>
+
+## API [↑](#dynamic_string)
+
+This library provides a rich and complete API, organized into the following groups (each listing only typical functions):
+
+- **Creation and Destruction**: `dstr_create()`, `dstr_destroy()`, `dstr_clone()`.
+
+- **Property Accessors**: `dstr_cstr()`, `dstr_length()`, `dstr_is_empty()`, `dstr_capacity()`.
+
+- **Content Editing**: `dstr_cpy_cstr()`, `dstr_cat_cstr()`, `dstr_cat_format()`, `dstr_insert_cstr()`.
+
+- **Relations and Comparison**: `dstr_starts_with_cstr()`, `dstr_ends_with_cstr()`, `dstr_contains_cstr()`, `dstr_equals()`.
+
+- **Search, Count and Replace**: `dstr_find()`, `dstr_count()`, `dstr_replace()`.
+
+- **Split and Join**: `dstr_split()`, `dstr_join()`.
+
+See the [API Reference](docs/api-reference.md) for the complete reference of every function.
 
 <a id="use-in-other-projects"></a>
 

@@ -15,6 +15,7 @@
 
 ## 目录
 
+- [API](#api)
 - [在其他项目中使用](#use-in-other-projects)
   - [添加依赖](#use-in-other-projects-add-dependencies)
     - [CPM.cmake](#use-in-other-projects-add-dependencies-cpm-cmake)
@@ -29,6 +30,26 @@
     - [克隆仓库](#build-from-source-code-build-steps-clone-repository)
     - [配置、构建与安装](#build-from-source-code-build-steps-configure-build-and-install)
 - [许可协议](#license)
+
+<a id="api"></a>
+
+## API [↑](#dynamic_string)
+
+本库提供丰富且完整的 API，按功能分为以下几组（每组仅列举典型函数）：
+
+- **创建与销毁**：`dstr_create()`、`dstr_destroy()`、`dstr_clone()`。
+
+- **属性获取与设置**：`dstr_cstr()`、`dstr_length()`、`dstr_is_empty()`、`dstr_capacity()`。
+
+- **内容编辑**：`dstr_cpy_cstr()`、`dstr_cat_cstr()`、`dstr_cat_format()`、`dstr_insert_cstr()`。
+
+- **关系判断与比较**：`dstr_starts_with_cstr()`、`dstr_ends_with_cstr()`、`dstr_contains_cstr()`、`dstr_equals()`。
+
+- **查找、统计与替换**：`dstr_find()`、`dstr_count()`、`dstr_replace()`。
+
+- **分隔与合并**：`dstr_split()`、`dstr_join()`。
+
+有关各函数的完整说明与完整列表，请参阅 [API 参考](docs/api-reference.zh-CN.md)。
 
 <a id="use-in-other-projects"></a>
 
