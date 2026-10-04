@@ -57,7 +57,7 @@ In your `CMakeLists.txt`:
 ```cmake
 include(${PROJECT_SOURCE_DIR}/cmake/CPM.cmake)
 
-CPMAddPackage("gh:mtueih/dynamic_string#v1.0.1")
+CPMAddPackage("gh:mtueih/dynamic_string#v2.0.0")
 ```
 
 #### CMake find_package (must be installed) [↑](#use-in-other-projects-add-dependencies)
@@ -145,7 +145,7 @@ int main(void)
 #### Clone the Repository [↑](#build-from-source-code-build-steps)
 
 ```bash
-git clone https://github.com/mtueih/dynamic_string.git --depth 1 -b v1.0.1
+git clone https://github.com/mtueih/dynamic_string.git --depth 1 -b v2.0.0
 cd dynamic_string
 ```
 

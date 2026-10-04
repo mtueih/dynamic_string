@@ -16,7 +16,7 @@
 # 项目声明
 #-------------------------------------------------------------------------------
 cmake_minimum_required(VERSION 3.24)
-project(dynamic_string VERSION 1.1.0 LANGUAGES C)
+project(dynamic_string VERSION 2.0.0 LANGUAGES C)
 
 if(NOT CMAKE_C_STANDARD)
     set(CMAKE_C_STANDARD 99)
