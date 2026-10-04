@@ -18,36 +18,25 @@
 - [API](#api)
 - [在其他项目中使用](#use-in-other-projects)
   - [添加依赖](#use-in-other-projects-add-dependencies)
-    - [CPM.cmake](#use-in-other-projects-add-dependencies-cpm-cmake)
-    - [CMake find_package（需已安装）](#use-in-other-projects-add-dependencies-cmake-find-package-must-be-installed)
   - [链接库](#use-in-other-projects-link-library)
   - [在代码中使用](#use-in-other-projects-use-in-code)
-    - [引入头文件](#use-in-other-projects-use-in-code-include-header-files)
-    - [使用库函数](#use-in-other-projects-use-in-code-using-library-functions)
 - [从源码构建](#build-from-source-code)
   - [环境要求](#build-from-source-code-environmental-requirements)
   - [构建步骤](#build-from-source-code-build-steps)
-    - [克隆仓库](#build-from-source-code-build-steps-clone-repository)
-    - [配置、构建与安装](#build-from-source-code-build-steps-configure-build-and-install)
 - [许可协议](#license)
 
 <a id="api"></a>
 
 ## API [↑](#dynamic_string)
 
-本库提供丰富且完整的 API，按功能分为以下几组（每组仅列举典型函数）：
+本库提供丰富且完整的 API，按功能分为以下几组：
 
-- **创建与销毁**：`dstr_create()`、`dstr_destroy()`、`dstr_clone()`。
-
-- **属性获取与设置**：`dstr_cstr()`、`dstr_length()`、`dstr_is_empty()`、`dstr_capacity()`。
-
-- **内容编辑**：`dstr_cpy_cstr()`、`dstr_cat_cstr()`、`dstr_cat_format()`、`dstr_insert_cstr()`。
-
-- **关系判断与比较**：`dstr_starts_with_cstr()`、`dstr_ends_with_cstr()`、`dstr_contains_cstr()`、`dstr_equals()`。
-
-- **查找、统计与替换**：`dstr_find()`、`dstr_count()`、`dstr_replace()`。
-
-- **分隔与合并**：`dstr_split()`、`dstr_join()`。
+- **创建与销毁**：创建、销毁、克隆。
+- **属性获取与设置**：获取 C 串、获取长度、获取容量、设置容量。
+- **内容编辑**：复制、追加、插入、删除。
+- **关系判断与比较**：前后缀判断、包含判断、大小比较。
+- **查找、统计与替换**。
+- **分隔与合并**。
 
 有关各函数的完整说明与完整列表，请参阅 [API 参考](docs/api-reference.zh-CN.md)。
 
@@ -57,11 +46,9 @@
 
 <a id="use-in-other-projects-add-dependencies"></a>
 
-### 添加依赖 [↑](#dynamic_string)
+### 添加依赖 [↑](#use-in-other-projects)
 
-<a id="use-in-other-projects-add-dependencies-cpm-cmake"></a>
-
-#### CPM.cmake [↑](#dynamic_string)
+#### CPM.cmake [↑](#use-in-other-projects-add-dependencies)
 
 环境要求：[CPM.cmake](https://github.com/cpm-cmake/CPM.cmake)。
 
@@ -73,9 +60,7 @@ include(${PROJECT_SOURCE_DIR}/cmake/CPM.cmake)
 CPMAddPackage("gh:mtueih/dynamic_string#v1.0.1")
 ```
 
-<a id="use-in-other-projects-add-dependencies-cmake-find-package-must-be-installed"></a>
-
-#### CMake find_package（需已安装） [↑](#dynamic_string)
+#### CMake find_package（需已安装） [↑](#use-in-other-projects-add-dependencies)
 
 在 `CMakeLists.txt` 中：
 
@@ -85,7 +70,7 @@ find_package(dynamic_string REQUIRED)
 
 <a id="use-in-other-projects-link-library"></a>
 
-### 链接库 [↑](#dynamic_string)
+### 链接库 [↑](#use-in-other-projects)
 
 在 `CMakeLists.txt` 中：
 
@@ -95,19 +80,15 @@ target_link_libraries(your_target PRIVATE dynamic_string::dynamic_string)
 
 <a id="use-in-other-projects-use-in-code"></a>
 
-### 在代码中使用 [↑](#dynamic_string)
+### 在代码中使用 [↑](#use-in-other-projects)
 
-<a id="use-in-other-projects-use-in-code-include-header-files"></a>
-
-#### 引入头文件 [↑](#dynamic_string)
+#### 引入头文件 [↑](#use-in-other-projects-use-in-code)
 
 ```c
 #include <dynamic_string/dynamic_string.h>
 ```
 
-<a id="use-in-other-projects-use-in-code-using-library-functions"></a>
-
-#### 使用库函数 [↑](#dynamic_string)
+#### 使用库函数 [↑](#use-in-other-projects-use-in-code)
 
 ```c
 #include <dynamic_string/dynamic_string.h>
@@ -152,27 +133,23 @@ int main(void)
 
 <a id="build-from-source-code-environmental-requirements"></a>
 
-### 环境要求 [↑](#dynamic_string)
+### 环境要求 [↑](#build-from-source-code)
 
 - [CMake](https://cmake.org/) 3.24+。
 - 支持 [C99](https://zh.cppreference.com/c/99)+ 的 [C 编译器](https://zh.cppreference.com/c/compiler_support)（MSVC / MinGW-w64 / Clang）。
 
 <a id="build-from-source-code-build-steps"></a>
 
-### 构建步骤 [↑](#dynamic_string)
+### 构建步骤 [↑](#build-from-source-code)
 
-<a id="build-from-source-code-build-steps-clone-repository"></a>
-
-#### 克隆仓库 [↑](#dynamic_string)
+#### 克隆仓库 [↑](#build-from-source-code-build-steps)
 
 ```bash
 git clone https://github.com/mtueih/dynamic_string.git --depth 1 -b v1.0.1
 cd dynamic_string
 ```
 
-<a id="build-from-source-code-build-steps-configure-build-and-install"></a>
-
-#### 配置、构建与安装 [↑](#dynamic_string)
+#### 配置、构建与安装 [↑](#build-from-source-code-build-steps)
 
 ```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DDYNAMIC_STRING_INSTALL=ON

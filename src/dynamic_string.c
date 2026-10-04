@@ -50,6 +50,9 @@
  */
 #define DYNAMIC_STRING_SSO_BUF_SIZE (sizeof(size_t) * 2)
 
+#define CHECK_DSTR_EMPTY(dstr) ((dstr) == NULL || (dstr)->len == 0)
+#define CHECK_CSTR_EMPTY(cstr) ((cstr) == NULL || (cstr)[0] == '\0')
+
 /*----------------------------------------------------------------------------------------------------------------------
  * ADT 类型定义
  *--------------------------------------------------------------------------------------------------------------------*/
@@ -284,7 +287,7 @@ static dstr_status_t insert_str_format(struct dynamic_string *const dstr, const 
                                        const size_t remove_length, const char *const format, va_list args)
 {
     assert(dstr != NULL && index <= dstr->len && remove_length <= dstr->len && index + remove_length <= dstr->len &&
-           format != NULL && format[0] != '\0');
+           !CHECK_CSTR_EMPTY(format));
 
     va_list temp_args;
 
@@ -457,7 +460,7 @@ static dstr_status_t replace_str(struct dynamic_string *const dstr, const char *
                                  const char *const new_str, const size_t new_str_len, const dstr_direction_t direction,
                                  const size_t n)
 {
-    assert(dstr != NULL && dstr->len > 0 && old_str != NULL && old_str_len > 0 && old_str_len <= dstr->len &&
+    assert(!CHECK_DSTR_EMPTY(dstr) && old_str != NULL && old_str_len > 0 && old_str_len <= dstr->len &&
            (new_str_len == 0 || (new_str_len > 0 && new_str != NULL)));
 
     /* 先查找一次，以统计 old_str 实际出现的次数（截止第 n 次）。 */
@@ -839,7 +842,7 @@ static dstr_status_t replace_str_nth(struct dynamic_string *const dstr, const ch
                                      const size_t old_str_len, const char *const new_str, const size_t new_str_len,
                                      const dstr_direction_t direction, const size_t n)
 {
-    assert(dstr != NULL && dstr->len > 0 && old_str != NULL && old_str_len > 0 && old_str_len <= dstr->len &&
+    assert(!CHECK_DSTR_EMPTY(dstr) && old_str != NULL && old_str_len > 0 && old_str_len <= dstr->len &&
            (new_str_len == 0 || (new_str_len > 0 && new_str != NULL)));
 
     size_t index; /* 存储第 n 次出现的位置索引。 */
@@ -977,7 +980,7 @@ static struct dynamic_string **split_str(const char *const cstr, const size_t cs
 struct dynamic_string *dstr_create(const char *const cstr)
 {
     /* 委托 create_dstr() 函数，创建新「动态字符串」，并使用 cstr 初始化。 */
-    return create_dstr(cstr, (cstr != NULL && cstr[0] != '\0') ? strlen(cstr) : 0);
+    return create_dstr(cstr, (!CHECK_CSTR_EMPTY(cstr)) ? strlen(cstr) : 0);
 }
 
 /* 销毁一个「动态字符串」。 */
@@ -1000,14 +1003,14 @@ void dstr_destroy(struct dynamic_string *const dstr)
 struct dynamic_string *dstr_clone(const struct dynamic_string *const dstr)
 {
     /* 委托 create_dstr() 函数，创建新「动态字符串」，并使用 dstr 初始化。 */
-    return (dstr != NULL && dstr->len > 0) ? create_dstr(dstr->data, dstr->len) : create_dstr(NULL, 0);
+    return (!CHECK_DSTR_EMPTY(dstr)) ? create_dstr(dstr->data, dstr->len) : create_dstr(NULL, 0);
 }
 
 /* 提取一个「C 字符串」的子串为一个新的「动态字符串」。 */
 struct dynamic_string *dstr_sub_cstr(const char *const cstr, const size_t sub_start, const size_t sub_length)
 {
 
-    if (cstr == NULL || cstr[0] == '\0') /* 参数检查。 */
+    if (CHECK_CSTR_EMPTY(cstr)) /* 参数检查。 */
     {
         return create_dstr(NULL, 0); /* 委托 create_dstr() 函数，创建空的新「动态字符串」。 */
     }
@@ -1029,7 +1032,7 @@ struct dynamic_string *dstr_sub_cstr(const char *const cstr, const size_t sub_st
 struct dynamic_string *dstr_sub(const struct dynamic_string *const dstr, const size_t sub_start,
                                 const size_t sub_length)
 {
-    if (dstr == NULL || dstr->len == 0) /* 参数检查。 */
+    if (CHECK_DSTR_EMPTY(dstr)) /* 参数检查。 */
     {
         return create_dstr(NULL, 0); /* 委托 create_dstr() 函数，创建空的新「动态字符串」。 */
     }
@@ -1059,7 +1062,7 @@ struct dynamic_string *dstr_create_format(const char *const format, ...)
     /* 如果 format 为空指针或指向空「C 字符串」，则创建空的「动态字符串」。
      * 而在此函数中，不论 format 情况如何，都要经历一次 create_dstr() 创建空「动态字符串」的过程，
      * 因此先执行 create_dstr() 操作，后判断，如果 format 为空，则直接返回创建好的空「动态字符串」。 */
-    if (format == NULL || format[0] == '\0')
+    if (CHECK_CSTR_EMPTY(format))
     {
         return new_dstr;
     }
@@ -1094,7 +1097,7 @@ struct dynamic_string *dstr_create_vformat(const char *const format, va_list arg
     /* 如果 format 为空指针或指向空「C 字符串」，则创建空的「动态字符串」。
      * 而在此函数中，不论 format 情况如何，都要经历一次 create_dstr() 创建空「动态字符串」的过程，
      * 因此先执行 create_dstr() 操作，后判断，如果 format 为空，则直接返回创建好的空「动态字符串」。 */
-    if (format == NULL || format[0] == '\0')
+    if (CHECK_CSTR_EMPTY(format))
     {
         return new_dstr;
     }
@@ -1208,7 +1211,7 @@ dstr_status_t dstr_cpy_cstr(struct dynamic_string *const dest, const char *const
     }
 
     /* 委托 insert_str() 函数，删除 dest 全部，插入 src 全部。 */
-    return insert_str(dest, 0, dest->len, src, (src != NULL && src[0] != '\0') ? strlen(src) : 0);
+    return insert_str(dest, 0, dest->len, src, (!CHECK_CSTR_EMPTY(src)) ? strlen(src) : 0);
 }
 
 /* 复制一个「动态字符串」到另一个「动态字符串」。 */
@@ -1233,7 +1236,7 @@ dstr_status_t dstr_cpy_sub_cstr(struct dynamic_string *const dest, const char *c
         return DSTR_INVALID_ARGUMENT;
     }
 
-    if (src == NULL || src[0] == '\0') /* src 为空指针或指向空字符串，均视为复制空字符串。 */
+    if (CHECK_CSTR_EMPTY(src)) /* src 为空指针或指向空字符串，均视为复制空字符串。 */
     {
         /* 委托 insert_str() 函数，删除 dest 全部，不插入。 */
         return insert_str(dest, 0, dest->len, NULL, 0);
@@ -1260,7 +1263,7 @@ dstr_status_t dstr_cpy_sub(struct dynamic_string *const dest, const struct dynam
         return DSTR_INVALID_ARGUMENT;
     }
 
-    if (src == NULL || src->len == 0) /* src 为空指针或指向空字符串，均视为复制空字符串。 */
+    if (CHECK_DSTR_EMPTY(src)) /* src 为空指针或指向空字符串，均视为复制空字符串。 */
     {
         /* 委托 insert_str() 函数，删除 dest 全部，不插入。 */
         return insert_str(dest, 0, dest->len, NULL, 0);
@@ -1287,7 +1290,7 @@ dstr_status_t dstr_cpy_format(struct dynamic_string *const dest, const char *con
         return DSTR_INVALID_ARGUMENT;
     }
 
-    if (format == NULL || format[0] == '\0') /* format 为空指针或指向空字符串，均视为复制空字符串。 */
+    if (CHECK_CSTR_EMPTY(format)) /* format 为空指针或指向空字符串，均视为复制空字符串。 */
     {
         /* 委托 insert_str() 函数，删除 dest 全部，不插入。 */
         return insert_str(dest, 0, dest->len, NULL, 0);
@@ -1311,7 +1314,7 @@ dstr_status_t dstr_cpy_vformat(struct dynamic_string *const dest, const char *co
         return DSTR_INVALID_ARGUMENT;
     }
 
-    if (format == NULL || format[0] == '\0') /* format 为空指针或指向空字符串，均视为复制空字符串。 */
+    if (CHECK_CSTR_EMPTY(format)) /* format 为空指针或指向空字符串，均视为复制空字符串。 */
     {
         /* 委托 insert_str() 函数，删除 dest 全部，不插入。 */
         return insert_str(dest, 0, dest->len, NULL, 0);
@@ -1330,7 +1333,7 @@ dstr_status_t dstr_cat_cstr(struct dynamic_string *const dest, const char *const
     }
 
     /* 委托 insert_str() 函数，不删除，尾部插入 src 全部。 */
-    return (src != NULL && src[0] != '\0') ? insert_str(dest, dest->len, 0, src, strlen(src)) : DSTR_SUCCESS;
+    return (!CHECK_CSTR_EMPTY(src)) ? insert_str(dest, dest->len, 0, src, strlen(src)) : DSTR_SUCCESS;
 }
 
 /* 追加一个「动态字符串」到另一个「动态字符串」。 */
@@ -1342,7 +1345,7 @@ dstr_status_t dstr_cat(struct dynamic_string *const dest, const struct dynamic_s
     }
 
     /* 委托 insert_str() 函数，不删除，尾部插入 src 全部。 */
-    return (src != NULL && src->len > 0) ? insert_str(dest, dest->len, 0, src->data, src->len) : DSTR_SUCCESS;
+    return (!CHECK_DSTR_EMPTY(src)) ? insert_str(dest, dest->len, 0, src->data, src->len) : DSTR_SUCCESS;
 }
 
 /* 追加一个「C 字符串」的子串到一个「动态字符串」。 */
@@ -1354,7 +1357,7 @@ dstr_status_t dstr_cat_sub_cstr(struct dynamic_string *const dest, const char *c
         return DSTR_INVALID_ARGUMENT;
     }
 
-    if (src == NULL || src[0] == '\0') /* src 为空指针或指向空字符串，均视为追加空字符串。 */
+    if (CHECK_CSTR_EMPTY(src)) /* src 为空指针或指向空字符串，均视为追加空字符串。 */
     {
         return DSTR_SUCCESS; /* 不删除，不插入，直接返回，无须委托。 */
     }
@@ -1381,7 +1384,7 @@ dstr_status_t dstr_cat_sub(struct dynamic_string *const dest, const struct dynam
 
     /* src 为空指针或指向空字符串，均视为追加空字符串。 */
     /* 不删除，不插入，直接返回，无须委托。 */
-    if (src == NULL || src->len == 0)
+    if (CHECK_DSTR_EMPTY(src))
     {
         return DSTR_SUCCESS;
     }
@@ -1406,7 +1409,7 @@ dstr_status_t dstr_cat_format(struct dynamic_string *const dest, const char *con
         return DSTR_INVALID_ARGUMENT;
     }
 
-    if (format == NULL || format[0] == '\0') /* format 为空指针或指向空字符串，均视为追加空字符串。 */
+    if (CHECK_CSTR_EMPTY(format)) /* format 为空指针或指向空字符串，均视为追加空字符串。 */
     {
         return DSTR_SUCCESS; /* 不删除，不插入，直接返回，无须委托。 */
     }
@@ -1431,7 +1434,7 @@ dstr_status_t dstr_cat_vformat(struct dynamic_string *const dest, const char *co
 
     /* format 为空指针或指向空字符串，均视为追加空字符串。 */
     /* 不删除，不插入，直接返回，无须委托。 */
-    if (format == NULL || format[0] == '\0')
+    if (CHECK_CSTR_EMPTY(format))
     {
         return DSTR_SUCCESS;
     }
@@ -1449,7 +1452,7 @@ dstr_status_t dstr_insert_cstr(struct dynamic_string *const dest, const size_t i
     }
 
     /* 委托 insert_str() 函数，不删除，指定位置插入 src 全部。 */
-    return (src != NULL && src[0] != '\0') ? insert_str(dest, index, 0, src, strlen(src)) : DSTR_SUCCESS;
+    return (!CHECK_CSTR_EMPTY(src)) ? insert_str(dest, index, 0, src, strlen(src)) : DSTR_SUCCESS;
 }
 
 /* 插入一个「动态字符串」到另一个「动态字符串」。 */
@@ -1461,7 +1464,7 @@ dstr_status_t dstr_insert(struct dynamic_string *const dest, const size_t index,
     }
 
     /* 委托 insert_str() 函数，不删除，指定位置插入 src 全部。 */
-    return (src != NULL && src->len > 0) ? insert_str(dest, index, 0, src->data, src->len) : DSTR_SUCCESS;
+    return (!CHECK_DSTR_EMPTY(src)) ? insert_str(dest, index, 0, src->data, src->len) : DSTR_SUCCESS;
 }
 
 /* 插入一个「C 字符串」的子串到一个「动态字符串」。 */
@@ -1475,7 +1478,7 @@ dstr_status_t dstr_insert_sub_cstr(struct dynamic_string *const dest, const size
 
     /* src 为空指针或指向空字符串，均视为插入空字符串。 */
     /* 不删除，不插入，直接返回，无须委托。 */
-    if (src == NULL || src[0] == '\0')
+    if (CHECK_CSTR_EMPTY(src))
     {
         return DSTR_SUCCESS;
     }
@@ -1503,7 +1506,7 @@ dstr_status_t dstr_insert_sub(struct dynamic_string *const dest, const size_t in
 
     /* src 为空指针或指向空字符串，均视为插入空字符串。 */
     /* 不删除，不插入，直接返回，无须委托。 */
-    if (src == NULL || src->len == 0)
+    if (CHECK_DSTR_EMPTY(src))
     {
         return DSTR_SUCCESS;
     }
@@ -1529,7 +1532,7 @@ dstr_status_t dstr_insert_format(struct dynamic_string *const dest, const size_t
 
     /* format 为空指针或指向空字符串，均视为插入空字符串。 */
     /* 不删除，不插入，直接返回，无须委托。 */
-    if (format == NULL || format[0] == '\0')
+    if (CHECK_CSTR_EMPTY(format))
     {
         return DSTR_SUCCESS;
     }
@@ -1555,7 +1558,7 @@ dstr_status_t dstr_insert_vformat(struct dynamic_string *const dest, const size_
 
     /* format 为空指针或指向空字符串，均视为插入空字符串。 */
     /* 不删除，不插入，直接返回，无须委托。 */
-    if (format == NULL || format[0] == '\0')
+    if (CHECK_CSTR_EMPTY(format))
     {
         return DSTR_SUCCESS;
     }
@@ -1594,13 +1597,13 @@ void dstr_remove(struct dynamic_string *const dstr, const size_t sub_start, cons
 /* 删除一个「动态字符串」首尾的空白字符或指定字符。 */
 void dstr_trim(struct dynamic_string *const dstr, const char *const trim_chars)
 {
-    if (dstr == NULL || dstr->len == 0) /* 如果 dstr 为空指针，或指向空「动态字符串」，则直接返回。 */
+    if (CHECK_DSTR_EMPTY(dstr)) /* 如果 dstr 为空指针，或指向空「动态字符串」，则直接返回。 */
     {
         return;
     }
 
     /* trim_chars 为空指针或指向空字符串时，均视为没有指定字符。 */
-    const bool is_specified_trim_chars = (trim_chars != NULL && trim_chars[0] != '\0');
+    const bool is_specified_trim_chars = (!CHECK_CSTR_EMPTY(trim_chars));
 
     /* 用于迭代和区间定位。 */
     const char *p = dstr->data;
@@ -1674,14 +1677,19 @@ void dstr_trim(struct dynamic_string *const dstr, const char *const trim_chars)
 /* 判断一个「动态字符串」是否以指定「C 字符串」前缀开头。 */
 bool dstr_starts_with_cstr(const struct dynamic_string *const dstr, const char *const prefix)
 {
-    if (dstr == NULL || dstr->len == 0 || prefix == NULL || prefix[0] == '\0') /* 参数检查。 */
+    if (CHECK_CSTR_EMPTY(prefix)) /* 视「空字符串」是任何字符串的前缀。 */
+    {
+        return true;
+    }
+
+    if (CHECK_DSTR_EMPTY(dstr)) /* 非「空字符串」一定不是「空字符串」的前缀。 */
     {
         return false;
     }
 
-    const size_t prefix_len = strlen(prefix); /* 计算 prefix 长度。 */
+    const size_t prefix_len = strlen(prefix);
 
-    if (prefix_len > dstr->len) /* 如果 prefix 长度大于 dstr，则一定不是前缀，直接返回。 */
+    if (prefix_len > dstr->len) /* 如果 prefix 长度大于 dstr，则一定不是前缀。 */
     {
         return false;
     }
@@ -1692,12 +1700,17 @@ bool dstr_starts_with_cstr(const struct dynamic_string *const dstr, const char *
 /* 判断一个「动态字符串」是否以指定「动态字符串」前缀开头。 */
 bool dstr_starts_with(const struct dynamic_string *const dstr, const struct dynamic_string *const prefix)
 {
-    if (dstr == NULL || dstr->len == 0 || prefix == NULL || prefix->len == 0) /* 参数检查。 */
+    if (CHECK_DSTR_EMPTY(prefix)) /* 视「空字符串」是任何字符串的前缀。 */
+    {
+        return true;
+    }
+
+    if (CHECK_DSTR_EMPTY(dstr)) /* 非「空字符串」一定不是「空字符串」的前缀。 */
     {
         return false;
     }
 
-    if (prefix->len > dstr->len) /* 如果 prefix 长度大于 dstr，则一定不是前缀，直接返回。 */
+    if (prefix->len > dstr->len) /* 如果 prefix 长度大于 dstr，则一定不是前缀。 */
     {
         return false;
     }
@@ -1708,12 +1721,17 @@ bool dstr_starts_with(const struct dynamic_string *const dstr, const struct dyna
 /* 判断一个「C 字符串」是否以指定「C 字符串」前缀开头。 */
 bool cstr_starts_with(const char *const cstr, const char *const prefix)
 {
-    if (cstr == NULL || cstr[0] == '\0' || prefix == NULL || prefix[0] == '\0') /* 参数检查。 */
+    if (CHECK_CSTR_EMPTY(prefix)) /* 视「空字符串」是任何字符串的前缀。 */
+    {
+        return true;
+    }
+
+    if (CHECK_CSTR_EMPTY(cstr)) /* 非「空字符串」一定不是「空字符串」的前缀。 */
     {
         return false;
     }
 
-    const size_t prefix_len = strlen(prefix); /* 计算 prefix 长度。 */
+    const size_t prefix_len = strlen(prefix);
 
     return (strncmp(cstr, prefix, prefix_len) == 0);
 }
@@ -1721,14 +1739,19 @@ bool cstr_starts_with(const char *const cstr, const char *const prefix)
 /* 判断一个「动态字符串」是否以指定「C 字符串」后缀结尾。 */
 bool dstr_ends_with_cstr(const struct dynamic_string *const dstr, const char *const suffix)
 {
-    if (dstr == NULL || dstr->len == 0 || suffix == NULL || suffix[0] == '\0') /* 参数检查。 */
+    if (CHECK_CSTR_EMPTY(suffix)) /* 视「空字符串」是任何字符串的后缀。 */
+    {
+        return true;
+    }
+
+    if (CHECK_DSTR_EMPTY(dstr)) /* 非「空字符串」一定不是「空字符串」的后缀。 */
     {
         return false;
     }
 
-    const size_t suffix_len = strlen(suffix); /* 计算 suffix 长度。 */
+    const size_t suffix_len = strlen(suffix);
 
-    if (suffix_len > dstr->len) /* 如果 suffix 长度大于 dstr，则一定不是后缀，直接返回。 */
+    if (suffix_len > dstr->len) /* 如果 suffix 长度大于 dstr，则一定不是后缀。 */
     {
         return false;
     }
@@ -1739,12 +1762,17 @@ bool dstr_ends_with_cstr(const struct dynamic_string *const dstr, const char *co
 /* 判断一个「动态字符串」是否以指定「动态字符串」后缀结尾。 */
 bool dstr_ends_with(const struct dynamic_string *const dstr, const struct dynamic_string *const suffix)
 {
-    if (dstr == NULL || dstr->len == 0 || suffix == NULL || suffix->len == 0) /* 参数检查。 */
+    if (CHECK_DSTR_EMPTY(suffix)) /* 视「空字符串」是任何字符串的后缀。 */
+    {
+        return true;
+    }
+
+    if (CHECK_DSTR_EMPTY(dstr)) /* 非「空字符串」一定不是「空字符串」的后缀。 */
     {
         return false;
     }
 
-    if (suffix->len > dstr->len) /* 如果 suffix 长度大于 dstr，则一定不是后缀，直接返回。 */
+    if (suffix->len > dstr->len) /* 如果 suffix 长度大于 dstr，则一定不是后缀。 */
     {
         return false;
     }
@@ -1755,15 +1783,20 @@ bool dstr_ends_with(const struct dynamic_string *const dstr, const struct dynami
 /* 判断一个「C 字符串」是否以指定「C 字符串」后缀结尾。 */
 bool cstr_ends_with(const char *const cstr, const char *const suffix)
 {
-    if (cstr == NULL || cstr[0] == '\0' || suffix == NULL || suffix[0] == '\0') /* 参数检查。 */
+    if (CHECK_CSTR_EMPTY(suffix)) /* 视「空字符串」是任何字符串的后缀。 */
+    {
+        return true;
+    }
+
+    if (CHECK_CSTR_EMPTY(cstr)) /* 非「空字符串」一定不是「空字符串」的后缀。 */
     {
         return false;
     }
 
     const size_t cstr_len = strlen(cstr);
-    const size_t suffix_len = strlen(suffix); /* 计算 suffix 长度。 */
+    const size_t suffix_len = strlen(suffix);
 
-    if (suffix_len > cstr_len) /* 如果 suffix 长度大于 dstr，则一定不是后缀，直接返回。 */
+    if (suffix_len > cstr_len) /* 如果 suffix 长度大于 cstr，则一定不是后缀。 */
     {
         return false;
     }
@@ -1774,21 +1807,12 @@ bool cstr_ends_with(const char *const cstr, const char *const suffix)
 /* 判断一个「动态字符串」是否包含指定子「C 字符串」。 */
 bool dstr_contains_cstr(const struct dynamic_string *const dstr, const char *const sub)
 {
-    if (sub == NULL || sub[0] == '\0') /* 遵循 C 标准规定：空字符串是任何字符串的子串。 */
+    if (CHECK_CSTR_EMPTY(sub)) /* 视「空字符串」是任何字符串的子串。 */
     {
         return true;
     }
 
-    /* 由于要访问 dstr->data，因此需要对 dstr 做非空指针检查；
-     * 由于 strstr() 靠 '\0' 标识字符串结束，
-     * 而仅在 dstr->len 不为 0 时，dstr->data 才保证以 '\0' 结尾，
-     * 且 dstr->len 不为 0 时，dstr->data 保证不为空指针，
-     * 因此需要且只需要对 dstr->len 做非 0 检查；
-     *
-     * 以上两检查合起来正好是对 dstr 做非「空字符串」检查，
-     * 而当 sub 不为「空字符串」，而 dstr 为「空字符串」时，
-     * dstr 一定不包含 sub，因此返回 false。 */
-    if (dstr == NULL || dstr->len == 0)
+    if (CHECK_DSTR_EMPTY(dstr)) /* 非「空字符串」一定不是「空字符串」的子串。 */
     {
         return false;
     }
@@ -1799,21 +1823,17 @@ bool dstr_contains_cstr(const struct dynamic_string *const dstr, const char *con
 /* 判断一个「动态字符串」是否包含指定子「动态字符串」。 */
 bool dstr_contains(const struct dynamic_string *const dstr, const struct dynamic_string *const sub)
 {
-    if (sub == NULL || sub->len == 0) /* 遵循 C 标准规定：空字符串是任何字符串的子串。 */
+    if (CHECK_DSTR_EMPTY(sub)) /* 视「空字符串」是任何字符串的子串。 */
     {
         return true;
     }
 
-    /* 由于要访问 dstr->data，因此需要对 dstr 做非空指针检查；
-     * 由于 strstr() 靠 '\0' 标识字符串结束，
-     * 而仅在 dstr->len 不为 0 时，dstr->data 才保证以 '\0' 结尾，
-     * 且 dstr->len 不为 0 时，dstr->data 保证不为空指针，
-     * 因此需要且只需要对 dstr->len 做非 0 检查；
-     *
-     * 以上两检查合起来正好是对 dstr 做非「空字符串」检查，
-     * 而当 sub 不为「空字符串」，而 dstr 为「空字符串」时，
-     * dstr 一定不包含 sub，因此返回 false。 */
-    if (dstr == NULL || dstr->len == 0)
+    if (CHECK_DSTR_EMPTY(dstr)) /* 非「空字符串」一定不是「空字符串」的子串。 */
+    {
+        return false;
+    }
+
+    if (sub->len > dstr->len) /* 如果 sub 长度大于 dstr，则一定不是子串。 */
     {
         return false;
     }
@@ -1824,14 +1844,12 @@ bool dstr_contains(const struct dynamic_string *const dstr, const struct dynamic
 /* 判断一个「C 字符串」是否包含指定子「C 字符串」。 */
 bool cstr_contains(const char *const cstr, const char *const sub)
 {
-    if (sub == NULL || sub[0] == '\0') /* 遵循 C 标准规定：空字符串是任何字符串的子串。 */
+    if (CHECK_CSTR_EMPTY(sub)) /* 视「空字符串」是任何字符串的子串。 */
     {
         return true;
     }
 
-    /* 当 sub 不为「空字符串」，而 cstr 为「空字符串」时，
-     * cstr 一定不包含 sub，因此返回 false。 */
-    if (cstr == NULL || cstr[0] == '\0')
+    if (CHECK_CSTR_EMPTY(cstr)) /* 非「空字符串」一定不是「空字符串」的子串。 */
     {
         return false;
     }
@@ -1842,13 +1860,13 @@ bool cstr_contains(const char *const cstr, const char *const sub)
 /* 判断一个「动态字符串」是否与一个「C 字符串」相等。 */
 bool dstr_equals_cstr(const struct dynamic_string *const lhs, const char *const rhs)
 {
-    /* 参数检查。 */
-    const int str_1_valid = (lhs && lhs->len) ? 1 : 0;
-    const int str_2_valid = (rhs && rhs[0]) ? 1 : 0;
+    /* 「空字符串」检查。 */
+    const int str_1_non_empty = (!CHECK_DSTR_EMPTY(lhs)) ? 1 : 0;
+    const int str_2_non_empty = (!CHECK_CSTR_EMPTY(rhs)) ? 1 : 0;
 
-    if (str_1_valid + str_2_valid < 2) /* 存在无效串时，需要提前返回。 */
+    if (str_1_non_empty + str_2_non_empty < 2) /* 存在「空字符串」时，需要提前返回。 */
     {
-        return (str_1_valid == str_2_valid); /* 都为无效串视为相等，否则视为不相等。 */
+        return (str_1_non_empty == str_2_non_empty); /* 都为「空字符串」视为相等，否则视为不相等。 */
     }
 
     return (strcmp(lhs->data, rhs) == 0);
@@ -1857,13 +1875,13 @@ bool dstr_equals_cstr(const struct dynamic_string *const lhs, const char *const 
 /* 判断两个「动态字符串」是否相等。 */
 bool dstr_equals(const struct dynamic_string *const lhs, const struct dynamic_string *const rhs)
 {
-    /* 参数检查。 */
-    const int str_1_valid = (lhs && lhs->len) ? 1 : 0;
-    const int str_2_valid = (rhs && rhs->len) ? 1 : 0;
+    /* 「空字符串」检查。 */
+    const int str_1_non_empty = (!CHECK_DSTR_EMPTY(lhs)) ? 1 : 0;
+    const int str_2_non_empty = (!CHECK_DSTR_EMPTY(rhs)) ? 1 : 0;
 
-    if (str_1_valid + str_2_valid < 2) /* 存在无效串时，需要提前返回。 */
+    if (str_1_non_empty + str_2_non_empty < 2) /* 存在「空字符串」时，需要提前返回。 */
     {
-        return (str_1_valid == str_2_valid); /* 都为无效串视为相等，否则视为不相等。 */
+        return (str_1_non_empty == str_2_non_empty); /* 都为「空字符串」视为相等，否则视为不相等。 */
     }
 
     if (lhs->len != rhs->len) /* 长度不相等，则一定不相等。 */
@@ -1877,13 +1895,13 @@ bool dstr_equals(const struct dynamic_string *const lhs, const struct dynamic_st
 /* 判断两个「C 字符串」是否相等。 */
 bool cstr_equals(const char *const lhs, const char *const rhs)
 {
-    /* 参数检查。 */
-    const int str_1_valid = (lhs && lhs[0]) ? 1 : 0;
-    const int str_2_valid = (rhs && rhs[0]) ? 1 : 0;
+    /* 「空字符串」检查。 */
+    const int str_1_non_empty = (!CHECK_CSTR_EMPTY(lhs)) ? 1 : 0;
+    const int str_2_non_empty = (!CHECK_CSTR_EMPTY(rhs)) ? 1 : 0;
 
-    if (str_1_valid + str_2_valid < 2) /* 存在无效串时，需要提前返回。 */
+    if (str_1_non_empty + str_2_non_empty < 2) /* 存在「空字符串」时，需要提前返回。 */
     {
-        return (str_1_valid == str_2_valid); /* 都为无效串视为相等，否则视为不相等。 */
+        return (str_1_non_empty == str_2_non_empty); /* 都为「空字符串」视为相等，否则视为不相等。 */
     }
 
     return (strcmp(lhs, rhs) == 0);
@@ -1892,15 +1910,14 @@ bool cstr_equals(const char *const lhs, const char *const rhs)
 /* 比较一个「动态字符串」与一个「C 字符串」。 */
 int dstr_compare_cstr(const struct dynamic_string *const lhs, const char *const rhs)
 {
-    /* 参数检查。 */
-    const int str_1_valid = (lhs && lhs->len) ? 1 : 0;
-    const int str_2_valid = (rhs && rhs[0]) ? 1 : 0;
+    /* 「空字符串」检查。 */
+    const int str_1_non_empty = (!CHECK_DSTR_EMPTY(lhs)) ? 1 : 0;
+    const int str_2_non_empty = (!CHECK_CSTR_EMPTY(rhs)) ? 1 : 0;
 
-    if (str_1_valid + str_2_valid < 2) /* 存在无效串时，需要提前返回。 */
+    if (str_1_non_empty + str_2_non_empty < 2) /* 存在「空字符串」时，需要提前返回。 */
     {
-        /* 都为无效串视为相等，否则视为不相等，
-         * 且有效者大于无效者。 */
-        return str_1_valid - str_2_valid;
+        /* 都为「空字符串」视为相等，否则视为不相等，且非「空字符串」者大于「空字符串」者。 */
+        return str_1_non_empty - str_2_non_empty;
     }
 
     return strcmp(lhs->data, rhs);
@@ -1909,15 +1926,14 @@ int dstr_compare_cstr(const struct dynamic_string *const lhs, const char *const 
 /* 比较两个「动态字符串」。 */
 int dstr_compare(const struct dynamic_string *const lhs, const struct dynamic_string *const rhs)
 {
-    /* 参数检查。 */
-    const int str_1_valid = (lhs && lhs->len) ? 1 : 0;
-    const int str_2_valid = (rhs && rhs->len) ? 1 : 0;
+    /* 「空字符串」检查。 */
+    const int str_1_non_empty = (!CHECK_DSTR_EMPTY(lhs)) ? 1 : 0;
+    const int str_2_non_empty = (!CHECK_DSTR_EMPTY(rhs)) ? 1 : 0;
 
-    if (str_1_valid + str_2_valid < 2) /* 存在无效串时，需要提前返回。 */
+    if (str_1_non_empty + str_2_non_empty < 2) /* 存在「空字符串」时，需要提前返回。 */
     {
-        /* 都为无效串视为相等，否则视为不相等，
-         * 且有效者大于无效者。 */
-        return str_1_valid - str_2_valid;
+        /* 都为「空字符串」视为相等，否则视为不相等，且非「空字符串」者大于「空字符串」者。 */
+        return str_1_non_empty - str_2_non_empty;
     }
 
     return strcmp(lhs->data, rhs->data);
@@ -1926,15 +1942,14 @@ int dstr_compare(const struct dynamic_string *const lhs, const struct dynamic_st
 /* 比较两个「C 字符串」。 */
 int cstr_compare(const char *const lhs, const char *const rhs)
 {
-    /* 参数检查。 */
-    const int str_1_valid = (lhs && lhs[0]) ? 1 : 0;
-    const int str_2_valid = (rhs && rhs[0]) ? 1 : 0;
+    /* 「空字符串」检查。 */
+    const int str_1_non_empty = (!CHECK_CSTR_EMPTY(lhs)) ? 1 : 0;
+    const int str_2_non_empty = (!CHECK_CSTR_EMPTY(rhs)) ? 1 : 0;
 
-    if (str_1_valid + str_2_valid < 2) /* 存在无效串时，需要提前返回。 */
+    if (str_1_non_empty + str_2_non_empty < 2) /* 存在「空字符串」时，需要提前返回。 */
     {
-        /* 都为无效串视为相等，否则视为不相等，
-         * 且有效者大于无效者。 */
-        return str_1_valid - str_2_valid;
+        /* 都为「空字符串」视为相等，否则视为不相等，且非「空字符串」者大于「空字符串」者。 */
+        return str_1_non_empty - str_2_non_empty;
     }
 
     return strcmp(lhs, rhs);
@@ -1946,7 +1961,7 @@ int cstr_compare(const char *const lhs, const char *const rhs)
 bool dstr_find_cstr(const struct dynamic_string *const dstr, const char *const sub, size_t *const out_index,
                     const dstr_direction_t direction)
 {
-    if (dstr == NULL || dstr->len == 0 || sub == NULL || sub[0] == '\0') /* 参数检查。 */
+    if (CHECK_DSTR_EMPTY(dstr) || CHECK_CSTR_EMPTY(sub)) /* 参数检查。 */
     {
         return false;
     }
@@ -1966,7 +1981,7 @@ bool dstr_find_cstr(const struct dynamic_string *const dstr, const char *const s
 bool dstr_find(const struct dynamic_string *const dstr, const struct dynamic_string *const sub, size_t *const out_index,
                const dstr_direction_t direction)
 {
-    if (dstr == NULL || dstr->len == 0 || sub == NULL || sub->len == 0) /* 参数检查。 */
+    if (CHECK_DSTR_EMPTY(dstr) || CHECK_DSTR_EMPTY(sub)) /* 参数检查。 */
     {
         return false;
     }
@@ -1983,7 +1998,7 @@ bool dstr_find(const struct dynamic_string *const dstr, const struct dynamic_str
 /* 查找一个「C 字符串」中指定子「C 字符串」第一次出现的位置。 */
 bool cstr_find(const char *const cstr, const char *const sub, size_t *const out_index, const dstr_direction_t direction)
 {
-    if (cstr == NULL || cstr[0] == '\0' || sub == NULL || sub[0] == '\0') /* 参数检查。 */
+    if (CHECK_CSTR_EMPTY(cstr) || CHECK_CSTR_EMPTY(sub)) /* 参数检查。 */
     {
         return false;
     }
@@ -2004,7 +2019,7 @@ bool cstr_find(const char *const cstr, const char *const sub, size_t *const out_
 bool dstr_find_nth_cstr(const struct dynamic_string *const dstr, const char *const sub, size_t *const out_index,
                         const dstr_direction_t direction, const size_t n)
 {
-    if (dstr == NULL || dstr->len == 0 || sub == NULL || sub[0] == '\0') /* 参数检查。 */
+    if (CHECK_DSTR_EMPTY(dstr) || CHECK_CSTR_EMPTY(sub)) /* 参数检查。 */
     {
         return false;
     }
@@ -2024,7 +2039,7 @@ bool dstr_find_nth_cstr(const struct dynamic_string *const dstr, const char *con
 bool dstr_find_nth(const struct dynamic_string *const dstr, const struct dynamic_string *const sub,
                    size_t *const out_index, const dstr_direction_t direction, const size_t n)
 {
-    if (dstr == NULL || dstr->len == 0 || sub == NULL || sub->len == 0) /* 参数检查。 */
+    if (CHECK_DSTR_EMPTY(dstr) || CHECK_DSTR_EMPTY(sub)) /* 参数检查。 */
     {
         return false;
     }
@@ -2042,7 +2057,7 @@ bool dstr_find_nth(const struct dynamic_string *const dstr, const struct dynamic
 bool cstr_find_nth(const char *const cstr, const char *const sub, size_t *const out_index,
                    const dstr_direction_t direction, const size_t n)
 {
-    if (cstr == NULL || cstr[0] == '\0' || sub == NULL || sub[0] == '\0') /* 参数检查。 */
+    if (CHECK_CSTR_EMPTY(cstr) || CHECK_CSTR_EMPTY(sub)) /* 参数检查。 */
     {
         return false;
     }
@@ -2063,7 +2078,7 @@ bool cstr_find_nth(const char *const cstr, const char *const sub, size_t *const 
 size_t dstr_find_indexes_cstr(const struct dynamic_string *const dstr, const char *const sub, size_t *const out_indexes,
                               const dstr_direction_t direction, const size_t n)
 {
-    if (dstr == NULL || dstr->len == 0 || sub == NULL || sub[0] == '\0') /* 参数检查。 */
+    if (CHECK_DSTR_EMPTY(dstr) || CHECK_CSTR_EMPTY(sub)) /* 参数检查。 */
     {
         return 0;
     }
@@ -2083,7 +2098,7 @@ size_t dstr_find_indexes_cstr(const struct dynamic_string *const dstr, const cha
 size_t dstr_find_indexes(const struct dynamic_string *const dstr, const struct dynamic_string *const sub,
                          size_t *const out_indexes, const dstr_direction_t direction, const size_t n)
 {
-    if (dstr == NULL || dstr->len == 0 || sub == NULL || sub->len == 0) /* 参数检查。 */
+    if (CHECK_DSTR_EMPTY(dstr) || CHECK_DSTR_EMPTY(sub)) /* 参数检查。 */
     {
         return 0;
     }
@@ -2101,7 +2116,7 @@ size_t dstr_find_indexes(const struct dynamic_string *const dstr, const struct d
 size_t cstr_find_indexes(const char *const cstr, const char *const sub, size_t *const out_indexes,
                          const dstr_direction_t direction, const size_t n)
 {
-    if (cstr == NULL || cstr[0] == '\0' || sub == NULL || sub[0] == '\0') /* 参数检查。 */
+    if (CHECK_CSTR_EMPTY(cstr) || CHECK_CSTR_EMPTY(sub)) /* 参数检查。 */
     {
         return 0;
     }
@@ -2121,7 +2136,7 @@ size_t cstr_find_indexes(const char *const cstr, const char *const sub, size_t *
 /* 统计一个「动态字符串」中指定子「C 字符串」出现的次数。 */
 size_t dstr_count_cstr(const struct dynamic_string *const dstr, const char *const sub)
 {
-    if (dstr == NULL || dstr->len == 0 || sub == NULL || sub[0] == '\0') /* 参数检查。 */
+    if (CHECK_DSTR_EMPTY(dstr) || CHECK_CSTR_EMPTY(sub)) /* 参数检查。 */
     {
         return 0;
     }
@@ -2140,7 +2155,7 @@ size_t dstr_count_cstr(const struct dynamic_string *const dstr, const char *cons
 /* 统计一个「动态字符串」中指定子「动态字符串」出现的次数。 */
 size_t dstr_count(const struct dynamic_string *const dstr, const struct dynamic_string *const sub)
 {
-    if (dstr == NULL || dstr->len == 0 || sub == NULL || sub->len == 0) /* 参数检查。 */
+    if (CHECK_DSTR_EMPTY(dstr) || CHECK_DSTR_EMPTY(sub)) /* 参数检查。 */
     {
         return 0;
     }
@@ -2157,7 +2172,7 @@ size_t dstr_count(const struct dynamic_string *const dstr, const struct dynamic_
 /* 统计一个「C 字符串」中指定子「C 字符串」出现的次数。 */
 size_t cstr_count(const char *const cstr, const char *const sub)
 {
-    if (cstr == NULL || cstr[0] == '\0' || sub == NULL || sub[0] == '\0') /* 参数检查。 */
+    if (CHECK_CSTR_EMPTY(cstr) || CHECK_CSTR_EMPTY(sub)) /* 参数检查。 */
     {
         return 0;
     }
@@ -2179,7 +2194,7 @@ dstr_status_t dstr_replace_cstr(struct dynamic_string *const dstr, const char *c
                                 dstr_direction_t direction, const size_t n)
 {
 
-    if (dstr == NULL || dstr->len == 0 || old_str == NULL || old_str[0] == '\0') /* 参数检查。 */
+    if (CHECK_DSTR_EMPTY(dstr) || CHECK_CSTR_EMPTY(old_str)) /* 参数检查。 */
     {
         return DSTR_INVALID_ARGUMENT;
     }
@@ -2194,14 +2209,14 @@ dstr_status_t dstr_replace_cstr(struct dynamic_string *const dstr, const char *c
 
     /* 委托 replace_str() 函数，替换 old_str 的前 n 次出现为 new_str。 */
     return replace_str(dstr, old_str, old_str_len, new_str,
-                       (new_str != NULL && new_str[0] != '\0') ? strlen(new_str) : 0, direction, n);
+                       (!CHECK_CSTR_EMPTY(new_str)) ? strlen(new_str) : 0, direction, n);
 }
 
 /* 替换一个「动态字符串」中指定旧「动态字符串」前 n 次为指定新「动态字符串」。 */
 dstr_status_t dstr_replace(struct dynamic_string *const dstr, const struct dynamic_string *const old_str,
                            const struct dynamic_string *const new_str, const dstr_direction_t direction, const size_t n)
 {
-    if (dstr == NULL || dstr->len == 0 || old_str == NULL || old_str->len == 0) /* 参数检查。 */
+    if (CHECK_DSTR_EMPTY(dstr) || CHECK_DSTR_EMPTY(old_str)) /* 参数检查。 */
     {
         return DSTR_INVALID_ARGUMENT;
     }
@@ -2213,7 +2228,7 @@ dstr_status_t dstr_replace(struct dynamic_string *const dstr, const struct dynam
     }
 
     /* 委托 replace_str() 函数，替换 old_str 的前 n 次出现为 new_str。 */
-    return (new_str != NULL && new_str->len > 0)
+    return (!CHECK_DSTR_EMPTY(new_str))
                ? replace_str(dstr, old_str->data, old_str->len, new_str->data, new_str->len, direction, n)
                : replace_str(dstr, old_str->data, old_str->len, NULL, 0, direction, n);
 }
@@ -2222,7 +2237,7 @@ dstr_status_t dstr_replace(struct dynamic_string *const dstr, const struct dynam
 dstr_status_t dstr_replace_nth_cstr(struct dynamic_string *const dstr, const char *const old_str,
                                     const char *const new_str, const dstr_direction_t direction, const size_t n)
 {
-    if (dstr == NULL || dstr->len == 0 || old_str == NULL || old_str[0] == '\0') /* 参数检查。 */
+    if (CHECK_DSTR_EMPTY(dstr) || CHECK_CSTR_EMPTY(old_str)) /* 参数检查。 */
     {
         return DSTR_INVALID_ARGUMENT;
     }
@@ -2237,7 +2252,7 @@ dstr_status_t dstr_replace_nth_cstr(struct dynamic_string *const dstr, const cha
 
     /* 委托 replace_str_nth() 函数，替换 old_str 的第 n 次出现为 new_str。 */
     return replace_str_nth(dstr, old_str, old_str_len, new_str,
-                           (new_str != NULL && new_str[0] != '\0') ? strlen(new_str) : 0, direction, n);
+                           (!CHECK_CSTR_EMPTY(new_str)) ? strlen(new_str) : 0, direction, n);
 }
 
 /* 替换一个「动态字符串」中指定旧「动态字符串」第 n 次为指定新「动态字符串」。 */
@@ -2245,7 +2260,7 @@ dstr_status_t dstr_replace_nth(struct dynamic_string *const dstr, const struct d
                                const struct dynamic_string *const new_str, const dstr_direction_t direction,
                                const size_t n)
 {
-    if (dstr == NULL || dstr->len == 0 || old_str == NULL || old_str->len == 0) /* 参数检查。 */
+    if (CHECK_DSTR_EMPTY(dstr) || CHECK_DSTR_EMPTY(old_str)) /* 参数检查。 */
     {
         return DSTR_INVALID_ARGUMENT;
     }
@@ -2257,7 +2272,7 @@ dstr_status_t dstr_replace_nth(struct dynamic_string *const dstr, const struct d
     }
 
     /* 委托 replace_str_nth() 函数，替换 old_str 的第 n 次出现为 new_str。 */
-    return (new_str != NULL && new_str->len > 0)
+    return (!CHECK_DSTR_EMPTY(new_str))
                ? replace_str_nth(dstr, old_str->data, old_str->len, new_str->data, new_str->len, direction, n)
                : replace_str_nth(dstr, old_str->data, old_str->len, NULL, 0, direction, n);
 }
@@ -2269,7 +2284,7 @@ struct dynamic_string **dstr_split_cstr(const char *const cstr, const char *cons
                                         size_t *const out_dstr_count)
 {
     /* 参数检查。 */
-    if (cstr == NULL || cstr[0] == '\0' || separator == NULL || separator[0] == '\0' || out_dstr_count == NULL)
+    if (CHECK_CSTR_EMPTY(cstr) || CHECK_CSTR_EMPTY(separator) || out_dstr_count == NULL)
     {
         return NULL;
     }
@@ -2291,7 +2306,7 @@ struct dynamic_string **dstr_split(const struct dynamic_string *const dstr,
                                    const struct dynamic_string *const separator, size_t *const out_dstr_count)
 {
     /* 参数检查。 */
-    if (dstr == NULL || dstr->len == 0 || separator == NULL || separator->len == 0 || out_dstr_count == NULL)
+    if (CHECK_DSTR_EMPTY(dstr) || CHECK_DSTR_EMPTY(separator) || out_dstr_count == NULL)
     {
         return NULL;
     }
@@ -2309,7 +2324,7 @@ struct dynamic_string **dstr_split(const struct dynamic_string *const dstr,
 char **cstr_split(const char *const cstr, const char *const separator, size_t *const out_cstr_count)
 {
     /* 参数检查。 */
-    if (cstr == NULL || cstr[0] == '\0' || separator == NULL || separator[0] == '\0' || out_cstr_count == NULL)
+    if (CHECK_CSTR_EMPTY(cstr) || CHECK_CSTR_EMPTY(separator) || out_cstr_count == NULL)
     {
         return NULL;
     }
@@ -2429,7 +2444,7 @@ struct dynamic_string *dstr_join_cstr(const char *const *const cstrs, const size
     }
 
     /* separator 为空指针或指向空字符串，则使用空串连接。 */
-    const size_t separator_len = (separator != NULL && separator[0] != '\0') ? strlen(separator) : 0;
+    const size_t separator_len = (!CHECK_CSTR_EMPTY(separator)) ? strlen(separator) : 0;
 
     size_t target_len = 0; /* 合并后的字符串的长度。 */
 
@@ -2591,7 +2606,7 @@ char *cstr_join(const char *const *const cstrs, const size_t cstr_count, const c
     }
 
     /* separator 为空指针或指向空字符串，则使用空串连接。 */
-    const size_t separator_len = (separator != NULL && separator[0] != '\0') ? strlen(separator) : 0;
+    const size_t separator_len = (!CHECK_CSTR_EMPTY(separator)) ? strlen(separator) : 0;
 
     size_t target_len = 0; /* 合并后的字符串的长度。 */
 
