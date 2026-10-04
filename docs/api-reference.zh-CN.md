@@ -25,7 +25,7 @@
 
 #### 动态字符串 [↑](#basic-concepts-type-definitions)
 
-本库是一个抽象数据类型库，这意味着所有 API 函数都是对某种对象的某种操作的定义。在此库中，这种对象是**动态字符串**。出于安全和封装等目的，此库使用**不透明类型**来定义它：
+本库是一个抽象数据类型库，这意味着所有 API 函数都是对一类对象的某种操作的定义。在此库中，这类对象是**动态字符串**。出于安全和封装等目的，此库使用**不透明类型**来定义它：
 
 ```c
 typedef struct dynamic_string dstr_adt;
@@ -40,10 +40,9 @@ typedef struct dynamic_string dstr_adt;
 对于**查找与替换**类的操作，需要指示查找/替换的方向（从前往后/从后往前）。因此这类 API 函数需要一个参数，来表达这两种情况。出于对语义清晰性的考量，本库定义枚举类型来表达此信息：
 
 ```c
-typedef enum
-{
-    DSTR_DIR_FORWARD,  /* 从前往后 */
-    DSTR_DIR_BACKWARD  /* 从后往前 */
+typedef enum {
+	DSTR_DIR_FORWARD,  /* 从前往后 */
+	DSTR_DIR_BACKWARD  /* 从后往前 */
 } dstr_direction_t;
 ```
 
@@ -51,16 +50,15 @@ typedef enum
 
 ### 状态码 [↑](#basic-concepts)
 
-本库由于大量涉及内存操作，因此对于此库所定义的大所数操作而言，其并不总是会成功执行，且其执行失败可能有多种不同的原因。为了让对调用方必要时能够区分是什么原因导致执行失败的，因此定义状态码枚举类型，API 函数通过返回此类型的值，来向调用方传递一个状态，以表达操作是否成功执行，以及失败时，失败的具体原因。
+本库由于大量涉及内存操作，因此对于此库所定义的大多数操作而言，其并不总是会成功执行，且其执行失败可能有多种不同的原因。为了让调用方必要时能够区分是什么原因导致执行失败的，因此定义状态码枚举类型，API 函数通过返回此类型的值，来向调用方传递一个状态，以表达操作是否成功执行，以及失败时，失败的具体原因。
 
 状态码枚举类型定义如下：
 
 ```c
-typedef enum
-{
-    DSTR_SUCCESS = 0,         /* 成功 */
-    DSTR_MEMORY_ALLOC_FAILED, /* 内存分配失败 */
-    DSTR_INVALID_ARGUMENT,    /* 无效参数 */
+typedef enum {
+	DSTR_SUCCESS = 0,         /* 成功 */
+	DSTR_MEMORY_ALLOC_FAILED, /* 内存分配失败 */
+	DSTR_INVALID_ARGUMENT,    /* 无效参数 */
 } dstr_status_t;
 ```
 
@@ -74,7 +72,7 @@ typedef enum
 
 #### 后缀 [↑](#basic-concepts-naming-conventions)
 
-本库大多数操作，都针对允许的两种输入字符串类型（动态字符串/ C 字符串）提供了两种不同的版本，输入类型为 C 字符串的版本，相对输入类型为动态字符串的版本，包含 `_cstr` 后缀。
+本库大多数操作，都针对允许的两种输入字符串类型（动态字符串/C 字符串）提供了两种不同的版本，输入类型为 C 字符串的版本，相对输入类型为动态字符串的版本，包含 `_cstr` 后缀。
 
 <a id="basic-concepts-general-semantics-and-constraints"></a>
 
@@ -147,16 +145,18 @@ typedef enum
 创建一个「动态字符串」。
 
 ```c
-dstr_adt *dstr_create(const char *cstr);
+dstr_adt *dstr_create(
+	const char *cstr
+);
 ```
 
 | 参数   | 类型           | 说明                                                                      |
 | ------ | -------------- | ------------------------------------------------------------------------- |
 | `cstr` | `const char *` | 源「C 字符串」的指针。<br>为<em>「空字符串」</em>时创建空「动态字符串」。 |
 
-| 返回值       | 说明                                                           |
-| ------------ | -------------------------------------------------------------- |
-| `dstr_adt *` | 所创建的「动态字符串」的指针。<br>如果创建失败则返回*空指针*。 |
+| 返回值       | 说明                                                     |
+| ------------ | -------------------------------------------------------- |
+| `dstr_adt *` | 所创建的「动态字符串」的指针。<br>创建失败返回*空指针*。 |
 
 > [!IMPORTANT]
 >
@@ -169,12 +169,14 @@ dstr_adt *dstr_create(const char *cstr);
 销毁一个「动态字符串」。
 
 ```c
-void dstr_destroy(dstr_adt *dstr);
+void dstr_destroy(
+	dstr_adt *dstr
+);
 ```
 
-| 参数   | 类型         | 说明                                                             |
-| ------ | ------------ | ---------------------------------------------------------------- |
-| `dstr` | `dstr_adt *` | 目标「动态字符串」的指针。<br>如果为*空指针*，则函数会直接返回。 |
+| 参数   | 类型         | 说明                                                         |
+| ------ | ------------ | ------------------------------------------------------------ |
+| `dstr` | `dstr_adt *` | 目标「动态字符串」的指针。<br>为*空指针*时，函数会直接返回。 |
 
 <a id="api-functions-creation-and-destruction-dstr_clone"></a>
 
@@ -183,16 +185,18 @@ void dstr_destroy(dstr_adt *dstr);
 克隆一个「动态字符串」。
 
 ```c
-dstr_adt *dstr_clone(const dstr_adt *dstr);
+dstr_adt *dstr_clone(
+	const dstr_adt *dstr
+);
 ```
 
 | 参数   | 类型               | 说明                                                                        |
 | ------ | ------------------ | --------------------------------------------------------------------------- |
 | `dstr` | `const dstr_adt *` | 源「动态字符串」的指针。<br>为<em>「空字符串」</em>时创建空「动态字符串」。 |
 
-| 返回值       | 说明                                                           |
-| ------------ | -------------------------------------------------------------- |
-| `dstr_adt *` | 所创建的「动态字符串」的指针。<br>如果创建失败则返回*空指针*。 |
+| 返回值       | 说明                                                     |
+| ------------ | -------------------------------------------------------- |
+| `dstr_adt *` | 所创建的「动态字符串」的指针。<br>创建失败返回*空指针*。 |
 
 > [!IMPORTANT]
 >
@@ -205,18 +209,22 @@ dstr_adt *dstr_clone(const dstr_adt *dstr);
 提取一个「C 字符串」的子串为一个新的「动态字符串」。
 
 ```c
-dstr_adt *dstr_sub_cstr(const char *cstr, size_t sub_start, size_t sub_length);
+dstr_adt *dstr_sub_cstr(
+	const char *cstr,
+	size_t sub_start,
+	size_t sub_length
+);
 ```
 
 | 参数         | 类型           | 说明                                                                                                            |
 | ------------ | -------------- | --------------------------------------------------------------------------------------------------------------- |
 | `cstr`       | `const char *` | 源「C 字符串」的指针。<br>为<em>「空字符串」</em>时创建空「动态字符串」，此时忽略 `sub_start` 和 `sub_length`。 |
-| `sub_start`  | `size_t`       | 子串的起始索引。<br>如果*越界*，则函数会直接返回*空指针*。                                                      |
-| `sub_length` | `size_t`       | 子串的长度。<br>为 _`0`_ 表示到末尾。<br>如果*越界*，则函数会直接返回*空指针*。                                 |
+| `sub_start`  | `size_t`       | 子串的起始索引。<br>*越界*时，函数会直接返回*空指针*。                                                          |
+| `sub_length` | `size_t`       | 子串的长度。<br>为 _`0`_ 表示到末尾。<br>*越界*时，函数会直接返回*空指针*。                                     |
 
-| 返回值       | 说明                                                           |
-| ------------ | -------------------------------------------------------------- |
-| `dstr_adt *` | 所创建的「动态字符串」的指针。<br>如果创建失败则返回*空指针*。 |
+| 返回值       | 说明                                                     |
+| ------------ | -------------------------------------------------------- |
+| `dstr_adt *` | 所创建的「动态字符串」的指针。<br>创建失败返回*空指针*。 |
 
 > [!IMPORTANT]
 >
@@ -229,18 +237,22 @@ dstr_adt *dstr_sub_cstr(const char *cstr, size_t sub_start, size_t sub_length);
 提取一个「动态字符串」的子串为一个新的「动态字符串」。
 
 ```c
-dstr_adt *dstr_sub(const dstr_adt *dstr, size_t sub_start, size_t sub_length);
+dstr_adt *dstr_sub(
+	const dstr_adt *dstr,
+	size_t sub_start,
+	size_t sub_length
+);
 ```
 
 | 参数         | 类型               | 说明                                                                                                              |
 | ------------ | ------------------ | ----------------------------------------------------------------------------------------------------------------- |
 | `dstr`       | `const dstr_adt *` | 源「动态字符串」的指针。<br>为<em>「空字符串」</em>时创建空「动态字符串」，此时忽略 `sub_start` 和 `sub_length`。 |
-| `sub_start`  | `size_t`           | 子串的起始索引。<br>如果*越界*，则函数会直接返回*空指针*。                                                        |
-| `sub_length` | `size_t`           | 子串的长度。<br>为 _`0`_ 表示到末尾。<br>如果*越界*，则函数会直接返回*空指针*。                                   |
+| `sub_start`  | `size_t`           | 子串的起始索引。<br>*越界*时，函数会直接返回*空指针*。                                                            |
+| `sub_length` | `size_t`           | 子串的长度。<br>为 _`0`_ 表示到末尾。<br>*越界*时，函数会直接返回*空指针*。                                       |
 
-| 返回值       | 说明                                                           |
-| ------------ | -------------------------------------------------------------- |
-| `dstr_adt *` | 所创建的「动态字符串」的指针。<br>如果创建失败则返回*空指针*。 |
+| 返回值       | 说明                                                     |
+| ------------ | -------------------------------------------------------- |
+| `dstr_adt *` | 所创建的「动态字符串」的指针。<br>创建失败返回*空指针*。 |
 
 > [!IMPORTANT]
 >
@@ -253,7 +265,10 @@ dstr_adt *dstr_sub(const dstr_adt *dstr, size_t sub_start, size_t sub_length);
 格式化创建一个「动态字符串」。
 
 ```c
-dstr_adt *dstr_create_format(const char *format, ...);
+dstr_adt *dstr_create_format(
+	const char *format,
+	...
+);
 ```
 
 | 参数     | 类型           | 说明                                                                        |
@@ -261,9 +276,9 @@ dstr_adt *dstr_create_format(const char *format, ...);
 | `format` | `const char *` | 格式「C 字符串」的指针。<br>为<em>「空字符串」</em>时创建空「动态字符串」。 |
 | `...`    | —              | 与 `format` 对应的可变参数列表。                                            |
 
-| 返回值       | 说明                                                           |
-| ------------ | -------------------------------------------------------------- |
-| `dstr_adt *` | 所创建的「动态字符串」的指针。<br>如果创建失败则返回*空指针*。 |
+| 返回值       | 说明                                                     |
+| ------------ | -------------------------------------------------------- |
+| `dstr_adt *` | 所创建的「动态字符串」的指针。<br>创建失败返回*空指针*。 |
 
 > [!IMPORTANT]
 >
@@ -276,7 +291,10 @@ dstr_adt *dstr_create_format(const char *format, ...);
 格式化创建一个「动态字符串」（`va_list` 版本）。
 
 ```c
-dstr_adt *dstr_create_vformat(const char *format, va_list args);
+dstr_adt *dstr_create_vformat(
+	const char *format,
+	va_list args
+);
 ```
 
 | 参数     | 类型           | 说明                                                                                                                                                     |
@@ -284,9 +302,9 @@ dstr_adt *dstr_create_vformat(const char *format, va_list args);
 | `format` | `const char *` | 格式「C 字符串」的指针。<br>为<em>「空字符串」</em>时创建空「动态字符串」。                                                                              |
 | `args`   | `va_list`      | 已通过 `va_start()` 初始化的 `va_list` 变量，包含与 `format` 对应的可变参数列表信息。<br>该函数不会调用 `va_end()`，调用者需自行管理 `args` 的生命周期。 |
 
-| 返回值       | 说明                                                           |
-| ------------ | -------------------------------------------------------------- |
-| `dstr_adt *` | 所创建的「动态字符串」的指针。<br>如果创建失败则返回*空指针*。 |
+| 返回值       | 说明                                                     |
+| ------------ | -------------------------------------------------------- |
+| `dstr_adt *` | 所创建的「动态字符串」的指针。<br>创建失败返回*空指针*。 |
 
 > [!NOTE]
 >
@@ -349,16 +367,18 @@ dstr_adt *dstr_create_vformat(const char *format, va_list args);
 获取一个「动态字符串」的内部「C 字符串」指针。
 
 ```c
-const char *dstr_cstr(const dstr_adt *dstr);
+const char *dstr_cstr(
+	const dstr_adt *dstr
+);
 ```
 
-| 参数   | 类型               | 说明                                                                     |
-| ------ | ------------------ | ------------------------------------------------------------------------ |
-| `dstr` | `const dstr_adt *` | 目标「动态字符串」的指针。<br>如果为*空指针*，则函数会直接返回*空指针*。 |
+| 参数   | 类型               | 说明                                                                 |
+| ------ | ------------------ | -------------------------------------------------------------------- |
+| `dstr` | `const dstr_adt *` | 目标「动态字符串」的指针。<br>为*空指针*时，函数会直接返回*空指针*。 |
 
-| 返回值         | 说明                                                        |
-| -------------- | ----------------------------------------------------------- |
-| `const char *` | `dstr` 的内部「C 字符串」指针。<br>对非空 `dstr` 保证非空。 |
+| 返回值         | 说明                            |
+| -------------- | ------------------------------- |
+| `const char *` | `dstr` 的内部「C 字符串」指针。 |
 
 > [!NOTE]
 >
@@ -377,12 +397,14 @@ const char *dstr_cstr(const dstr_adt *dstr);
 获取一个「动态字符串」的长度。
 
 ```c
-size_t dstr_length(const dstr_adt *dstr);
+size_t dstr_length(
+	const dstr_adt *dstr
+);
 ```
 
-| 参数   | 类型               | 说明                                                                   |
-| ------ | ------------------ | ---------------------------------------------------------------------- |
-| `dstr` | `const dstr_adt *` | 目标「动态字符串」的指针。<br>如果为*空指针*，则函数会直接返回 _`0`_。 |
+| 参数   | 类型               | 说明                                                               |
+| ------ | ------------------ | ------------------------------------------------------------------ |
+| `dstr` | `const dstr_adt *` | 目标「动态字符串」的指针。<br>为*空指针*时，函数会直接返回 _`0`_。 |
 
 | 返回值   | 说明            |
 | -------- | --------------- |
@@ -395,16 +417,18 @@ size_t dstr_length(const dstr_adt *dstr);
 判断一个「动态字符串」是否是空「动态字符串」。
 
 ```c
-bool dstr_is_empty(const dstr_adt *dstr);
+bool dstr_is_empty(
+	const dstr_adt *dstr
+);
 ```
 
-| 参数   | 类型               | 说明                                                                      |
-| ------ | ------------------ | ------------------------------------------------------------------------- |
-| `dstr` | `const dstr_adt *` | 目标「动态字符串」的指针。<br>如果为*空指针*，则函数会直接返回 _`true`_。 |
+| 参数   | 类型               | 说明                                                                  |
+| ------ | ------------------ | --------------------------------------------------------------------- |
+| `dstr` | `const dstr_adt *` | 目标「动态字符串」的指针。<br>为*空指针*时，函数会直接返回 _`true`_。 |
 
-| 返回值 | 说明                                                                |
-| ------ | ------------------------------------------------------------------- |
-| `bool` | 如果 `dstr` 是空「动态字符串」则返回 _`true`_，否则返回 _`false`_。 |
+| 返回值 | 说明                                                    |
+| ------ | ------------------------------------------------------- |
+| `bool` | 是空「动态字符串」则返回 _`true`_，否则返回 _`false`_。 |
 
 <a id="api-functions-getters-and-setters-dstr_capacity"></a>
 
@@ -413,12 +437,14 @@ bool dstr_is_empty(const dstr_adt *dstr);
 获取一个「动态字符串」的容量。
 
 ```c
-size_t dstr_capacity(const dstr_adt *dstr);
+size_t dstr_capacity(
+	const dstr_adt *dstr
+);
 ```
 
-| 参数   | 类型               | 说明                                                                   |
-| ------ | ------------------ | ---------------------------------------------------------------------- |
-| `dstr` | `const dstr_adt *` | 目标「动态字符串」的指针。<br>如果为*空指针*，则函数会直接返回 _`0`_。 |
+| 参数   | 类型               | 说明                                                               |
+| ------ | ------------------ | ------------------------------------------------------------------ |
+| `dstr` | `const dstr_adt *` | 目标「动态字符串」的指针。<br>为*空指针*时，函数会直接返回 _`0`_。 |
 
 | 返回值   | 说明            |
 | -------- | --------------- |
@@ -431,13 +457,16 @@ size_t dstr_capacity(const dstr_adt *dstr);
 设置一个「动态字符串」的容量。
 
 ```c
-dstr_status_t dstr_set_capacity(dstr_adt *dstr, size_t new_capacity);
+dstr_status_t dstr_set_capacity(
+	dstr_adt *dstr,
+	size_t new_capacity
+);
 ```
 
-| 参数           | 类型         | 说明                                                           |
-| -------------- | ------------ | -------------------------------------------------------------- |
-| `dstr`         | `dstr_adt *` | 目标「动态字符串」的指针。<br>如果为*空指针*，则视为无效参数。 |
-| `new_capacity` | `size_t`     | 新的容量。                                                     |
+| 参数           | 类型         | 说明                                                 |
+| -------------- | ------------ | ---------------------------------------------------- |
+| `dstr`         | `dstr_adt *` | 目标「动态字符串」的指针。<br>*空指针*视为无效参数。 |
+| `new_capacity` | `size_t`     | 新的容量。                                           |
 
 | 返回值          | 说明         |
 | --------------- | ------------ |
@@ -449,7 +478,7 @@ dstr_status_t dstr_set_capacity(dstr_adt *dstr, size_t new_capacity);
 >
 > 这影响了此函数的行为，当此函数成功执行后，实际容量可能等于 `new_capacity`，也可能等于实现所采用的容量下限（当 `new_capacity` 小于等于该下限时）。
 >
-> 另外，如果 `new_capacity` 大于实现所采用的容量下限，那么当此函数成功执行后，`new_capacity` 将成为新的容量下限，在后续由于 `dstr` 内容长度的减小所引起的容量的自动缩小时，容量将维持不低于 `new_capacity`。再次调用此函数可覆盖此下限，调用 `dstr_shrink_to_fit()` 函数可清除此下限。
+> 另外，如果 `new_capacity` 大于实现所采用的容量下限，那么当此函数成功执行后，会将 `new_capacity` 同时设置为 `dstr` 的保底容量（和实现所采用的容量下限不是一回事），在后续由于 `dstr` 内容长度的减小所引起的容量的自动缩小时，容量将维持不低于保底容量值。再次调用此函数可覆盖此值，调用 `dstr_shrink_to_fit()` 函数可清除此值。
 
 > [!WARNING]
 >
@@ -462,18 +491,20 @@ dstr_status_t dstr_set_capacity(dstr_adt *dstr, size_t new_capacity);
 调整一个「动态字符串」的容量到刚合适。
 
 ```c
-void dstr_shrink_to_fit(dstr_adt *dstr);
+void dstr_shrink_to_fit(
+	dstr_adt *dstr
+);
 ```
 
-| 参数   | 类型         | 说明                                                             |
-| ------ | ------------ | ---------------------------------------------------------------- |
-| `dstr` | `dstr_adt *` | 目标「动态字符串」的指针。<br>如果为*空指针*，则函数会直接返回。 |
+| 参数   | 类型         | 说明                                                         |
+| ------ | ------------ | ------------------------------------------------------------ |
+| `dstr` | `dstr_adt *` | 目标「动态字符串」的指针。<br>为*空指针*时，函数会直接返回。 |
 
 > [!NOTE]
 >
 > 此函数执行后，实际容量受实现的容量下限影响。
 >
-> 执行此函数会同时清除 `dstr` 由 `dstr_set_capacity()` 函数所设置的容量下限。
+> 执行此函数会同时清除 `dstr` 由 `dstr_set_capacity()` 函数所设置的保底容量。
 
 <a id="api-functions-content-editing"></a>
 
@@ -581,12 +612,15 @@ void dstr_shrink_to_fit(dstr_adt *dstr);
 复制一个「C 字符串」到一个「动态字符串」。
 
 ```c
-dstr_status_t dstr_cpy_cstr(dstr_adt *dest, const char *src);
+dstr_status_t dstr_cpy_cstr(
+	dstr_adt *dest,
+	const char *src
+);
 ```
 
 | 参数   | 类型           | 说明                                                                                    |
 | ------ | -------------- | --------------------------------------------------------------------------------------- |
-| `dest` | `dstr_adt *`   | 目标「动态字符串」的指针。<br>如果为*空指针*，则视为无效参数。                          |
+| `dest` | `dstr_adt *`   | 目标「动态字符串」的指针。<br>*空指针*视为无效参数。                                    |
 | `src`  | `const char *` | 源「C 字符串」的指针。<br>为<em>「空字符串」</em>时复制空字符串（清空 `dest` 的内容）。 |
 
 | 返回值          | 说明         |
@@ -604,12 +638,15 @@ dstr_status_t dstr_cpy_cstr(dstr_adt *dest, const char *src);
 复制一个「动态字符串」到另一个「动态字符串」。
 
 ```c
-dstr_status_t dstr_cpy(dstr_adt *dest, const dstr_adt *src);
+dstr_status_t dstr_cpy(
+	dstr_adt *dest,
+	const dstr_adt *src
+);
 ```
 
 | 参数   | 类型               | 说明                                                                                      |
 | ------ | ------------------ | ----------------------------------------------------------------------------------------- |
-| `dest` | `dstr_adt *`       | 目标「动态字符串」的指针。<br>如果为*空指针*，则视为无效参数。                            |
+| `dest` | `dstr_adt *`       | 目标「动态字符串」的指针。<br>*空指针*视为无效参数。                                      |
 | `src`  | `const dstr_adt *` | 源「动态字符串」的指针。<br>为<em>「空字符串」</em>时复制空字符串（清空 `dest` 的内容）。 |
 
 | 返回值          | 说明         |
@@ -627,15 +664,20 @@ dstr_status_t dstr_cpy(dstr_adt *dest, const dstr_adt *src);
 复制一个「C 字符串」的子串到一个「动态字符串」。
 
 ```c
-dstr_status_t dstr_cpy_sub_cstr(dstr_adt *dest, const char *src, size_t sub_start, size_t sub_length);
+dstr_status_t dstr_cpy_sub_cstr(
+	dstr_adt *dest,
+	const char *src,
+	size_t sub_start,
+	size_t sub_length
+);
 ```
 
 | 参数         | 类型           | 说明                                                                                                                          |
 | ------------ | -------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `dest`       | `dstr_adt *`   | 目标「动态字符串」的指针。<br>如果为*空指针*，则视为无效参数。                                                                |
+| `dest`       | `dstr_adt *`   | 目标「动态字符串」的指针。<br>*空指针*视为无效参数。                                                                          |
 | `src`        | `const char *` | 源「C 字符串」的指针。<br>为<em>「空字符串」</em>时复制空字符串（清空 `dest` 的内容），此时忽略 `sub_start` 和 `sub_length`。 |
-| `sub_start`  | `size_t`       | 子串的起始索引。<br>如果*越界*，则视为无效参数。                                                                              |
-| `sub_length` | `size_t`       | 子串的长度。<br>为 _`0`_ 表示到末尾。<br>如果*越界*，则视为无效参数。                                                         |
+| `sub_start`  | `size_t`       | 子串的起始索引。<br>*越界*视为无效参数。                                                                                      |
+| `sub_length` | `size_t`       | 子串的长度。<br>为 _`0`_ 表示到末尾。<br>*越界*视为无效参数。                                                                 |
 
 | 返回值          | 说明         |
 | --------------- | ------------ |
@@ -652,15 +694,20 @@ dstr_status_t dstr_cpy_sub_cstr(dstr_adt *dest, const char *src, size_t sub_star
 复制一个「动态字符串」的子串到另一个「动态字符串」。
 
 ```c
-dstr_status_t dstr_cpy_sub(dstr_adt *dest, const dstr_adt *src, size_t sub_start, size_t sub_length);
+dstr_status_t dstr_cpy_sub(
+	dstr_adt *dest,
+	const dstr_adt *src,
+	size_t sub_start,
+	size_t sub_length
+);
 ```
 
 | 参数         | 类型               | 说明                                                                                                                            |
 | ------------ | ------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| `dest`       | `dstr_adt *`       | 目标「动态字符串」的指针。<br>如果为*空指针*，则视为无效参数。                                                                  |
+| `dest`       | `dstr_adt *`       | 目标「动态字符串」的指针。<br>*空指针*视为无效参数。                                                                            |
 | `src`        | `const dstr_adt *` | 源「动态字符串」的指针。<br>为<em>「空字符串」</em>时复制空字符串（清空 `dest` 的内容），此时忽略 `sub_start` 和 `sub_length`。 |
-| `sub_start`  | `size_t`           | 子串的起始索引。<br>如果*越界*，则视为无效参数。                                                                                |
-| `sub_length` | `size_t`           | 子串的长度。<br>为 _`0`_ 表示到末尾。<br>如果*越界*，则视为无效参数。                                                           |
+| `sub_start`  | `size_t`           | 子串的起始索引。<br>*越界*视为无效参数。                                                                                        |
+| `sub_length` | `size_t`           | 子串的长度。<br>为 _`0`_ 表示到末尾。<br>*越界*视为无效参数。                                                                   |
 
 | 返回值          | 说明         |
 | --------------- | ------------ |
@@ -677,12 +724,16 @@ dstr_status_t dstr_cpy_sub(dstr_adt *dest, const dstr_adt *src, size_t sub_start
 格式化复制一个字符串到一个「动态字符串」。
 
 ```c
-dstr_status_t dstr_cpy_format(dstr_adt *dest, const char *format, ...);
+dstr_status_t dstr_cpy_format(
+	dstr_adt *dest,
+	const char *format,
+	...
+);
 ```
 
 | 参数     | 类型           | 说明                                                                                      |
 | -------- | -------------- | ----------------------------------------------------------------------------------------- |
-| `dest`   | `dstr_adt *`   | 目标「动态字符串」的指针。<br>如果为*空指针*，则视为无效参数。                            |
+| `dest`   | `dstr_adt *`   | 目标「动态字符串」的指针。<br>*空指针*视为无效参数。                                      |
 | `format` | `const char *` | 格式「C 字符串」的指针。<br>为<em>「空字符串」</em>时复制空字符串（清空 `dest` 的内容）。 |
 | `...`    | —              | 与 `format` 对应的可变参数列表。                                                          |
 
@@ -701,12 +752,16 @@ dstr_status_t dstr_cpy_format(dstr_adt *dest, const char *format, ...);
 格式化复制一个字符串到一个「动态字符串」（`va_list` 版本）。
 
 ```c
-dstr_status_t dstr_cpy_vformat(dstr_adt *dest, const char *format, va_list args);
+dstr_status_t dstr_cpy_vformat(
+	dstr_adt *dest,
+	const char *format,
+	va_list args
+);
 ```
 
 | 参数     | 类型           | 说明                                                                                                                                                     |
 | -------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `dest`   | `dstr_adt *`   | 目标「动态字符串」的指针。<br>如果为*空指针*，则视为无效参数。                                                                                           |
+| `dest`   | `dstr_adt *`   | 目标「动态字符串」的指针。<br>*空指针*视为无效参数。                                                                                                     |
 | `format` | `const char *` | 格式「C 字符串」的指针。<br>为<em>「空字符串」</em>时复制空字符串（清空 `dest` 的内容）。                                                                |
 | `args`   | `va_list`      | 已通过 `va_start()` 初始化的 `va_list` 变量，包含与 `format` 对应的可变参数列表信息。<br>该函数不会调用 `va_end()`，调用者需自行管理 `args` 的生命周期。 |
 
@@ -729,12 +784,15 @@ dstr_status_t dstr_cpy_vformat(dstr_adt *dest, const char *format, va_list args)
 追加一个「C 字符串」到一个「动态字符串」。
 
 ```c
-dstr_status_t dstr_cat_cstr(dstr_adt *dest, const char *src);
+dstr_status_t dstr_cat_cstr(
+	dstr_adt *dest,
+	const char *src
+);
 ```
 
-| 参数   | 类型           | 说明                                                              |
-| ------ | -------------- | ----------------------------------------------------------------- |
-| `dest` | `dstr_adt *`   | 目标「动态字符串」的指针。<br>如果为*空指针*，则视为无效参数。    |
+| 参数   | 类型           | 说明                                                                              |
+| ------ | -------------- | --------------------------------------------------------------------------------- |
+| `dest` | `dstr_adt *`   | 目标「动态字符串」的指针。<br>*空指针*视为无效参数。                              |
 | `src`  | `const char *` | 源「C 字符串」的指针。<br>为<em>「空字符串」</em>时追加空字符串（什么都不追加）。 |
 
 | 返回值          | 说明         |
@@ -752,12 +810,15 @@ dstr_status_t dstr_cat_cstr(dstr_adt *dest, const char *src);
 追加一个「动态字符串」到另一个「动态字符串」。
 
 ```c
-dstr_status_t dstr_cat(dstr_adt *dest, const dstr_adt *src);
+dstr_status_t dstr_cat(
+	dstr_adt *dest,
+	const dstr_adt *src
+);
 ```
 
-| 参数   | 类型               | 说明                                                                |
-| ------ | ------------------ | ------------------------------------------------------------------- |
-| `dest` | `dstr_adt *`       | 目标「动态字符串」的指针。<br>如果为*空指针*，则视为无效参数。      |
+| 参数   | 类型               | 说明                                                                                |
+| ------ | ------------------ | ----------------------------------------------------------------------------------- |
+| `dest` | `dstr_adt *`       | 目标「动态字符串」的指针。<br>*空指针*视为无效参数。                                |
 | `src`  | `const dstr_adt *` | 源「动态字符串」的指针。<br>为<em>「空字符串」</em>时追加空字符串（什么都不追加）。 |
 
 | 返回值          | 说明         |
@@ -775,15 +836,20 @@ dstr_status_t dstr_cat(dstr_adt *dest, const dstr_adt *src);
 追加一个「C 字符串」的子串到一个「动态字符串」。
 
 ```c
-dstr_status_t dstr_cat_sub_cstr(dstr_adt *dest, const char *src, size_t sub_start, size_t sub_length);
+dstr_status_t dstr_cat_sub_cstr(
+	dstr_adt *dest,
+	const char *src,
+	size_t sub_start,
+	size_t sub_length
+);
 ```
 
-| 参数         | 类型           | 说明                                                                                                    |
-| ------------ | -------------- | ------------------------------------------------------------------------------------------------------- |
-| `dest`       | `dstr_adt *`   | 目标「动态字符串」的指针。<br>如果为*空指针*，则视为无效参数。                                          |
+| 参数         | 类型           | 说明                                                                                                                    |
+| ------------ | -------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `dest`       | `dstr_adt *`   | 目标「动态字符串」的指针。<br>*空指针*视为无效参数。                                                                    |
 | `src`        | `const char *` | 源「C 字符串」的指针。<br>为<em>「空字符串」</em>时追加空字符串（什么都不追加），此时忽略 `sub_start` 和 `sub_length`。 |
-| `sub_start`  | `size_t`       | 子串的起始索引。<br>如果*越界*，则视为无效参数。                                                        |
-| `sub_length` | `size_t`       | 子串的长度。<br>为 _`0`_ 表示到末尾。<br>如果*越界*，则视为无效参数。                                   |
+| `sub_start`  | `size_t`       | 子串的起始索引。<br>*越界*视为无效参数。                                                                                |
+| `sub_length` | `size_t`       | 子串的长度。<br>为 _`0`_ 表示到末尾。<br>*越界*视为无效参数。                                                           |
 
 | 返回值          | 说明         |
 | --------------- | ------------ |
@@ -800,15 +866,20 @@ dstr_status_t dstr_cat_sub_cstr(dstr_adt *dest, const char *src, size_t sub_star
 追加一个「动态字符串」的子串到另一个「动态字符串」。
 
 ```c
-dstr_status_t dstr_cat_sub(dstr_adt *dest, const dstr_adt *src, size_t sub_start, size_t sub_length);
+dstr_status_t dstr_cat_sub(
+	dstr_adt *dest,
+	const dstr_adt *src,
+	size_t sub_start,
+	size_t sub_length
+);
 ```
 
-| 参数         | 类型               | 说明                                                                                                      |
-| ------------ | ------------------ | --------------------------------------------------------------------------------------------------------- |
-| `dest`       | `dstr_adt *`       | 目标「动态字符串」的指针。<br>如果为*空指针*，则视为无效参数。                                            |
+| 参数         | 类型               | 说明                                                                                                                      |
+| ------------ | ------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `dest`       | `dstr_adt *`       | 目标「动态字符串」的指针。<br>*空指针*视为无效参数。                                                                      |
 | `src`        | `const dstr_adt *` | 源「动态字符串」的指针。<br>为<em>「空字符串」</em>时追加空字符串（什么都不追加），此时忽略 `sub_start` 和 `sub_length`。 |
-| `sub_start`  | `size_t`           | 子串的起始索引。<br>如果*越界*，则视为无效参数。                                                          |
-| `sub_length` | `size_t`           | 子串的长度。<br>为 _`0`_ 表示到末尾。<br>如果*越界*，则视为无效参数。                                     |
+| `sub_start`  | `size_t`           | 子串的起始索引。<br>*越界*视为无效参数。                                                                                  |
+| `sub_length` | `size_t`           | 子串的长度。<br>为 _`0`_ 表示到末尾。<br>*越界*视为无效参数。                                                             |
 
 | 返回值          | 说明         |
 | --------------- | ------------ |
@@ -825,14 +896,18 @@ dstr_status_t dstr_cat_sub(dstr_adt *dest, const dstr_adt *src, size_t sub_start
 格式化追加一个字符串到一个「动态字符串」。
 
 ```c
-dstr_status_t dstr_cat_format(dstr_adt *dest, const char *format, ...);
+dstr_status_t dstr_cat_format(
+	dstr_adt *dest,
+	const char *format,
+	...
+);
 ```
 
-| 参数     | 类型           | 说明                                                                |
-| -------- | -------------- | ------------------------------------------------------------------- |
-| `dest`   | `dstr_adt *`   | 目标「动态字符串」的指针。<br>如果为*空指针*，则视为无效参数。      |
+| 参数     | 类型           | 说明                                                                                |
+| -------- | -------------- | ----------------------------------------------------------------------------------- |
+| `dest`   | `dstr_adt *`   | 目标「动态字符串」的指针。<br>*空指针*视为无效参数。                                |
 | `format` | `const char *` | 格式「C 字符串」的指针。<br>为<em>「空字符串」</em>时追加空字符串（什么都不追加）。 |
-| `...`    | —              | 与 `format` 对应的可变参数列表。                                    |
+| `...`    | —              | 与 `format` 对应的可变参数列表。                                                    |
 
 | 返回值          | 说明         |
 | --------------- | ------------ |
@@ -849,13 +924,17 @@ dstr_status_t dstr_cat_format(dstr_adt *dest, const char *format, ...);
 格式化追加一个字符串到一个「动态字符串」（`va_list` 版本）。
 
 ```c
-dstr_status_t dstr_cat_vformat(dstr_adt *dest, const char *format, va_list args);
+dstr_status_t dstr_cat_vformat(
+	dstr_adt *dest,
+	const char *format,
+	va_list args
+);
 ```
 
 | 参数     | 类型           | 说明                                                                                                                                                     |
 | -------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `dest`   | `dstr_adt *`   | 目标「动态字符串」的指针。<br>如果为*空指针*，则视为无效参数。                                                                                           |
-| `format` | `const char *` | 格式「C 字符串」的指针。<br>为<em>「空字符串」</em>时追加空字符串（什么都不追加）。                                                                                      |
+| `dest`   | `dstr_adt *`   | 目标「动态字符串」的指针。<br>*空指针*视为无效参数。                                                                                                     |
+| `format` | `const char *` | 格式「C 字符串」的指针。<br>为<em>「空字符串」</em>时追加空字符串（什么都不追加）。                                                                      |
 | `args`   | `va_list`      | 已通过 `va_start()` 初始化的 `va_list` 变量，包含与 `format` 对应的可变参数列表信息。<br>该函数不会调用 `va_end()`，调用者需自行管理 `args` 的生命周期。 |
 
 | 返回值          | 说明         |
@@ -877,13 +956,17 @@ dstr_status_t dstr_cat_vformat(dstr_adt *dest, const char *format, va_list args)
 插入一个「C 字符串」到一个「动态字符串」。
 
 ```c
-dstr_status_t dstr_insert_cstr(dstr_adt *dest, size_t index, const char *src);
+dstr_status_t dstr_insert_cstr(
+	dstr_adt *dest,
+	size_t index,
+	const char *src
+);
 ```
 
-| 参数    | 类型           | 说明                                                              |
-| ------- | -------------- | ----------------------------------------------------------------- |
-| `dest`  | `dstr_adt *`   | 目标「动态字符串」的指针。<br>如果为*空指针*，则视为无效参数。    |
-| `index` | `size_t`       | 插入位置的索引。<br>如果*越界*，则视为无效参数。                  |
+| 参数    | 类型           | 说明                                                                              |
+| ------- | -------------- | --------------------------------------------------------------------------------- |
+| `dest`  | `dstr_adt *`   | 目标「动态字符串」的指针。<br>*空指针*视为无效参数。                              |
+| `index` | `size_t`       | 插入位置的索引。<br>*越界*视为无效参数。                                          |
 | `src`   | `const char *` | 源「C 字符串」的指针。<br>为<em>「空字符串」</em>时插入空字符串（什么都不插入）。 |
 
 | 返回值          | 说明         |
@@ -901,13 +984,17 @@ dstr_status_t dstr_insert_cstr(dstr_adt *dest, size_t index, const char *src);
 插入一个「动态字符串」到另一个「动态字符串」。
 
 ```c
-dstr_status_t dstr_insert(dstr_adt *dest, size_t index, const dstr_adt *src);
+dstr_status_t dstr_insert(
+	dstr_adt *dest,
+	size_t index,
+	const dstr_adt *src
+);
 ```
 
-| 参数    | 类型               | 说明                                                                |
-| ------- | ------------------ | ------------------------------------------------------------------- |
-| `dest`  | `dstr_adt *`       | 目标「动态字符串」的指针。<br>如果为*空指针*，则视为无效参数。      |
-| `index` | `size_t`           | 插入位置的索引。<br>如果*越界*，则视为无效参数。                    |
+| 参数    | 类型               | 说明                                                                                |
+| ------- | ------------------ | ----------------------------------------------------------------------------------- |
+| `dest`  | `dstr_adt *`       | 目标「动态字符串」的指针。<br>*空指针*视为无效参数。                                |
+| `index` | `size_t`           | 插入位置的索引。<br>*越界*视为无效参数。                                            |
 | `src`   | `const dstr_adt *` | 源「动态字符串」的指针。<br>为<em>「空字符串」</em>时插入空字符串（什么都不插入）。 |
 
 | 返回值          | 说明         |
@@ -925,16 +1012,22 @@ dstr_status_t dstr_insert(dstr_adt *dest, size_t index, const dstr_adt *src);
 插入一个「C 字符串」的子串到一个「动态字符串」。
 
 ```c
-dstr_status_t dstr_insert_sub_cstr(dstr_adt *dest, size_t index, const char *src, size_t sub_start, size_t sub_length);
+dstr_status_t dstr_insert_sub_cstr(
+	dstr_adt *dest,
+	size_t index,
+	const char *src,
+	size_t sub_start,
+	size_t sub_length
+);
 ```
 
-| 参数         | 类型           | 说明                                                                                                    |
-| ------------ | -------------- | ------------------------------------------------------------------------------------------------------- |
-| `dest`       | `dstr_adt *`   | 目标「动态字符串」的指针。<br>如果为*空指针*，则视为无效参数。                                          |
-| `index`      | `size_t`       | 插入位置的索引。<br>如果*越界*，则视为无效参数。                                                        |
+| 参数         | 类型           | 说明                                                                                                                    |
+| ------------ | -------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `dest`       | `dstr_adt *`   | 目标「动态字符串」的指针。<br>*空指针*视为无效参数。                                                                    |
+| `index`      | `size_t`       | 插入位置的索引。<br>*越界*视为无效参数。                                                                                |
 | `src`        | `const char *` | 源「C 字符串」的指针。<br>为<em>「空字符串」</em>时插入空字符串（什么都不插入），此时忽略 `sub_start` 和 `sub_length`。 |
-| `sub_start`  | `size_t`       | 子串的起始索引。<br>如果*越界*，则视为无效参数。                                                        |
-| `sub_length` | `size_t`       | 子串的长度。<br>为 _`0`_ 表示到末尾。<br>如果*越界*，则视为无效参数。                                   |
+| `sub_start`  | `size_t`       | 子串的起始索引。<br>*越界*视为无效参数。                                                                                |
+| `sub_length` | `size_t`       | 子串的长度。<br>为 _`0`_ 表示到末尾。<br>*越界*视为无效参数。                                                           |
 
 | 返回值          | 说明         |
 | --------------- | ------------ |
@@ -951,16 +1044,22 @@ dstr_status_t dstr_insert_sub_cstr(dstr_adt *dest, size_t index, const char *src
 插入一个「动态字符串」的子串到另一个「动态字符串」。
 
 ```c
-dstr_status_t dstr_insert_sub(dstr_adt *dest, size_t index, const dstr_adt *src, size_t sub_start, size_t sub_length);
+dstr_status_t dstr_insert_sub(
+	dstr_adt *dest,
+	size_t index,
+	const dstr_adt *src,
+	size_t sub_start,
+	size_t sub_length
+);
 ```
 
-| 参数         | 类型               | 说明                                                                                                      |
-| ------------ | ------------------ | --------------------------------------------------------------------------------------------------------- |
-| `dest`       | `dstr_adt *`       | 目标「动态字符串」的指针。<br>如果为*空指针*，则视为无效参数。                                            |
-| `index`      | `size_t`           | 插入位置的索引。<br>如果*越界*，则视为无效参数。                                                          |
+| 参数         | 类型               | 说明                                                                                                                      |
+| ------------ | ------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `dest`       | `dstr_adt *`       | 目标「动态字符串」的指针。<br>*空指针*视为无效参数。                                                                      |
+| `index`      | `size_t`           | 插入位置的索引。<br>*越界*视为无效参数。                                                                                  |
 | `src`        | `const dstr_adt *` | 源「动态字符串」的指针。<br>为<em>「空字符串」</em>时插入空字符串（什么都不插入），此时忽略 `sub_start` 和 `sub_length`。 |
-| `sub_start`  | `size_t`           | 子串的起始索引。<br>如果*越界*，则视为无效参数。                                                          |
-| `sub_length` | `size_t`           | 子串的长度。<br>为 _`0`_ 表示到末尾。<br>如果*越界*，则视为无效参数。                                     |
+| `sub_start`  | `size_t`           | 子串的起始索引。<br>*越界*视为无效参数。                                                                                  |
+| `sub_length` | `size_t`           | 子串的长度。<br>为 _`0`_ 表示到末尾。<br>*越界*视为无效参数。                                                             |
 
 | 返回值          | 说明         |
 | --------------- | ------------ |
@@ -977,15 +1076,20 @@ dstr_status_t dstr_insert_sub(dstr_adt *dest, size_t index, const dstr_adt *src,
 格式化插入一个字符串到一个「动态字符串」。
 
 ```c
-dstr_status_t dstr_insert_format(dstr_adt *dest, size_t index, const char *format, ...);
+dstr_status_t dstr_insert_format(
+	dstr_adt *dest,
+	size_t index,
+	const char *format,
+	...
+);
 ```
 
-| 参数     | 类型           | 说明                                                                |
-| -------- | -------------- | ------------------------------------------------------------------- |
-| `dest`   | `dstr_adt *`   | 目标「动态字符串」的指针。<br>如果为*空指针*，则视为无效参数。      |
-| `index`  | `size_t`       | 插入位置的索引。<br>如果*越界*，则视为无效参数。                    |
+| 参数     | 类型           | 说明                                                                                |
+| -------- | -------------- | ----------------------------------------------------------------------------------- |
+| `dest`   | `dstr_adt *`   | 目标「动态字符串」的指针。<br>*空指针*视为无效参数。                                |
+| `index`  | `size_t`       | 插入位置的索引。<br>*越界*视为无效参数。                                            |
 | `format` | `const char *` | 格式「C 字符串」的指针。<br>为<em>「空字符串」</em>时插入空字符串（什么都不插入）。 |
-| `...`    | —              | 与 `format` 对应的可变参数列表。                                    |
+| `...`    | —              | 与 `format` 对应的可变参数列表。                                                    |
 
 | 返回值          | 说明         |
 | --------------- | ------------ |
@@ -1002,14 +1106,19 @@ dstr_status_t dstr_insert_format(dstr_adt *dest, size_t index, const char *forma
 格式化插入一个字符串到一个「动态字符串」（`va_list` 版本）。
 
 ```c
-dstr_status_t dstr_insert_vformat(dstr_adt *dest, size_t index, const char *format, va_list args);
+dstr_status_t dstr_insert_vformat(
+	dstr_adt *dest,
+	size_t index,
+	const char *format,
+	va_list args
+);
 ```
 
 | 参数     | 类型           | 说明                                                                                                                                                     |
 | -------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `dest`   | `dstr_adt *`   | 目标「动态字符串」的指针。<br>如果为*空指针*，则视为无效参数。                                                                                           |
-| `index`  | `size_t`       | 插入位置的索引。<br>如果*越界*，则视为无效参数。                                                                                                         |
-| `format` | `const char *` | 格式「C 字符串」的指针。<br>为<em>「空字符串」</em>时插入空字符串（什么都不插入）。                                                                                      |
+| `dest`   | `dstr_adt *`   | 目标「动态字符串」的指针。<br>*空指针*视为无效参数。                                                                                                     |
+| `index`  | `size_t`       | 插入位置的索引。<br>*越界*视为无效参数。                                                                                                                 |
+| `format` | `const char *` | 格式「C 字符串」的指针。<br>为<em>「空字符串」</em>时插入空字符串（什么都不插入）。                                                                      |
 | `args`   | `va_list`      | 已通过 `va_start()` 初始化的 `va_list` 变量，包含与 `format` 对应的可变参数列表信息。<br>该函数不会调用 `va_end()`，调用者需自行管理 `args` 的生命周期。 |
 
 | 返回值          | 说明         |
@@ -1031,12 +1140,14 @@ dstr_status_t dstr_insert_vformat(dstr_adt *dest, size_t index, const char *form
 清空一个「动态字符串」。
 
 ```c
-void dstr_clear(dstr_adt *dstr);
+void dstr_clear(
+	dstr_adt *dstr
+);
 ```
 
-| 参数   | 类型         | 说明                                                             |
-| ------ | ------------ | ---------------------------------------------------------------- |
-| `dstr` | `dstr_adt *` | 目标「动态字符串」的指针。<br>如果为*空指针*，则函数会直接返回。 |
+| 参数   | 类型         | 说明                                                         |
+| ------ | ------------ | ------------------------------------------------------------ |
+| `dstr` | `dstr_adt *` | 目标「动态字符串」的指针。<br>为*空指针*时，函数会直接返回。 |
 
 > [!NOTE]
 >
@@ -1049,14 +1160,18 @@ void dstr_clear(dstr_adt *dstr);
 删除一个「动态字符串」的子串。
 
 ```c
-void dstr_remove(dstr_adt *dstr, size_t sub_start, size_t sub_length);
+void dstr_remove(
+	dstr_adt *dstr,
+	size_t sub_start,
+	size_t sub_length
+);
 ```
 
-| 参数         | 类型         | 说明                                                                                            |
-| ------------ | ------------ | ----------------------------------------------------------------------------------------------- |
-| `dstr`       | `dstr_adt *` | 目标「动态字符串」的指针。<br>如果为<em>「空字符串」</em>，则函数会直接返回，此时忽略 `sub_start` 和 `sub_length`。 |
-| `sub_start`  | `size_t`     | 子串的起始索引。<br>如果*越界*，则函数会直接返回。                                              |
-| `sub_length` | `size_t`     | 子串的长度。<br>为 _`0`_ 表示到末尾。<br>如果*越界*，则函数会直接返回。                         |
+| 参数         | 类型         | 说明                                                                                                            |
+| ------------ | ------------ | --------------------------------------------------------------------------------------------------------------- |
+| `dstr`       | `dstr_adt *` | 目标「动态字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回，此时忽略 `sub_start` 和 `sub_length`。 |
+| `sub_start`  | `size_t`     | 子串的起始索引。<br>*越界*时，函数会直接返回。                                                                  |
+| `sub_length` | `size_t`     | 子串的长度。<br>为 _`0`_ 表示到末尾。<br>*越界*时，函数会直接返回。                                             |
 
 <a id="api-functions-content-editing-dstr_trim"></a>
 
@@ -1065,13 +1180,16 @@ void dstr_remove(dstr_adt *dstr, size_t sub_start, size_t sub_length);
 删除一个「动态字符串」首尾的空白字符或指定字符。
 
 ```c
-void dstr_trim(dstr_adt *dstr, const char *trim_chars);
+void dstr_trim(
+	dstr_adt *dstr,
+	const char *trim_chars
+);
 ```
 
-| 参数         | 类型           | 说明                                                                                            |
-| ------------ | -------------- | ----------------------------------------------------------------------------------------------- |
-| `dstr`       | `dstr_adt *`   | 目标「动态字符串」的指针。<br>如果为<em>「空字符串」</em>，则函数会直接返回。 |
-| `trim_chars` | `const char *` | 包含要删除的字符的「C 字符串」的指针。<br>为<em>「空字符串」</em>时删除空白字符。               |
+| 参数         | 类型           | 说明                                                                              |
+| ------------ | -------------- | --------------------------------------------------------------------------------- |
+| `dstr`       | `dstr_adt *`   | 目标「动态字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回。         |
+| `trim_chars` | `const char *` | 包含要删除的字符的「C 字符串」的指针。<br>为<em>「空字符串」</em>时删除空白字符。 |
 
 > [!NOTE]
 >
@@ -1158,7 +1276,10 @@ void dstr_trim(dstr_adt *dstr, const char *trim_chars);
 判断一个「动态字符串」是否以指定「C 字符串」前缀开头。
 
 ```c
-bool dstr_starts_with_cstr(const dstr_adt *dstr, const char *prefix);
+bool dstr_starts_with_cstr(
+	const dstr_adt *dstr,
+	const char *prefix
+);
 ```
 
 | 参数     | 类型               | 说明                       |
@@ -1166,9 +1287,9 @@ bool dstr_starts_with_cstr(const dstr_adt *dstr, const char *prefix);
 | `dstr`   | `const dstr_adt *` | 目标「动态字符串」的指针。 |
 | `prefix` | `const char *`     | 前缀「C 字符串」的指针。   |
 
-| 返回值 | 说明                                                                                                                                                                             |
-| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `bool` | 如果目标「动态字符串」以指定「C 字符串」前缀开头则返回 _`true`_，否则返回 _`false`_。<br>如果 `prefix` 为「空字符串」，则一定返回 _`true`_（视「空字符串」是任何字符串的前缀）。 |
+| 返回值 | 说明                                                                                                                                                     |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bool` | 是前缀则返回 _`true`_，否则返回 _`false`_。<br>如果 `prefix` 为<em>「空字符串」</em>，则一定返回 _`true`_（视<em>「空字符串」</em>是任何字符串的前缀）。 |
 
 <a id="api-functions-relation-and-comparison-dstr_starts_with"></a>
 
@@ -1177,7 +1298,10 @@ bool dstr_starts_with_cstr(const dstr_adt *dstr, const char *prefix);
 判断一个「动态字符串」是否以指定「动态字符串」前缀开头。
 
 ```c
-bool dstr_starts_with(const dstr_adt *dstr, const dstr_adt *prefix);
+bool dstr_starts_with(
+	const dstr_adt *dstr,
+	const dstr_adt *prefix
+);
 ```
 
 | 参数     | 类型               | 说明                       |
@@ -1185,9 +1309,9 @@ bool dstr_starts_with(const dstr_adt *dstr, const dstr_adt *prefix);
 | `dstr`   | `const dstr_adt *` | 目标「动态字符串」的指针。 |
 | `prefix` | `const dstr_adt *` | 前缀「动态字符串」的指针。 |
 
-| 返回值 | 说明                                                                                                                                                                               |
-| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `bool` | 如果目标「动态字符串」以指定「动态字符串」前缀开头则返回 _`true`_，否则返回 _`false`_。<br>如果 `prefix` 为「空字符串」，则一定返回 _`true`_（视「空字符串」是任何字符串的前缀）。 |
+| 返回值 | 说明                                                                                                                                                     |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bool` | 是前缀则返回 _`true`_，否则返回 _`false`_。<br>如果 `prefix` 为<em>「空字符串」</em>，则一定返回 _`true`_（视<em>「空字符串」</em>是任何字符串的前缀）。 |
 
 <a id="api-functions-relation-and-comparison-cstr_starts_with"></a>
 
@@ -1196,7 +1320,10 @@ bool dstr_starts_with(const dstr_adt *dstr, const dstr_adt *prefix);
 判断一个「C 字符串」是否以指定「C 字符串」前缀开头。
 
 ```c
-bool cstr_starts_with(const char *cstr, const char *prefix);
+bool cstr_starts_with(
+	const char *cstr,
+	const char *prefix
+);
 ```
 
 | 参数     | 类型           | 说明                     |
@@ -1204,9 +1331,9 @@ bool cstr_starts_with(const char *cstr, const char *prefix);
 | `cstr`   | `const char *` | 目标「C 字符串」的指针。 |
 | `prefix` | `const char *` | 前缀「C 字符串」的指针。 |
 
-| 返回值 | 说明                                                                                                                                                                           |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `bool` | 如果目标「C 字符串」以指定「C 字符串」前缀开头则返回 _`true`_，否则返回 _`false`_。<br>如果 `prefix` 为「空字符串」，则一定返回 _`true`_（视「空字符串」是任何字符串的前缀）。 |
+| 返回值 | 说明                                                                                                                                                     |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bool` | 是前缀则返回 _`true`_，否则返回 _`false`_。<br>如果 `prefix` 为<em>「空字符串」</em>，则一定返回 _`true`_（视<em>「空字符串」</em>是任何字符串的前缀）。 |
 
 <a id="api-functions-relation-and-comparison-dstr_ends_with_cstr"></a>
 
@@ -1215,7 +1342,10 @@ bool cstr_starts_with(const char *cstr, const char *prefix);
 判断一个「动态字符串」是否以指定「C 字符串」后缀结尾。
 
 ```c
-bool dstr_ends_with_cstr(const dstr_adt *dstr, const char *suffix);
+bool dstr_ends_with_cstr(
+	const dstr_adt *dstr,
+	const char *suffix
+);
 ```
 
 | 参数     | 类型               | 说明                       |
@@ -1223,9 +1353,9 @@ bool dstr_ends_with_cstr(const dstr_adt *dstr, const char *suffix);
 | `dstr`   | `const dstr_adt *` | 目标「动态字符串」的指针。 |
 | `suffix` | `const char *`     | 后缀「C 字符串」的指针。   |
 
-| 返回值 | 说明                                                                                                                                                                             |
-| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `bool` | 如果目标「动态字符串」以指定「C 字符串」后缀结尾则返回 _`true`_，否则返回 _`false`_。<br>如果 `suffix` 为「空字符串」，则一定返回 _`true`_（视「空字符串」是任何字符串的后缀）。 |
+| 返回值 | 说明                                                                                                                                                     |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bool` | 是后缀则返回 _`true`_，否则返回 _`false`_。<br>如果 `suffix` 为<em>「空字符串」</em>，则一定返回 _`true`_（视<em>「空字符串」</em>是任何字符串的后缀）。 |
 
 <a id="api-functions-relation-and-comparison-dstr_ends_with"></a>
 
@@ -1234,7 +1364,10 @@ bool dstr_ends_with_cstr(const dstr_adt *dstr, const char *suffix);
 判断一个「动态字符串」是否以指定「动态字符串」后缀结尾。
 
 ```c
-bool dstr_ends_with(const dstr_adt *dstr, const dstr_adt *suffix);
+bool dstr_ends_with(
+	const dstr_adt *dstr,
+	const dstr_adt *suffix
+);
 ```
 
 | 参数     | 类型               | 说明                       |
@@ -1242,9 +1375,9 @@ bool dstr_ends_with(const dstr_adt *dstr, const dstr_adt *suffix);
 | `dstr`   | `const dstr_adt *` | 目标「动态字符串」的指针。 |
 | `suffix` | `const dstr_adt *` | 后缀「动态字符串」的指针。 |
 
-| 返回值 | 说明                                                                                                                                                                               |
-| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `bool` | 如果目标「动态字符串」以指定「动态字符串」后缀结尾则返回 _`true`_，否则返回 _`false`_。<br>如果 `suffix` 为「空字符串」，则一定返回 _`true`_（视「空字符串」是任何字符串的后缀）。 |
+| 返回值 | 说明                                                                                                                                                     |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bool` | 是后缀则返回 _`true`_，否则返回 _`false`_。<br>如果 `suffix` 为<em>「空字符串」</em>，则一定返回 _`true`_（视<em>「空字符串」</em>是任何字符串的后缀）。 |
 
 <a id="api-functions-relation-and-comparison-cstr_ends_with"></a>
 
@@ -1253,7 +1386,10 @@ bool dstr_ends_with(const dstr_adt *dstr, const dstr_adt *suffix);
 判断一个「C 字符串」是否以指定「C 字符串」后缀结尾。
 
 ```c
-bool cstr_ends_with(const char *cstr, const char *suffix);
+bool cstr_ends_with(
+	const char *cstr,
+	const char *suffix
+);
 ```
 
 | 参数     | 类型           | 说明                     |
@@ -1261,9 +1397,9 @@ bool cstr_ends_with(const char *cstr, const char *suffix);
 | `cstr`   | `const char *` | 目标「C 字符串」的指针。 |
 | `suffix` | `const char *` | 后缀「C 字符串」的指针。 |
 
-| 返回值 | 说明                                                                                                                                                                           |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `bool` | 如果目标「C 字符串」以指定「C 字符串」后缀结尾则返回 _`true`_，否则返回 _`false`_。<br>如果 `suffix` 为「空字符串」，则一定返回 _`true`_（视「空字符串」是任何字符串的后缀）。 |
+| 返回值 | 说明                                                                                                                                                     |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bool` | 是后缀则返回 _`true`_，否则返回 _`false`_。<br>如果 `suffix` 为<em>「空字符串」</em>，则一定返回 _`true`_（视<em>「空字符串」</em>是任何字符串的后缀）。 |
 
 <a id="api-functions-relation-and-comparison-dstr_contains_cstr"></a>
 
@@ -1272,7 +1408,10 @@ bool cstr_ends_with(const char *cstr, const char *suffix);
 判断一个「动态字符串」是否包含指定子「C 字符串」。
 
 ```c
-bool dstr_contains_cstr(const dstr_adt *dstr, const char *sub);
+bool dstr_contains_cstr(
+	const dstr_adt *dstr,
+	const char *sub
+);
 ```
 
 | 参数   | 类型               | 说明                       |
@@ -1280,9 +1419,9 @@ bool dstr_contains_cstr(const dstr_adt *dstr, const char *sub);
 | `dstr` | `const dstr_adt *` | 目标「动态字符串」的指针。 |
 | `sub`  | `const char *`     | 子「C 字符串」的指针。     |
 
-| 返回值 | 说明                                                                                                                              |
-| ------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| `bool` | 包含则返回 _`true`_，否则返回 _`false`_。<br>如果 `sub` 为「空字符串」，则一定返回 _`true`_（视「空字符串」是任何字符串的子串）。 |
+| 返回值 | 说明                                                                                                                                                |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bool` | 包含则返回 _`true`_，否则返回 _`false`_。<br>如果 `sub` 为<em>「空字符串」</em>，则一定返回 _`true`_（视<em>「空字符串」</em>是任何字符串的子串）。 |
 
 <a id="api-functions-relation-and-comparison-dstr_contains"></a>
 
@@ -1291,7 +1430,10 @@ bool dstr_contains_cstr(const dstr_adt *dstr, const char *sub);
 判断一个「动态字符串」是否包含指定子「动态字符串」。
 
 ```c
-bool dstr_contains(const dstr_adt *dstr, const dstr_adt *sub);
+bool dstr_contains(
+	const dstr_adt *dstr,
+	const dstr_adt *sub
+);
 ```
 
 | 参数   | 类型               | 说明                       |
@@ -1299,9 +1441,9 @@ bool dstr_contains(const dstr_adt *dstr, const dstr_adt *sub);
 | `dstr` | `const dstr_adt *` | 目标「动态字符串」的指针。 |
 | `sub`  | `const dstr_adt *` | 子「动态字符串」的指针。   |
 
-| 返回值 | 说明                                                                                                                              |
-| ------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| `bool` | 包含则返回 _`true`_，否则返回 _`false`_。<br>如果 `sub` 为「空字符串」，则一定返回 _`true`_（视「空字符串」是任何字符串的子串）。 |
+| 返回值 | 说明                                                                                                                                                |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bool` | 包含则返回 _`true`_，否则返回 _`false`_。<br>如果 `sub` 为<em>「空字符串」</em>，则一定返回 _`true`_（视<em>「空字符串」</em>是任何字符串的子串）。 |
 
 <a id="api-functions-relation-and-comparison-cstr_contains"></a>
 
@@ -1310,7 +1452,10 @@ bool dstr_contains(const dstr_adt *dstr, const dstr_adt *sub);
 判断一个「C 字符串」是否包含指定子「C 字符串」。
 
 ```c
-bool cstr_contains(const char *cstr, const char *sub);
+bool cstr_contains(
+	const char *cstr,
+	const char *sub
+);
 ```
 
 | 参数   | 类型           | 说明                     |
@@ -1318,9 +1463,9 @@ bool cstr_contains(const char *cstr, const char *sub);
 | `cstr` | `const char *` | 目标「C 字符串」的指针。 |
 | `sub`  | `const char *` | 子「C 字符串」的指针。   |
 
-| 返回值 | 说明                                                                                                                              |
-| ------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| `bool` | 包含则返回 _`true`_，否则返回 _`false`_。<br>如果 `sub` 为「空字符串」，则一定返回 _`true`_（视「空字符串」是任何字符串的子串）。 |
+| 返回值 | 说明                                                                                                                                                |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bool` | 包含则返回 _`true`_，否则返回 _`false`_。<br>如果 `sub` 为<em>「空字符串」</em>，则一定返回 _`true`_（视<em>「空字符串」</em>是任何字符串的子串）。 |
 
 <a id="api-functions-relation-and-comparison-dstr_equals_cstr"></a>
 
@@ -1329,7 +1474,10 @@ bool cstr_contains(const char *cstr, const char *sub);
 判断一个「动态字符串」是否与一个「C 字符串」相等。
 
 ```c
-bool dstr_equals_cstr(const dstr_adt *lhs, const char *rhs);
+bool dstr_equals_cstr(
+	const dstr_adt *lhs,
+	const char *rhs
+);
 ```
 
 | 参数  | 类型               | 说明                   |
@@ -1337,9 +1485,9 @@ bool dstr_equals_cstr(const dstr_adt *lhs, const char *rhs);
 | `lhs` | `const dstr_adt *` | 「动态字符串」的指针。 |
 | `rhs` | `const char *`     | 「C 字符串」的指针。   |
 
-| 返回值 | 说明                                                                                 |
-| ------ | ------------------------------------------------------------------------------------ |
-| `bool` | 相等则返回 _`true`_，否则返回 _`false`_。<br>两者同为「空字符串」时，返回 _`true`_。 |
+| 返回值 | 说明                                                                                          |
+| ------ | --------------------------------------------------------------------------------------------- |
+| `bool` | 相等则返回 _`true`_，否则返回 _`false`_。<br>两者同为<em>「空字符串」</em>时，返回 _`true`_。 |
 
 <a id="api-functions-relation-and-comparison-dstr_equals"></a>
 
@@ -1348,7 +1496,10 @@ bool dstr_equals_cstr(const dstr_adt *lhs, const char *rhs);
 判断两个「动态字符串」是否相等。
 
 ```c
-bool dstr_equals(const dstr_adt *lhs, const dstr_adt *rhs);
+bool dstr_equals(
+	const dstr_adt *lhs,
+	const dstr_adt *rhs
+);
 ```
 
 | 参数  | 类型               | 说明                         |
@@ -1356,9 +1507,9 @@ bool dstr_equals(const dstr_adt *lhs, const dstr_adt *rhs);
 | `lhs` | `const dstr_adt *` | 第一个「动态字符串」的指针。 |
 | `rhs` | `const dstr_adt *` | 第二个「动态字符串」的指针。 |
 
-| 返回值 | 说明                                                                                 |
-| ------ | ------------------------------------------------------------------------------------ |
-| `bool` | 相等则返回 _`true`_，否则返回 _`false`_。<br>两者同为「空字符串」时，返回 _`true`_。 |
+| 返回值 | 说明                                                                                          |
+| ------ | --------------------------------------------------------------------------------------------- |
+| `bool` | 相等则返回 _`true`_，否则返回 _`false`_。<br>两者同为<em>「空字符串」</em>时，返回 _`true`_。 |
 
 <a id="api-functions-relation-and-comparison-cstr_equals"></a>
 
@@ -1367,7 +1518,10 @@ bool dstr_equals(const dstr_adt *lhs, const dstr_adt *rhs);
 判断两个「C 字符串」是否相等。
 
 ```c
-bool cstr_equals(const char *lhs, const char *rhs);
+bool cstr_equals(
+	const char *lhs,
+	const char *rhs
+);
 ```
 
 | 参数  | 类型           | 说明                       |
@@ -1375,9 +1529,9 @@ bool cstr_equals(const char *lhs, const char *rhs);
 | `lhs` | `const char *` | 第一个「C 字符串」的指针。 |
 | `rhs` | `const char *` | 第二个「C 字符串」的指针。 |
 
-| 返回值 | 说明                                                                                 |
-| ------ | ------------------------------------------------------------------------------------ |
-| `bool` | 相等则返回 _`true`_，否则返回 _`false`_。<br>两者同为「空字符串」时，返回 _`true`_。 |
+| 返回值 | 说明                                                                                          |
+| ------ | --------------------------------------------------------------------------------------------- |
+| `bool` | 相等则返回 _`true`_，否则返回 _`false`_。<br>两者同为<em>「空字符串」</em>时，返回 _`true`_。 |
 
 <a id="api-functions-relation-and-comparison-dstr_compare_cstr"></a>
 
@@ -1386,7 +1540,10 @@ bool cstr_equals(const char *lhs, const char *rhs);
 比较一个「动态字符串」与一个「C 字符串」。
 
 ```c
-int dstr_compare_cstr(const dstr_adt *lhs, const char *rhs);
+int dstr_compare_cstr(
+	const dstr_adt *lhs,
+	const char *rhs
+);
 ```
 
 | 参数  | 类型               | 说明                   |
@@ -1394,9 +1551,9 @@ int dstr_compare_cstr(const dstr_adt *lhs, const char *rhs);
 | `lhs` | `const dstr_adt *` | 「动态字符串」的指针。 |
 | `rhs` | `const char *`     | 「C 字符串」的指针。   |
 
-| 返回值 | 说明                                                                                                                                                                             |
-| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `int`  | 两者相等返回 _`0`_，前者大于后者返回正值，前者小于后者返回负值。<br>两者同为「空字符串」时，返回 _`0`_。<br>两者只有一者为「空字符串」时，为「空字符串」者小于非「空字符串」者。 |
+| 返回值 | 说明                                                                                                                                                                                                                     |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `int`  | 两者相等返回 _`0`_，前者大于后者返回*正值*，前者小于后者返回*负值*。<br>两者同为<em>「空字符串」</em>时，返回 _`0`_。<br>两者只有一者为<em>「空字符串」</em>时，为<em>「空字符串」</em>者小于非<em>「空字符串」</em>者。 |
 
 <a id="api-functions-relation-and-comparison-dstr_compare"></a>
 
@@ -1405,7 +1562,10 @@ int dstr_compare_cstr(const dstr_adt *lhs, const char *rhs);
 比较两个「动态字符串」。
 
 ```c
-int dstr_compare(const dstr_adt *lhs, const dstr_adt *rhs);
+int dstr_compare(
+	const dstr_adt *lhs,
+	const dstr_adt *rhs
+);
 ```
 
 | 参数  | 类型               | 说明                         |
@@ -1413,9 +1573,9 @@ int dstr_compare(const dstr_adt *lhs, const dstr_adt *rhs);
 | `lhs` | `const dstr_adt *` | 第一个「动态字符串」的指针。 |
 | `rhs` | `const dstr_adt *` | 第二个「动态字符串」的指针。 |
 
-| 返回值 | 说明                                                                                                                                                                             |
-| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `int`  | 两者相等返回 _`0`_，前者大于后者返回正值，前者小于后者返回负值。<br>两者同为「空字符串」时，返回 _`0`_。<br>两者只有一者为「空字符串」时，为「空字符串」者小于非「空字符串」者。 |
+| 返回值 | 说明                                                                                                                                                                                                                     |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `int`  | 两者相等返回 _`0`_，前者大于后者返回*正值*，前者小于后者返回*负值*。<br>两者同为<em>「空字符串」</em>时，返回 _`0`_。<br>两者只有一者为<em>「空字符串」</em>时，为<em>「空字符串」</em>者小于非<em>「空字符串」</em>者。 |
 
 <a id="api-functions-relation-and-comparison-cstr_compare"></a>
 
@@ -1424,7 +1584,10 @@ int dstr_compare(const dstr_adt *lhs, const dstr_adt *rhs);
 比较两个「C 字符串」。
 
 ```c
-int cstr_compare(const char *lhs, const char *rhs);
+int cstr_compare(
+	const char *lhs,
+	const char *rhs
+);
 ```
 
 | 参数  | 类型           | 说明                       |
@@ -1432,9 +1595,9 @@ int cstr_compare(const char *lhs, const char *rhs);
 | `lhs` | `const char *` | 第一个「C 字符串」的指针。 |
 | `rhs` | `const char *` | 第二个「C 字符串」的指针。 |
 
-| 返回值 | 说明                                                                                                                                                                             |
-| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `int`  | 两者相等返回 _`0`_，前者大于后者返回正值，前者小于后者返回负值。<br>两者同为「空字符串」时，返回 _`0`_。<br>两者只有一者为「空字符串」时，为「空字符串」者小于非「空字符串」者。 |
+| 返回值 | 说明                                                                                                                                                                                                                     |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `int`  | 两者相等返回 _`0`_，前者大于后者返回*正值*，前者小于后者返回*负值*。<br>两者同为<em>「空字符串」</em>时，返回 _`0`_。<br>两者只有一者为<em>「空字符串」</em>时，为<em>「空字符串」</em>者小于非<em>「空字符串」</em>者。 |
 
 <a id="api-functions-find-count-and-replace"></a>
 
@@ -1520,15 +1683,20 @@ int cstr_compare(const char *lhs, const char *rhs);
 查找一个「动态字符串」中指定子「C 字符串」首次出现的位置。
 
 ```c
-bool dstr_find_cstr(const dstr_adt *dstr, const char *sub, size_t *out_index, dstr_direction_t direction);
+bool dstr_find_cstr(
+	const dstr_adt *dstr,
+	const char *sub,
+	size_t *out_index,
+	dstr_direction_t direction
+);
 ```
 
-| 参数        | 类型               | 说明                                                                                                      |
-| ----------- | ------------------ | --------------------------------------------------------------------------------------------------------- |
-| `dstr`      | `const dstr_adt *` | 目标「动态字符串」的指针。<br>如果为<em>「空字符串」</em>，则函数会直接返回 _`false`_。 |
-| `sub`       | `const char *`     | 子「C 字符串」的指针。<br>如果为*空指针*或<em>指向空「C 字符串」</em>，则函数会直接返回 _`false`_。       |
-| `out_index` | `size_t *`         | 存储查找结果（位置索引）的 `size_t` 变量的指针。<br>为*空指针*时不写入。                                  |
-| `direction` | `dstr_direction_t` | 查找方向。                                                                                                |
+| 参数        | 类型               | 说明                                                                                |
+| ----------- | ------------------ | ----------------------------------------------------------------------------------- |
+| `dstr`      | `const dstr_adt *` | 目标「动态字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回 _`false`_。 |
+| `sub`       | `const char *`     | 子「C 字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回 _`false`_。     |
+| `out_index` | `size_t *`         | 存储查找结果（位置索引）的 `size_t` 变量的指针。<br>为*空指针*时不写入。            |
+| `direction` | `dstr_direction_t` | 查找方向。                                                                          |
 
 | 返回值 | 说明                                      |
 | ------ | ----------------------------------------- |
@@ -1541,15 +1709,20 @@ bool dstr_find_cstr(const dstr_adt *dstr, const char *sub, size_t *out_index, ds
 查找一个「动态字符串」中指定子「动态字符串」首次出现的位置。
 
 ```c
-bool dstr_find(const dstr_adt *dstr, const dstr_adt *sub, size_t *out_index, dstr_direction_t direction);
+bool dstr_find(
+	const dstr_adt *dstr,
+	const dstr_adt *sub,
+	size_t *out_index,
+	dstr_direction_t direction
+);
 ```
 
-| 参数        | 类型               | 说明                                                                                                      |
-| ----------- | ------------------ | --------------------------------------------------------------------------------------------------------- |
-| `dstr`      | `const dstr_adt *` | 目标「动态字符串」的指针。<br>如果为<em>「空字符串」</em>，则函数会直接返回 _`false`_。 |
-| `sub`       | `const dstr_adt *` | 子「动态字符串」的指针。<br>如果为<em>「空字符串」</em>，则函数会直接返回 _`false`_。   |
-| `out_index` | `size_t *`         | 存储查找结果（位置索引）的 `size_t` 变量的指针。<br>为*空指针*时不写入。                                  |
-| `direction` | `dstr_direction_t` | 查找方向。                                                                                                |
+| 参数        | 类型               | 说明                                                                                |
+| ----------- | ------------------ | ----------------------------------------------------------------------------------- |
+| `dstr`      | `const dstr_adt *` | 目标「动态字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回 _`false`_。 |
+| `sub`       | `const dstr_adt *` | 子「动态字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回 _`false`_。   |
+| `out_index` | `size_t *`         | 存储查找结果（位置索引）的 `size_t` 变量的指针。<br>为*空指针*时不写入。            |
+| `direction` | `dstr_direction_t` | 查找方向。                                                                          |
 
 | 返回值 | 说明                                      |
 | ------ | ----------------------------------------- |
@@ -1562,15 +1735,20 @@ bool dstr_find(const dstr_adt *dstr, const dstr_adt *sub, size_t *out_index, dst
 查找一个「C 字符串」中指定子「C 字符串」首次出现的位置。
 
 ```c
-bool cstr_find(const char *cstr, const char *sub, size_t *out_index, dstr_direction_t direction);
+bool cstr_find(
+	const char *cstr,
+	const char *sub,
+	size_t *out_index,
+	dstr_direction_t direction
+);
 ```
 
-| 参数        | 类型               | 说明                                                                                                  |
-| ----------- | ------------------ | ----------------------------------------------------------------------------------------------------- |
-| `cstr`      | `const char *`     | 目标「C 字符串」的指针。<br>如果为*空指针*或<em>指向空「C 字符串」</em>，则函数会直接返回 _`false`_。 |
-| `sub`       | `const char *`     | 子「C 字符串」的指针。<br>如果为*空指针*或<em>指向空「C 字符串」</em>，则函数会直接返回 _`false`_。   |
-| `out_index` | `size_t *`         | 存储查找结果（位置索引）的 `size_t` 变量的指针。<br>为*空指针*时不写入。                              |
-| `direction` | `dstr_direction_t` | 查找方向。                                                                                            |
+| 参数        | 类型               | 说明                                                                              |
+| ----------- | ------------------ | --------------------------------------------------------------------------------- |
+| `cstr`      | `const char *`     | 目标「C 字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回 _`false`_。 |
+| `sub`       | `const char *`     | 子「C 字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回 _`false`_。   |
+| `out_index` | `size_t *`         | 存储查找结果（位置索引）的 `size_t` 变量的指针。<br>为*空指针*时不写入。          |
+| `direction` | `dstr_direction_t` | 查找方向。                                                                        |
 
 | 返回值 | 说明                                      |
 | ------ | ----------------------------------------- |
@@ -1583,16 +1761,22 @@ bool cstr_find(const char *cstr, const char *sub, size_t *out_index, dstr_direct
 查找一个「动态字符串」中指定子「C 字符串」第 n 次出现的位置。
 
 ```c
-bool dstr_find_nth_cstr(const dstr_adt *dstr, const char *sub, size_t *out_index, dstr_direction_t direction, size_t n);
+bool dstr_find_nth_cstr(
+	const dstr_adt *dstr,
+	const char *sub,
+	size_t *out_index,
+	dstr_direction_t direction,
+	size_t n
+);
 ```
 
-| 参数        | 类型               | 说明                                                                                                                                                                                                                                                                                                                                                                                   |
-| ----------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `dstr`      | `const dstr_adt *` | 目标「动态字符串」的指针。<br>如果为<em>「空字符串」</em>，则函数会直接返回 _`false`_。                                                                                                                                                                                                                                                                              |
-| `sub`       | `const char *`     | 子「C 字符串」的指针。<br>如果为*空指针*或<em>指向空「C 字符串」</em>，则函数会直接返回 _`false`_。                                                                                                                                                                                                                                                                                    |
-| `out_index` | `size_t *`         | 存储查找结果（位置索引）的 `size_t` 变量的指针。<br>为*空指针*时不写入。                                                                                                                                                                                                                                                                                                               |
-| `direction` | `dstr_direction_t` | 查找方向。                                                                                                                                                                                                                                                                                                                                                                             |
-| `n`         | `size_t`           | 出现的次序。从 1 开始。<br>为 _`0`_ 表示该方向的最后一次出现。<br>具体：direction 为 `DSTR_DIR_FORWARD` 时，`n>0` 表示从前往后第 `n` 次，`n=0` 表示从前往后最后一次（等价于 `DSTR_DIR_BACKWARD`, `n=1`）；direction 为 `DSTR_DIR_BACKWARD` 时，`n>0` 表示从后往前第 `n` 次，`n=0` 表示从后往前最后一次（等价于 `DSTR_DIR_FORWARD`, `n=1`）。<br>如果大于实际出现次数，则视为最后一次。 |
+| 参数        | 类型               | 说明                                                                                                 |
+| ----------- | ------------------ | ---------------------------------------------------------------------------------------------------- |
+| `dstr`      | `const dstr_adt *` | 目标「动态字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回 _`false`_。                  |
+| `sub`       | `const char *`     | 子「C 字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回 _`false`_。                      |
+| `out_index` | `size_t *`         | 存储查找结果（位置索引）的 `size_t` 变量的指针。<br>为*空指针*时不写入。                             |
+| `direction` | `dstr_direction_t` | 查找方向。                                                                                           |
+| `n`         | `size_t`           | 出现的次序。<br>从 _`1`_ 开始。<br>为 _`0`_ 表示最后一次。<br>如果大于实际出现次数，则视为最后一次。 |
 
 | 返回值 | 说明                                      |
 | ------ | ----------------------------------------- |
@@ -1605,16 +1789,22 @@ bool dstr_find_nth_cstr(const dstr_adt *dstr, const char *sub, size_t *out_index
 查找一个「动态字符串」中指定子「动态字符串」第 n 次出现的位置。
 
 ```c
-bool dstr_find_nth(const dstr_adt *dstr, const dstr_adt *sub, size_t *out_index, dstr_direction_t direction, size_t n);
+bool dstr_find_nth(
+	const dstr_adt *dstr,
+	const dstr_adt *sub,
+	size_t *out_index,
+	dstr_direction_t direction,
+	size_t n
+);
 ```
 
-| 参数        | 类型               | 说明                                                                                                                                                                                                                                                                                                                                                                                   |
-| ----------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `dstr`      | `const dstr_adt *` | 目标「动态字符串」的指针。<br>如果为<em>「空字符串」</em>，则函数会直接返回 _`false`_。                                                                                                                                                                                                                                                                              |
-| `sub`       | `const dstr_adt *` | 子「动态字符串」的指针。<br>如果为<em>「空字符串」</em>，则函数会直接返回 _`false`_。                                                                                                                                                                                                                                                                                |
-| `out_index` | `size_t *`         | 存储查找结果（位置索引）的 `size_t` 变量的指针。<br>为*空指针*时不写入。                                                                                                                                                                                                                                                                                                               |
-| `direction` | `dstr_direction_t` | 查找方向。                                                                                                                                                                                                                                                                                                                                                                             |
-| `n`         | `size_t`           | 出现的次序。从 1 开始。<br>为 _`0`_ 表示该方向的最后一次出现。<br>具体：direction 为 `DSTR_DIR_FORWARD` 时，`n>0` 表示从前往后第 `n` 次，`n=0` 表示从前往后最后一次（等价于 `DSTR_DIR_BACKWARD`, `n=1`）；direction 为 `DSTR_DIR_BACKWARD` 时，`n>0` 表示从后往前第 `n` 次，`n=0` 表示从后往前最后一次（等价于 `DSTR_DIR_FORWARD`, `n=1`）。<br>如果大于实际出现次数，则视为最后一次。 |
+| 参数        | 类型               | 说明                                                                                                 |
+| ----------- | ------------------ | ---------------------------------------------------------------------------------------------------- |
+| `dstr`      | `const dstr_adt *` | 目标「动态字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回 _`false`_。                  |
+| `sub`       | `const dstr_adt *` | 子「动态字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回 _`false`_。                    |
+| `out_index` | `size_t *`         | 存储查找结果（位置索引）的 `size_t` 变量的指针。<br>为*空指针*时不写入。                             |
+| `direction` | `dstr_direction_t` | 查找方向。                                                                                           |
+| `n`         | `size_t`           | 出现的次序。<br>从 _`1`_ 开始。<br>为 _`0`_ 表示最后一次。<br>如果大于实际出现次数，则视为最后一次。 |
 
 | 返回值 | 说明                                      |
 | ------ | ----------------------------------------- |
@@ -1627,16 +1817,22 @@ bool dstr_find_nth(const dstr_adt *dstr, const dstr_adt *sub, size_t *out_index,
 查找一个「C 字符串」中指定子「C 字符串」第 n 次出现的位置。
 
 ```c
-bool cstr_find_nth(const char *cstr, const char *sub, size_t *out_index, dstr_direction_t direction, size_t n);
+bool cstr_find_nth(
+	const char *cstr,
+	const char *sub,
+	size_t *out_index,
+	dstr_direction_t direction,
+	size_t n
+);
 ```
 
-| 参数        | 类型               | 说明                                                                                                                                                                                                                                                                                                                                                                                   |
-| ----------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cstr`      | `const char *`     | 目标「C 字符串」的指针。<br>如果为*空指针*或<em>指向空「C 字符串」</em>，则函数会直接返回 _`false`_。                                                                                                                                                                                                                                                                                  |
-| `sub`       | `const char *`     | 子「C 字符串」的指针。<br>如果为*空指针*或<em>指向空「C 字符串」</em>，则函数会直接返回 _`false`_。                                                                                                                                                                                                                                                                                    |
-| `out_index` | `size_t *`         | 存储查找结果（位置索引）的 `size_t` 变量的指针。<br>为*空指针*时不写入。                                                                                                                                                                                                                                                                                                               |
-| `direction` | `dstr_direction_t` | 查找方向。                                                                                                                                                                                                                                                                                                                                                                             |
-| `n`         | `size_t`           | 出现的次序。从 1 开始。<br>为 _`0`_ 表示该方向的最后一次出现。<br>具体：direction 为 `DSTR_DIR_FORWARD` 时，`n>0` 表示从前往后第 `n` 次，`n=0` 表示从前往后最后一次（等价于 `DSTR_DIR_BACKWARD`, `n=1`）；direction 为 `DSTR_DIR_BACKWARD` 时，`n>0` 表示从后往前第 `n` 次，`n=0` 表示从后往前最后一次（等价于 `DSTR_DIR_FORWARD`, `n=1`）。<br>如果大于实际出现次数，则视为最后一次。 |
+| 参数        | 类型               | 说明                                                                                                 |
+| ----------- | ------------------ | ---------------------------------------------------------------------------------------------------- |
+| `cstr`      | `const char *`     | 目标「C 字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回 _`false`_。                    |
+| `sub`       | `const char *`     | 子「C 字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回 _`false`_。                      |
+| `out_index` | `size_t *`         | 存储查找结果（位置索引）的 `size_t` 变量的指针。<br>为*空指针*时不写入。                             |
+| `direction` | `dstr_direction_t` | 查找方向。                                                                                           |
+| `n`         | `size_t`           | 出现的次序。<br>从 _`1`_ 开始。<br>为 _`0`_ 表示最后一次。<br>如果大于实际出现次数，则视为最后一次。 |
 
 | 返回值 | 说明                                      |
 | ------ | ----------------------------------------- |
@@ -1649,17 +1845,22 @@ bool cstr_find_nth(const char *cstr, const char *sub, size_t *out_index, dstr_di
 查找一个「动态字符串」中指定子「C 字符串」前 n 次出现的位置。
 
 ```c
-size_t dstr_find_indexes_cstr(const dstr_adt *dstr, const char *sub, size_t *out_indexes, dstr_direction_t direction,
-                              size_t n);
+size_t dstr_find_indexes_cstr(
+	const dstr_adt *dstr,
+	const char *sub,
+	size_t *out_indexes,
+	dstr_direction_t direction,
+	size_t n
+);
 ```
 
-| 参数          | 类型               | 说明                                                                                                  |
-| ------------- | ------------------ | ----------------------------------------------------------------------------------------------------- |
-| `dstr`        | `const dstr_adt *` | 目标「动态字符串」的指针。<br>如果为<em>「空字符串」</em>，则函数会直接返回 _`0`_。 |
-| `sub`         | `const char *`     | 子「C 字符串」的指针。<br>如果为*空指针*或<em>指向空「C 字符串」</em>，则函数会直接返回 _`0`_。       |
-| `out_indexes` | `size_t *`         | 存储查找结果（位置索引）的 `size_t` 数组的指针。<br>为*空指针*时不写入。请自行确保数组容量够大。      |
-| `direction`   | `dstr_direction_t` | 查找方向。                                                                                            |
-| `n`           | `size_t`           | 查找的次数。从 1 开始。<br>为 _`0`_ 表示查找全部。<br>如果大于实际出现次数，也会查找全部。            |
+| 参数          | 类型               | 说明                                                                                                 |
+| ------------- | ------------------ | ---------------------------------------------------------------------------------------------------- |
+| `dstr`        | `const dstr_adt *` | 目标「动态字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回 _`0`_。                      |
+| `sub`         | `const char *`     | 子「C 字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回 _`0`_。                          |
+| `out_indexes` | `size_t *`         | 存储查找结果（位置索引）的 `size_t` 数组的指针。<br>为*空指针*时不写入。<br>请自行确保数组容量够大。 |
+| `direction`   | `dstr_direction_t` | 查找方向。                                                                                           |
+| `n`           | `size_t`           | 查找的次数。<br>从 _`1`_ 开始。<br>为 _`0`_ 表示查找全部。<br>如果大于实际出现次数，也会查找全部。   |
 
 | 返回值   | 说明                                                                             |
 | -------- | -------------------------------------------------------------------------------- |
@@ -1672,17 +1873,22 @@ size_t dstr_find_indexes_cstr(const dstr_adt *dstr, const char *sub, size_t *out
 查找一个「动态字符串」中指定子「动态字符串」前 n 次出现的位置。
 
 ```c
-size_t dstr_find_indexes(const dstr_adt *dstr, const dstr_adt *sub, size_t *out_indexes, dstr_direction_t direction,
-                         size_t n);
+size_t dstr_find_indexes(
+	const dstr_adt *dstr,
+	const dstr_adt *sub,
+	size_t *out_indexes,
+	dstr_direction_t direction,
+	size_t n
+);
 ```
 
-| 参数          | 类型               | 说明                                                                                                  |
-| ------------- | ------------------ | ----------------------------------------------------------------------------------------------------- |
-| `dstr`        | `const dstr_adt *` | 目标「动态字符串」的指针。<br>如果为<em>「空字符串」</em>，则函数会直接返回 _`0`_。 |
-| `sub`         | `const dstr_adt *` | 子「动态字符串」的指针。<br>如果为<em>「空字符串」</em>，则函数会直接返回 _`0`_。   |
-| `out_indexes` | `size_t *`         | 存储查找结果（位置索引）的 `size_t` 数组的指针。<br>为*空指针*时不写入。请自行确保数组容量够大。      |
-| `direction`   | `dstr_direction_t` | 查找方向。                                                                                            |
-| `n`           | `size_t`           | 查找的次数。从 1 开始。<br>为 _`0`_ 表示查找全部。<br>如果大于实际出现次数，也会查找全部。            |
+| 参数          | 类型               | 说明                                                                                                 |
+| ------------- | ------------------ | ---------------------------------------------------------------------------------------------------- |
+| `dstr`        | `const dstr_adt *` | 目标「动态字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回 _`0`_。                      |
+| `sub`         | `const dstr_adt *` | 子「动态字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回 _`0`_。                        |
+| `out_indexes` | `size_t *`         | 存储查找结果（位置索引）的 `size_t` 数组的指针。<br>为*空指针*时不写入。<br>请自行确保数组容量够大。 |
+| `direction`   | `dstr_direction_t` | 查找方向。                                                                                           |
+| `n`           | `size_t`           | 查找的次数。<br>从 _`1`_ 开始。<br>为 _`0`_ 表示查找全部。<br>如果大于实际出现次数，也会查找全部。   |
 
 | 返回值   | 说明                                                                             |
 | -------- | -------------------------------------------------------------------------------- |
@@ -1695,16 +1901,22 @@ size_t dstr_find_indexes(const dstr_adt *dstr, const dstr_adt *sub, size_t *out_
 查找一个「C 字符串」中指定子「C 字符串」前 n 次出现的位置。
 
 ```c
-size_t cstr_find_indexes(const char *cstr, const char *sub, size_t *out_indexes, dstr_direction_t direction, size_t n);
+size_t cstr_find_indexes(
+	const char *cstr,
+	const char *sub,
+	size_t *out_indexes,
+	dstr_direction_t direction,
+	size_t n
+);
 ```
 
-| 参数          | 类型               | 说明                                                                                              |
-| ------------- | ------------------ | ------------------------------------------------------------------------------------------------- |
-| `cstr`        | `const char *`     | 目标「C 字符串」的指针。<br>如果为*空指针*或<em>指向空「C 字符串」</em>，则函数会直接返回 _`0`_。 |
-| `sub`         | `const char *`     | 子「C 字符串」的指针。<br>如果为*空指针*或<em>指向空「C 字符串」</em>，则函数会直接返回 _`0`_。   |
-| `out_indexes` | `size_t *`         | 存储查找结果（位置索引）的 `size_t` 数组的指针。<br>为*空指针*时不写入。请自行确保数组容量够大。  |
-| `direction`   | `dstr_direction_t` | 查找方向。                                                                                        |
-| `n`           | `size_t`           | 查找的次数。从 1 开始。<br>为 _`0`_ 表示查找全部。<br>如果大于实际出现次数，也会查找全部。        |
+| 参数          | 类型               | 说明                                                                                                 |
+| ------------- | ------------------ | ---------------------------------------------------------------------------------------------------- |
+| `cstr`        | `const char *`     | 目标「C 字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回 _`0`_。                        |
+| `sub`         | `const char *`     | 子「C 字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回 _`0`_。                          |
+| `out_indexes` | `size_t *`         | 存储查找结果（位置索引）的 `size_t` 数组的指针。<br>为*空指针*时不写入。<br>请自行确保数组容量够大。 |
+| `direction`   | `dstr_direction_t` | 查找方向。                                                                                           |
+| `n`           | `size_t`           | 查找的次数。<br>从 _`1`_ 开始。<br>为 _`0`_ 表示查找全部。<br>如果大于实际出现次数，也会查找全部。   |
 
 | 返回值   | 说明                                                                             |
 | -------- | -------------------------------------------------------------------------------- |
@@ -1717,13 +1929,16 @@ size_t cstr_find_indexes(const char *cstr, const char *sub, size_t *out_indexes,
 统计一个「动态字符串」中指定子「C 字符串」出现的次数。
 
 ```c
-size_t dstr_count_cstr(const dstr_adt *dstr, const char *sub);
+size_t dstr_count_cstr(
+	const dstr_adt *dstr,
+	const char *sub
+);
 ```
 
-| 参数   | 类型               | 说明                                                                                                  |
-| ------ | ------------------ | ----------------------------------------------------------------------------------------------------- |
-| `dstr` | `const dstr_adt *` | 目标「动态字符串」的指针。<br>如果为<em>「空字符串」</em>，则函数会直接返回 _`0`_。 |
-| `sub`  | `const char *`     | 子「C 字符串」的指针。<br>如果为*空指针*或<em>指向空「C 字符串」</em>，则函数会直接返回 _`0`_。       |
+| 参数   | 类型               | 说明                                                                            |
+| ------ | ------------------ | ------------------------------------------------------------------------------- |
+| `dstr` | `const dstr_adt *` | 目标「动态字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回 _`0`_。 |
+| `sub`  | `const char *`     | 子「C 字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回 _`0`_。     |
 
 | 返回值   | 说明         |
 | -------- | ------------ |
@@ -1736,13 +1951,16 @@ size_t dstr_count_cstr(const dstr_adt *dstr, const char *sub);
 统计一个「动态字符串」中指定子「动态字符串」出现的次数。
 
 ```c
-size_t dstr_count(const dstr_adt *dstr, const dstr_adt *sub);
+size_t dstr_count(
+	const dstr_adt *dstr,
+	const dstr_adt *sub
+);
 ```
 
-| 参数   | 类型               | 说明                                                                                                  |
-| ------ | ------------------ | ----------------------------------------------------------------------------------------------------- |
-| `dstr` | `const dstr_adt *` | 目标「动态字符串」的指针。<br>如果为<em>「空字符串」</em>，则函数会直接返回 _`0`_。 |
-| `sub`  | `const dstr_adt *` | 子「动态字符串」的指针。<br>如果为<em>「空字符串」</em>，则函数会直接返回 _`0`_。   |
+| 参数   | 类型               | 说明                                                                            |
+| ------ | ------------------ | ------------------------------------------------------------------------------- |
+| `dstr` | `const dstr_adt *` | 目标「动态字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回 _`0`_。 |
+| `sub`  | `const dstr_adt *` | 子「动态字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回 _`0`_。   |
 
 | 返回值   | 说明         |
 | -------- | ------------ |
@@ -1755,13 +1973,16 @@ size_t dstr_count(const dstr_adt *dstr, const dstr_adt *sub);
 统计一个「C 字符串」中指定子「C 字符串」出现的次数。
 
 ```c
-size_t cstr_count(const char *cstr, const char *sub);
+size_t cstr_count(
+	const char *cstr,
+	const char *sub
+);
 ```
 
-| 参数   | 类型           | 说明                                                                                              |
-| ------ | -------------- | ------------------------------------------------------------------------------------------------- |
-| `cstr` | `const char *` | 目标「C 字符串」的指针。<br>如果为*空指针*或<em>指向空「C 字符串」</em>，则函数会直接返回 _`0`_。 |
-| `sub`  | `const char *` | 子「C 字符串」的指针。<br>如果为*空指针*或<em>指向空「C 字符串」</em>，则函数会直接返回 _`0`_。   |
+| 参数   | 类型           | 说明                                                                          |
+| ------ | -------------- | ----------------------------------------------------------------------------- |
+| `cstr` | `const char *` | 目标「C 字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回 _`0`_。 |
+| `sub`  | `const char *` | 子「C 字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回 _`0`_。   |
 
 | 返回值   | 说明         |
 | -------- | ------------ |
@@ -1774,17 +1995,22 @@ size_t cstr_count(const char *cstr, const char *sub);
 替换一个「动态字符串」中指定旧「C 字符串」为指定新「C 字符串」n 次。
 
 ```c
-dstr_status_t dstr_replace_cstr(dstr_adt *dstr, const char *old_str, const char *new_str, dstr_direction_t direction,
-                                size_t n);
+dstr_status_t dstr_replace_cstr(
+	dstr_adt *dstr,
+	const char *old_str,
+	const char *new_str,
+	dstr_direction_t direction,
+	size_t n
+);
 ```
 
-| 参数        | 类型               | 说明                                                                                                                                                                            |
-| ----------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `dstr`      | `dstr_adt *`       | 目标「动态字符串」的指针。<br>如果为<em>「空字符串」</em>，则视为无效参数。                                                                                   |
-| `old_str`   | `const char *`     | 旧「C 字符串」的指针。<br>如果为*空指针*或<em>指向空「C 字符串」</em>，则视为无效参数。<br>如果在 dstr 中一次都没有出现或出现次数不足 n 次（n 不为 _`0`_ 时），则视为无效参数。 |
-| `new_str`   | `const char *`     | 新「C 字符串」的指针。<br>为<em>「空字符串」</em>时，替换为*空*。                                                                                                               |
-| `direction` | `dstr_direction_t` | 替换方向。                                                                                                                                                                      |
-| `n`         | `size_t`           | 替换的次数。<br>为 _`0`_ 表示替换所有。<br>如果大于旧「C 字符串」实际出现的次数，则视为无效参数，将一次替换都不进行。                                                           |
+| 参数        | 类型               | 说明                                                                                                                                                          |
+| ----------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `dstr`      | `dstr_adt *`       | 目标「动态字符串」的指针。<br><em>「空字符串」</em>视为无效参数。                                                                                             |
+| `old_str`   | `const char *`     | 旧「C 字符串」的指针。<br><em>「空字符串」</em>视为无效参数。<br>如果在 `dstr` 中一次都没有出现或出现次数不足 `n` 次（`n` 不为 _`0`_ 时）时，则视为无效参数。 |
+| `new_str`   | `const char *`     | 新「C 字符串」的指针。                                                                                                                                        |
+| `direction` | `dstr_direction_t` | 替换方向。                                                                                                                                                    |
+| `n`         | `size_t`           | 替换的次数。<br>为 _`0`_ 表示替换所有。                                                                                                                       |
 
 | 返回值          | 说明         |
 | --------------- | ------------ |
@@ -1797,17 +2023,22 @@ dstr_status_t dstr_replace_cstr(dstr_adt *dstr, const char *old_str, const char 
 替换一个「动态字符串」中指定旧「动态字符串」为指定新「动态字符串」n 次。
 
 ```c
-dstr_status_t dstr_replace(dstr_adt *dstr, const dstr_adt *old_str, const dstr_adt *new_str, dstr_direction_t direction,
-                           size_t n);
+dstr_status_t dstr_replace(
+	dstr_adt *dstr,
+	const dstr_adt *old_str,
+	const dstr_adt *new_str,
+	dstr_direction_t direction,
+	size_t n
+);
 ```
 
-| 参数        | 类型               | 说明                                                                                                                                                                                |
-| ----------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `dstr`      | `dstr_adt *`       | 目标「动态字符串」的指针。<br>如果为<em>「空字符串」</em>，则视为无效参数。                                                                                       |
-| `old_str`   | `const dstr_adt *` | 旧「动态字符串」的指针。<br>如果为<em>「空字符串」</em>，则视为无效参数。<br>如果在 dstr 中一次都没有出现或出现次数不足 n 次（n 不为 _`0`_ 时），则视为无效参数。 |
-| `new_str`   | `const dstr_adt *` | 新「动态字符串」的指针。<br>为<em>「空字符串」</em>时，替换为*空*。                                                                                                                 |
-| `direction` | `dstr_direction_t` | 替换方向。                                                                                                                                                                          |
-| `n`         | `size_t`           | 替换的次数。<br>为 _`0`_ 表示替换所有。<br>如果大于旧「动态字符串」实际出现的次数，则视为无效参数，将一次替换都不进行。                                                             |
+| 参数        | 类型               | 说明                                                                                                                                                            |
+| ----------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `dstr`      | `dstr_adt *`       | 目标「动态字符串」的指针。<br><em>「空字符串」</em>视为无效参数。                                                                                               |
+| `old_str`   | `const dstr_adt *` | 旧「动态字符串」的指针。<br><em>「空字符串」</em>视为无效参数。<br>如果在 `dstr` 中一次都没有出现或出现次数不足 `n` 次（`n` 不为 _`0`_ 时）时，则视为无效参数。 |
+| `new_str`   | `const dstr_adt *` | 新「动态字符串」的指针。                                                                                                                                        |
+| `direction` | `dstr_direction_t` | 替换方向。                                                                                                                                                      |
+| `n`         | `size_t`           | 替换的次数。<br>为 _`0`_ 表示替换所有。                                                                                                                         |
 
 | 返回值          | 说明         |
 | --------------- | ------------ |
@@ -1820,17 +2051,22 @@ dstr_status_t dstr_replace(dstr_adt *dstr, const dstr_adt *old_str, const dstr_a
 替换一个「动态字符串」中指定旧「C 字符串」第 n 次为指定新「C 字符串」。
 
 ```c
-dstr_status_t dstr_replace_nth_cstr(dstr_adt *dstr, const char *old_str, const char *new_str,
-                                    dstr_direction_t direction, size_t n);
+dstr_status_t dstr_replace_nth_cstr(
+	dstr_adt *dstr,
+	const char *old_str,
+	const char *new_str,
+	dstr_direction_t direction,
+	size_t n
+);
 ```
 
-| 参数        | 类型               | 说明                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| ----------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `dstr`      | `dstr_adt *`       | 目标「动态字符串」的指针。<br>如果为<em>「空字符串」</em>，则视为无效参数。                                                                                                                                                                                                                                                                                                                              |
-| `old_str`   | `const char *`     | 旧「C 字符串」的指针。<br>如果为*空指针*或<em>指向空「C 字符串」</em>，则视为无效参数。<br>如果在 dstr 中一次都没有出现或出现次数不足 n 次（n 不为 _`0`_ 时），则视为无效参数。                                                                                                                                                                                                                                            |
-| `new_str`   | `const char *`     | 新「C 字符串」的指针。<br>为<em>「空字符串」</em>时，替换为*空*。                                                                                                                                                                                                                                                                                                                                                          |
-| `direction` | `dstr_direction_t` | 替换方向。                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| `n`         | `size_t`           | 替换的次序。从 1 开始。<br>为 _`0`_ 表示该方向的最后一次出现。<br>具体：direction 为 `DSTR_DIR_FORWARD` 时，`n>0` 表示从前往后第 `n` 次，`n=0` 表示从前往后最后一次（等价于 `DSTR_DIR_BACKWARD`, `n=1`）；direction 为 `DSTR_DIR_BACKWARD` 时，`n>0` 表示从后往前第 `n` 次，`n=0` 表示从后往前最后一次（等价于 `DSTR_DIR_FORWARD`, `n=1`）。<br>如果大于旧「C 字符串」实际出现的次数，则视为无效参数，将一次替换都不进行。 |
+| 参数        | 类型               | 说明                                                                                                                                                          |
+| ----------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `dstr`      | `dstr_adt *`       | 目标「动态字符串」的指针。<br><em>「空字符串」</em>视为无效参数。                                                                                             |
+| `old_str`   | `const char *`     | 旧「C 字符串」的指针。<br><em>「空字符串」</em>视为无效参数。<br>如果在 `dstr` 中一次都没有出现或出现次数不足 `n` 次（`n` 不为 _`0`_ 时）时，则视为无效参数。 |
+| `new_str`   | `const char *`     | 新「C 字符串」的指针。                                                                                                                                        |
+| `direction` | `dstr_direction_t` | 替换方向。                                                                                                                                                    |
+| `n`         | `size_t`           | 替换的次序。<br>从 _`1`_ 开始。<br>为 _`0`_ 表示最后一次。                                                                                                    |
 
 | 返回值          | 说明         |
 | --------------- | ------------ |
@@ -1843,17 +2079,22 @@ dstr_status_t dstr_replace_nth_cstr(dstr_adt *dstr, const char *old_str, const c
 替换一个「动态字符串」中指定旧「动态字符串」第 n 次为指定新「动态字符串」。
 
 ```c
-dstr_status_t dstr_replace_nth(dstr_adt *dstr, const dstr_adt *old_str, const dstr_adt *new_str,
-                               dstr_direction_t direction, size_t n);
+dstr_status_t dstr_replace_nth(
+	dstr_adt *dstr,
+	const dstr_adt *old_str,
+	const dstr_adt *new_str,
+	dstr_direction_t direction,
+	size_t n
+);
 ```
 
-| 参数        | 类型               | 说明                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| ----------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `dstr`      | `dstr_adt *`       | 目标「动态字符串」的指针。<br>如果为<em>「空字符串」</em>，则视为无效参数。                                                                                                                                                                                                                                                                                                                                |
-| `old_str`   | `const dstr_adt *` | 旧「动态字符串」的指针。<br>如果为<em>「空字符串」</em>，则视为无效参数。<br>如果在 dstr 中一次都没有出现或出现次数不足 n 次（n 不为 _`0`_ 时），则视为无效参数。                                                                                                                                                                                                                                          |
-| `new_str`   | `const dstr_adt *` | 新「动态字符串」的指针。<br>为<em>「空字符串」</em>时，替换为*空*。                                                                                                                                                                                                                                                                                                                                                          |
-| `direction` | `dstr_direction_t` | 替换方向。                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `n`         | `size_t`           | 替换的次序。从 1 开始。<br>为 _`0`_ 表示该方向的最后一次出现。<br>具体：direction 为 `DSTR_DIR_FORWARD` 时，`n>0` 表示从前往后第 `n` 次，`n=0` 表示从前往后最后一次（等价于 `DSTR_DIR_BACKWARD`, `n=1`）；direction 为 `DSTR_DIR_BACKWARD` 时，`n>0` 表示从后往前第 `n` 次，`n=0` 表示从后往前最后一次（等价于 `DSTR_DIR_FORWARD`, `n=1`）。<br>如果大于旧「动态字符串」实际出现的次数，则视为无效参数，将一次替换都不进行。 |
+| 参数        | 类型               | 说明                                                                                                                                                            |
+| ----------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `dstr`      | `dstr_adt *`       | 目标「动态字符串」的指针。<br><em>「空字符串」</em>视为无效参数。                                                                                               |
+| `old_str`   | `const dstr_adt *` | 旧「动态字符串」的指针。<br><em>「空字符串」</em>视为无效参数。<br>如果在 `dstr` 中一次都没有出现或出现次数不足 `n` 次（`n` 不为 _`0`_ 时）时，则视为无效参数。 |
+| `new_str`   | `const dstr_adt *` | 新「动态字符串」的指针。                                                                                                                                        |
+| `direction` | `dstr_direction_t` | 替换方向。                                                                                                                                                      |
+| `n`         | `size_t`           | 替换的次序。<br>从 _`1`_ 开始。<br>为 _`0`_ 表示最后一次。                                                                                                      |
 
 | 返回值          | 说明         |
 | --------------- | ------------ |
@@ -1863,7 +2104,7 @@ dstr_status_t dstr_replace_nth(dstr_adt *dstr, const dstr_adt *old_str, const ds
 
 ### 分隔与合并 [↑](#api-functions)
 
-此组 API 函数，主要用于对一个「动态字符串」进行分隔与合并。
+此组 API 函数，主要用于分隔一个字符串与合并多个字符串。
 
 包含的操作及对应 API 函数与说明如下：
 
@@ -1908,26 +2149,32 @@ dstr_status_t dstr_replace_nth(dstr_adt *dstr, const dstr_adt *old_str, const ds
 分隔一个「C 字符串」为多个「动态字符串」。
 
 ```c
-dstr_adt **dstr_split_cstr(const char *cstr, const char *separator, size_t *out_dstr_count);
+dstr_adt **dstr_split_cstr(
+	const char *cstr,
+	const char *separator,
+	size_t *out_dstr_count
+);
 ```
 
 | 参数             | 类型           | 说明                                                                                                                           |
 | ---------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `cstr`           | `const char *` | 目标「C 字符串」的指针。<br>如果为*空指针*或<em>指向空「C 字符串」</em>，则函数会直接返回*空指针*。                            |
-| `separator`      | `const char *` | 分隔「C 字符串」的指针。<br>如果为*空指针*或<em>指向空「C 字符串」</em>，则函数会直接返回*空指针*。                            |
-| `out_dstr_count` | `size_t *`     | 存储分隔后的「动态字符串」的个数的 `size_t` 变量的指针。<br>如果为*空指针*，则函数会直接返回*空指针*。仅在函数成功执行时写入。 |
+| `cstr`           | `const char *` | 目标「C 字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回*空指针*。                                                |
+| `separator`      | `const char *` | 分隔「C 字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回*空指针*。                                                |
+| `out_dstr_count` | `size_t *`     | 存储分隔后的「动态字符串」的个数的 `size_t` 变量的指针。<br>为*空指针*时，函数会直接返回*空指针*。<br>仅在函数成功执行时写入。 |
 
-| 返回值        | 说明                                                               |
-| ------------- | ------------------------------------------------------------------ |
-| `dstr_adt **` | 分隔后的「动态字符串」数组的指针。<br>如果分隔失败则返回*空指针*。 |
+| 返回值        | 说明                                                         |
+| ------------- | ------------------------------------------------------------ |
+| `dstr_adt **` | 分隔后的「动态字符串」数组的指针。<br>分隔失败返回*空指针*。 |
 
 > [!NOTE]
 >
-> 分隔时，如果两个分隔串之间，或分隔串与首尾边界之间的子串长度为 _`0`_，将以*空指针*（而不是空「动态字符串」）形式存储在数组中，而不是跳过。
+> 分隔时，如果两个分隔串之间，或分隔串与首尾边界之间的子串长度为 _0_，将以*空指针*（而不是<em>空「动态字符串」</em>）形式存储在数组中。
 
-> [!CAUTION]
+> [!IMPORTANT]
 >
-> 返回值指向堆内存，其中又可能有指向其他堆内存的指针。<br>因此，释放时，请先手动依次调用 `dstr_destroy()` 释放每个元素，然后手动调用 `free()` 释放数组本身。
+> 返回值指向堆内存，其中又可能有指向其他堆内存的指针。
+>
+> 因此，释放时，请先手动依次调用 `dstr_destroy()` 释放每个元素，然后手动调用 `free()` 释放数组本身。
 
 <a id="api-functions-split-and-join-dstr_split"></a>
 
@@ -1936,26 +2183,32 @@ dstr_adt **dstr_split_cstr(const char *cstr, const char *separator, size_t *out_
 分隔一个「动态字符串」为多个「动态字符串」。
 
 ```c
-dstr_adt **dstr_split(const dstr_adt *dstr, const dstr_adt *separator, size_t *out_dstr_count);
+dstr_adt **dstr_split(
+	const dstr_adt *dstr,
+	const dstr_adt *separator,
+	size_t *out_dstr_count
+);
 ```
 
 | 参数             | 类型               | 说明                                                                                                                           |
 | ---------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| `dstr`           | `const dstr_adt *` | 目标「动态字符串」的指针。<br>如果为<em>「空字符串」</em>，则函数会直接返回*空指针*。                        |
-| `separator`      | `const dstr_adt *` | 分隔「动态字符串」的指针。<br>如果为<em>「空字符串」</em>，则函数会直接返回*空指针*。                        |
-| `out_dstr_count` | `size_t *`         | 存储分隔后的「动态字符串」的个数的 `size_t` 变量的指针。<br>如果为*空指针*，则函数会直接返回*空指针*。仅在函数成功执行时写入。 |
+| `dstr`           | `const dstr_adt *` | 目标「动态字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回*空指针*。                                              |
+| `separator`      | `const dstr_adt *` | 分隔「动态字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回*空指针*。                                              |
+| `out_dstr_count` | `size_t *`         | 存储分隔后的「动态字符串」的个数的 `size_t` 变量的指针。<br>为*空指针*时，函数会直接返回*空指针*。<br>仅在函数成功执行时写入。 |
 
-| 返回值        | 说明                                                               |
-| ------------- | ------------------------------------------------------------------ |
-| `dstr_adt **` | 分隔后的「动态字符串」数组的指针。<br>如果分隔失败则返回*空指针*。 |
+| 返回值        | 说明                                                         |
+| ------------- | ------------------------------------------------------------ |
+| `dstr_adt **` | 分隔后的「动态字符串」数组的指针。<br>分隔失败返回*空指针*。 |
 
 > [!NOTE]
 >
-> 分隔时，如果两个分隔串之间，或分隔串与首尾边界之间的子串长度为 _`0`_，将以*空指针*（而不是空「动态字符串」）形式存储在数组中，而不是跳过。
+> 分隔时，如果两个分隔串之间，或分隔串与首尾边界之间的子串长度为 _0_，将以*空指针*（而不是<em>空「动态字符串」</em>）形式存储在数组中。
 
-> [!CAUTION]
+> [!IMPORTANT]
 >
-> 返回值指向堆内存，其中又可能有指向其他堆内存的指针。<br>因此，释放时，请先手动依次调用 `dstr_destroy()` 释放每个元素，然后手动调用 `free()` 释放数组本身。
+> 返回值指向堆内存，其中又可能有指向其他堆内存的指针。
+>
+> 因此，释放时，请先手动依次调用 `dstr_destroy()` 释放每个元素，然后手动调用 `free()` 释放数组本身。
 
 <a id="api-functions-split-and-join-cstr_split"></a>
 
@@ -1964,26 +2217,32 @@ dstr_adt **dstr_split(const dstr_adt *dstr, const dstr_adt *separator, size_t *o
 分隔一个「C 字符串」为多个「C 字符串」。
 
 ```c
-char **cstr_split(const char *cstr, const char *separator, size_t *out_cstr_count);
+char **cstr_split(
+	const char *cstr,
+	const char *separator,
+	size_t *out_cstr_count
+);
 ```
 
 | 参数             | 类型           | 说明                                                                                                                         |
 | ---------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `cstr`           | `const char *` | 目标「C 字符串」的指针。<br>如果为*空指针*或<em>指向空「C 字符串」</em>，则函数会直接返回*空指针*。                          |
-| `separator`      | `const char *` | 分隔「C 字符串」的指针。<br>如果为*空指针*或<em>指向空「C 字符串」</em>，则函数会直接返回*空指针*。                          |
-| `out_cstr_count` | `size_t *`     | 存储分隔后的「C 字符串」的个数的 `size_t` 变量的指针。<br>如果为*空指针*，则函数会直接返回*空指针*。仅在函数成功执行时写入。 |
+| `cstr`           | `const char *` | 目标「C 字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回*空指针*。                                              |
+| `separator`      | `const char *` | 分隔「C 字符串」的指针。<br>为<em>「空字符串」</em>时，函数会直接返回*空指针*。                                              |
+| `out_cstr_count` | `size_t *`     | 存储分隔后的「C 字符串」的个数的 `size_t` 变量的指针。<br>为*空指针*时，函数会直接返回*空指针*。<br>仅在函数成功执行时写入。 |
 
-| 返回值    | 说明                                                             |
-| --------- | ---------------------------------------------------------------- |
-| `char **` | 分隔后的「C 字符串」数组的指针。<br>如果分隔失败则返回*空指针*。 |
+| 返回值    | 说明                                                       |
+| --------- | ---------------------------------------------------------- |
+| `char **` | 分隔后的「C 字符串」数组的指针。<br>分隔失败返回*空指针*。 |
 
 > [!NOTE]
 >
-> 分隔时，如果两个分隔串之间，或分隔串与首尾边界之间的子串长度为 _`0`_，将以*空指针*（而不是*空*「C 字符串」）形式存储在数组中，而不是跳过。
+> 分隔时，如果两个分隔串之间，或分隔串与首尾边界之间的子串长度为 _0_，将以*空指针*（而不是<em>空「C 字符串」</em>）形式存储在数组中。
 
-> [!CAUTION]
+> [!IMPORTANT]
 >
-> 返回值指向堆内存，其中又可能有指向其他堆内存的指针。<br>因此，释放时，请先手动依次调用 `free()` 释放每个元素，然后手动调用 `free()` 释放数组本身。
+> 返回值指向堆内存，其中又可能有指向其他堆内存的指针。
+>
+> 因此，释放时，请先手动依次调用 `free()` 释放每个元素，然后手动调用 `free()` 释放数组本身。
 
 <a id="api-functions-split-and-join-dstr_join_cstr"></a>
 
@@ -1992,24 +2251,24 @@ char **cstr_split(const char *cstr, const char *separator, size_t *out_cstr_coun
 合并多个「C 字符串」为一个「动态字符串」。
 
 ```c
-dstr_adt *dstr_join_cstr(const char *const *cstrs, size_t cstr_count, const char *separator);
+dstr_adt *dstr_join_cstr(
+	const char *const *cstrs,
+	size_t cstr_count,
+	const char *separator
+);
 ```
 
-| 参数         | 类型                  | 说明                                                                     |
-| ------------ | --------------------- | ------------------------------------------------------------------------ |
-| `cstrs`      | `const char *const *` | 源「C 字符串」数组的指针。<br>如果为*空指针*，则函数会直接返回*空指针*。 |
-| `cstr_count` | `size_t`              | 源「C 字符串」的个数。<br>如果为 _`0`_，则函数会直接返回*空指针*。       |
-| `separator`  | `const char *`        | 分隔「C 字符串」的指针。<br>为<em>「空字符串」</em>时使用空字符串合并。  |
+| 参数         | 类型                  | 说明                                                                                                       |
+| ------------ | --------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `cstrs`      | `const char *const *` | 源「C 字符串」数组的指针。<br>为*空指针*时，函数会直接返回*空指针*。<br>数组中的*空指针*视为「空字符串」。 |
+| `cstr_count` | `size_t`              | 源「C 字符串」的个数。<br>为 _`0`_ 时，函数会直接返回*空指针*。                                            |
+| `separator`  | `const char *`        | 分隔「C 字符串」的指针。                                                                                   |
 
-| 返回值       | 说明                                                           |
-| ------------ | -------------------------------------------------------------- |
-| `dstr_adt *` | 合并后的「动态字符串」的指针。<br>如果合并失败则返回*空指针*。 |
+| 返回值       | 说明                                                     |
+| ------------ | -------------------------------------------------------- |
+| `dstr_adt *` | 合并后的「动态字符串」的指针。<br>合并失败返回*空指针*。 |
 
-> [!NOTE]
->
-> 合并时，其中的*空指针*或*空*「C 字符串」会以空字符串形式被合并，而不是被跳过。
-
-> [!CAUTION]
+> [!IMPORTANT]
 >
 > 返回值指向堆内存，请手动调用 `dstr_destroy()` 释放。
 
@@ -2020,24 +2279,24 @@ dstr_adt *dstr_join_cstr(const char *const *cstrs, size_t cstr_count, const char
 合并多个「动态字符串」为一个「动态字符串」。
 
 ```c
-dstr_adt *dstr_join(const dstr_adt *const *dstrs, size_t dstr_count, const dstr_adt *separator);
+dstr_adt *dstr_join(
+	const dstr_adt *const *dstrs,
+	size_t dstr_count,
+	const dstr_adt *separator
+);
 ```
 
-| 参数         | 类型                      | 说明                                                                       |
-| ------------ | ------------------------- | -------------------------------------------------------------------------- |
-| `dstrs`      | `const dstr_adt *const *` | 源「动态字符串」数组的指针。<br>如果为*空指针*，则函数会直接返回*空指针*。 |
-| `dstr_count` | `size_t`                  | 源「动态字符串」的个数。<br>如果为 _`0`_，则函数会直接返回*空指针*。       |
-| `separator`  | `const dstr_adt *`        | 分隔「动态字符串」的指针。<br>为<em>「空字符串」</em>时使用空字符串合并。  |
+| 参数         | 类型                      | 说明                                                                                                         |
+| ------------ | ------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `dstrs`      | `const dstr_adt *const *` | 源「动态字符串」数组的指针。<br>为*空指针*时，函数会直接返回*空指针*。<br>数组中的*空指针*视为「空字符串」。 |
+| `dstr_count` | `size_t`                  | 源「动态字符串」的个数。<br>为 _`0`_ 时，函数会直接返回*空指针*。                                            |
+| `separator`  | `const dstr_adt *`        | 分隔「动态字符串」的指针。                                                                                   |
 
-| 返回值       | 说明                                                           |
-| ------------ | -------------------------------------------------------------- |
-| `dstr_adt *` | 合并后的「动态字符串」的指针。<br>如果合并失败则返回*空指针*。 |
+| 返回值       | 说明                                                     |
+| ------------ | -------------------------------------------------------- |
+| `dstr_adt *` | 合并后的「动态字符串」的指针。<br>合并失败返回*空指针*。 |
 
-> [!NOTE]
->
-> 合并时，其中的*空指针*或空「动态字符串」会以空字符串形式被合并，而不是被跳过。
-
-> [!CAUTION]
+> [!IMPORTANT]
 >
 > 返回值指向堆内存，请手动调用 `dstr_destroy()` 释放。
 
@@ -2048,23 +2307,23 @@ dstr_adt *dstr_join(const dstr_adt *const *dstrs, size_t dstr_count, const dstr_
 合并多个「C 字符串」为一个「C 字符串」。
 
 ```c
-char *cstr_join(const char *const *cstrs, size_t cstr_count, const char *separator);
+char *cstr_join(
+	const char *const *cstrs,
+	size_t cstr_count,
+	const char *separator
+);
 ```
 
-| 参数         | 类型                  | 说明                                                                     |
-| ------------ | --------------------- | ------------------------------------------------------------------------ |
-| `cstrs`      | `const char *const *` | 源「C 字符串」数组的指针。<br>如果为*空指针*，则函数会直接返回*空指针*。 |
-| `cstr_count` | `size_t`              | 源「C 字符串」的个数。<br>如果为 _`0`_，则函数会直接返回*空指针*。       |
-| `separator`  | `const char *`        | 分隔「C 字符串」的指针。<br>为<em>「空字符串」</em>时使用空字符串合并。  |
+| 参数         | 类型                  | 说明                                                                                                       |
+| ------------ | --------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `cstrs`      | `const char *const *` | 源「C 字符串」数组的指针。<br>为*空指针*时，函数会直接返回*空指针*。<br>数组中的*空指针*视为「空字符串」。 |
+| `cstr_count` | `size_t`              | 源「C 字符串」的个数。<br>为 _`0`_ 时，函数会直接返回*空指针*。                                            |
+| `separator`  | `const char *`        | 分隔「C 字符串」的指针。                                                                                   |
 
-| 返回值   | 说明                                                         |
-| -------- | ------------------------------------------------------------ |
-| `char *` | 合并后的「C 字符串」的指针。<br>如果合并失败则返回*空指针*。 |
+| 返回值   | 说明                                                   |
+| -------- | ------------------------------------------------------ |
+| `char *` | 合并后的「C 字符串」的指针。<br>合并失败返回*空指针*。 |
 
-> [!NOTE]
->
-> 合并时，其中的*空指针*或*空*「C 字符串」会以空字符串形式被合并，而不是被跳过。
-
-> [!CAUTION]
+> [!IMPORTANT]
 >
 > 返回值指向堆内存，请手动调用 `free()` 释放。
