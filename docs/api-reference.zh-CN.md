@@ -41,8 +41,8 @@ typedef struct dynamic_string dstr_adt;
 
 ```c
 typedef enum {
-	DSTR_DIR_FORWARD,  /* 从前往后 */
-	DSTR_DIR_BACKWARD  /* 从后往前 */
+	DSTR_DIR_FORWARD,  /* 从前往后。 */
+	DSTR_DIR_BACKWARD  /* 从后往前。 */
 } dstr_direction_t;
 ```
 
@@ -56,9 +56,9 @@ typedef enum {
 
 ```c
 typedef enum {
-	DSTR_SUCCESS = 0,         /* 成功 */
-	DSTR_MEMORY_ALLOC_FAILED, /* 内存分配失败 */
-	DSTR_INVALID_ARGUMENT,    /* 无效参数 */
+	DSTR_SUCCESS = 0,         /* 成功。 */
+	DSTR_MEMORY_ALLOC_FAILED, /* 内存分配失败。 */
+	DSTR_INVALID_ARGUMENT,    /* 无效参数。 */
 } dstr_status_t;
 ```
 
