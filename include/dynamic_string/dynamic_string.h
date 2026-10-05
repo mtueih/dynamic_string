@@ -1271,7 +1271,7 @@ size_t cstr_count(
  *
  * @param old_str[in] 旧「C 字符串」的指针。「空字符串」视为无效参数。如果在
  *                    dstr 中一次都没有出现或出现次数不足 n 次（n 不为 0
- *                    时）时，则视为无效参数。
+ *                    时），视为无效参数。
  *
  * @param new_str[in] 新「C 字符串」的指针。
  *
@@ -1297,7 +1297,7 @@ dstr_status_t dstr_replace_cstr(
  *
  * @param old_str[in] 旧「动态字符串」的指针。「空字符串」视为无效参数。如果在
  *                    dstr 中一次都没有出现或出现次数不足 n 次（n 不为 0
- *                    时）时，则视为无效参数。
+ *                    时），视为无效参数。
  *
  * @param new_str[in] 新「动态字符串」的指针。
  *
@@ -1323,7 +1323,7 @@ dstr_status_t dstr_replace(
  *
  * @param old_str[in] 旧「C 字符串」的指针。「空字符串」视为无效参数。如果在
  *                    dstr 中一次都没有出现或出现次数不足 n 次（n 不为 0
- *                    时）时，则视为无效参数。
+ *                    时），视为无效参数。
  *
  * @param new_str[in] 新「C 字符串」的指针。
  *
@@ -1349,7 +1349,7 @@ dstr_status_t dstr_replace_nth_cstr(
  *
  * @param old_str[in] 旧「动态字符串」的指针。「空字符串」视为无效参数。如果在
  *                    dstr 中一次都没有出现或出现次数不足 n 次（n 不为 0
- *                    时）时，则视为无效参数。
+ *                    时），视为无效参数。
  *
  * @param new_str[in] 新「动态字符串」的指针。
  *
@@ -1383,7 +1383,8 @@ dstr_status_t dstr_replace_nth(
  *                 函数会直接返回空指针。
  *
  * @param separator[in] 分隔「C 字符串」的指针。为「空字符串」时，
- *                      函数会直接返回空指针。
+ *                      函数会直接返回空指针。如果在 cstr 中一次都没有
+ *                      出现，函数会返回空指针。
  *
  * @param out_dstr_count[out] 存储分隔后的「动态字符串」的个数的 size_t
  *                            变量的指针。为空指针时，函数会直接返回空指针。
@@ -1411,7 +1412,8 @@ dstr_adt **dstr_split_cstr(
  *                 函数会直接返回空指针。
  *
  * @param separator[in] 分隔「动态字符串」的指针。为「空字符串」时，
- *                      函数会直接返回空指针。
+ *                      函数会直接返回空指针。如果在 dstr 中一次都没有
+ *                      出现，函数会返回空指针。
  *
  * @param out_dstr_count[out] 存储分隔后的「动态字符串」的个数的 size_t
  *                            变量的指针。为空指针时，函数会直接返回空指针。
@@ -1439,7 +1441,8 @@ dstr_adt **dstr_split(
  *                 函数会直接返回空指针。
  *
  * @param separator[in] 分隔「C 字符串」的指针。为「空字符串」时，
- *                      函数会直接返回空指针。
+ *                      函数会直接返回空指针。如果在 cstr 中一次都没有
+ *                      出现，函数会返回空指针。
  *
  * @param out_cstr_count[out] 存储分隔后的「C 字符串」的个数的 size_t
  *                            变量的指针。为空指针时，函数会直接返回空指针。
