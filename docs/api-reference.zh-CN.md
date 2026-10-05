@@ -1,3 +1,9 @@
+<div align="right">
+
+[English](api-reference.md) | **简体中文**
+
+</div>
+
 # dynamic_string API 参考
 
 ## 目录
