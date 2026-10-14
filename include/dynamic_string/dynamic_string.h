@@ -54,24 +54,6 @@
 
 
 /*------------------------------------------------------------------------------
- * 宏定义
- *----------------------------------------------------------------------------*/
-
-/* C++ 兼容包裹宏。 */
-#ifdef __cplusplus
-#define DYNAMIC_STRING_EXTERN_C_BEGIN extern "C" {
-#define DYNAMIC_STRING_EXTERN_C_END }
-#else
-#define DYNAMIC_STRING_EXTERN_C_BEGIN
-#define DYNAMIC_STRING_EXTERN_C_END
-#endif
-
-
-/* C++ 兼容包裹宏-开始。 */
-DYNAMIC_STRING_EXTERN_C_BEGIN
-
-
-/*------------------------------------------------------------------------------
  * ADT 类型别名声明
  *----------------------------------------------------------------------------*/
 
@@ -1551,10 +1533,6 @@ char *cstr_join(
 	size_t cstr_count,
 	const char *separator
 );
-
-
-/* C++ 兼容包裹宏-结束。 */
-DYNAMIC_STRING_EXTERN_C_END
 
 
 #endif /* DYNAMIC_STRING_H */
