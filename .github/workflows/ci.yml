@@ -72,9 +72,9 @@ jobs:
         uses: mozilla-actions/sccache-action@v0.0.11
 
       - uses: lukka/get-cmake@latest
+        if: matrix.cmake_version != 'latest'
         with:
           cmakeVersion: ${{ matrix.cmake_version }}
-          if: matrix.cmake_version != 'latest'
 
       - name: Echo CMake version
         run: cmake --version
