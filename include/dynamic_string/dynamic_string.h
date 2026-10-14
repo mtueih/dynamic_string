@@ -246,6 +246,24 @@ const char *dstr_cstr(
 );
 
 /**
+ * @brief 获取一个「动态字符串」内部缓冲区的可写指针。
+ *
+ * @note 此函数用于避免拷贝开销：调用者可向返回的缓冲区直接写入数据（最多可写入
+ *       dstr_capacity() - 1 字节），随后调用 dstr_set_length() 更新字符串长度。
+ *
+ * @warning 返回的指针指向内部缓冲区，写入时请勿越过缓冲区末尾（容量 - 1）。该
+ *          指针是临时的，可能因 dstr 的内容或容量的变化而失效，切勿依赖。写入后
+ *          必须调用 dstr_set_length() 更新长度，否则字符串的长度与内容不一致。
+ *
+ * @param dstr[in] 目标「动态字符串」的指针。为空指针时，函数会直接返回空指针。
+ *
+ * @return dstr 内部缓冲区的可写指针。
+ */
+char *dstr_data(
+	dstr_adt *dstr
+);
+
+/**
  * @brief 获取一个「动态字符串」的长度。
  *
  * @param dstr[in] 目标「动态字符串」的指针。为空指针时，函数会直接返回 0。
@@ -254,6 +272,24 @@ const char *dstr_cstr(
  */
 size_t dstr_length(
 	const dstr_adt *dstr
+);
+
+/**
+ * @brief 设置一个「动态字符串」的长度。
+ *
+ * @note 此函数仅更新长度并在新长度处写入 '\0'，不会扩容或缩容缓冲区。通常与
+ *       dstr_data() 配合使用：先获取可写缓冲区、写入数据，再调用本函数设定长度。
+ *
+ * @param dstr[in] 目标「动态字符串」的指针。空指针视为无效参数。
+ *
+ * @param new_length[in] 新的长度。必须小于缓冲区大小（即 dstr_capacity()），
+ *                       否则视为无效参数。
+ *
+ * @return 全局状态码。
+ */
+dstr_status_t dstr_set_length(
+	dstr_adt *dstr,
+	size_t new_length
 );
 
 /**

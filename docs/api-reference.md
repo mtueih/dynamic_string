@@ -338,9 +338,13 @@ The operations and their corresponding API functions and descriptions are as fol
   </thead>
   <tbody>
     <tr>
-      <td rowspan="4">Get</td>
+      <td rowspan="5">Get</td>
       <td>Get the internal "C string" pointer</td>
       <td><a href="#api-functions-getters-and-setters-dstr_cstr"><code>dstr_cstr()</code></a></td>
+    </tr>
+    <tr>
+      <td>Get the internal buffer pointer (writable)</td>
+      <td><a href="#api-functions-getters-and-setters-dstr_data"><code>dstr_data()</code></a></td>
     </tr>
     <tr>
       <td>Get length</td>
@@ -355,7 +359,11 @@ The operations and their corresponding API functions and descriptions are as fol
       <td><a href="#api-functions-getters-and-setters-dstr_is_empty"><code>dstr_is_empty()</code></a></td>
     </tr>
     <tr>
-      <td rowspan="2">Set</td>
+      <td rowspan="3">Set</td>
+      <td>Set length</td>
+      <td><a href="#api-functions-getters-and-setters-dstr_set_length"><code>dstr_set_length()</code></a></td>
+    </tr>
+    <tr>
       <td>Set capacity</td>
       <td><a href="#api-functions-getters-and-setters-dstr_set_capacity"><code>dstr_set_capacity()</code></a></td>
     </tr>
@@ -396,6 +404,38 @@ const char *dstr_cstr(
 >
 > This pointer is temporary and may be invalidated by changes to the content or capacity of `dstr`; do not rely on it.
 
+<a id="api-functions-getters-and-setters-dstr_data"></a>
+
+#### `dstr_data()` [↑](#api-functions-getters-and-setters)
+
+Gets a writable pointer to the internal buffer of a "dynamic string".
+
+```c
+char *dstr_data(
+	dstr_adt *dstr
+);
+```
+
+| Parameter | Type         | Description                                                                                  |
+| --------- | ------------ | -------------------------------------------------------------------------------------------- |
+| `dstr`    | `dstr_adt *` | Pointer to the target "dynamic string".<br>The function returns a _null pointer_ immediately when it is a _null pointer_. |
+
+| Return Value | Description                               |
+| ------------ | ----------------------------------------- |
+| `char *`     | A writable pointer to the internal buffer of `dstr`. |
+
+> [!NOTE]
+>
+> This function is intended to avoid copy overhead: the caller can write data directly into the returned buffer (at most `dstr_capacity() - 1` bytes), then call `dstr_set_length()` to update the string length.
+
+> [!WARNING]
+>
+> The returned pointer points to an internal buffer; do not write past the end of the buffer (capacity _`-1`_).
+>
+> This pointer is temporary and may be invalidated by changes to the content or capacity of `dstr`; do not rely on it.
+>
+> After writing, you must call `dstr_set_length()` to update the length; otherwise the string's length and content will be inconsistent.
+
 <a id="api-functions-getters-and-setters-dstr_length"></a>
 
 #### `dstr_length()` [↑](#api-functions-getters-and-setters)
@@ -415,6 +455,34 @@ size_t dstr_length(
 | Return Value | Description           |
 | ------------ | --------------------- |
 | `size_t`     | The length of `dstr`. |
+
+<a id="api-functions-getters-and-setters-dstr_set_length"></a>
+
+#### `dstr_set_length()` [↑](#api-functions-getters-and-setters)
+
+Sets the length of a "dynamic string".
+
+```c
+dstr_status_t dstr_set_length(
+	dstr_adt *dstr,
+	size_t new_length
+);
+```
+
+| Parameter    | Type         | Description                                                                                              |
+| ------------ | ------------ | -------------------------------------------------------------------------------------------------------- |
+| `dstr`       | `dstr_adt *` | Pointer to the target "dynamic string".<br>A _null pointer_ is treated as an invalid argument.           |
+| `new_length` | `size_t`     | The new length.<br>Must be less than the buffer size (i.e. `dstr_capacity()`); otherwise an invalid argument. |
+
+| Return Value   | Description        |
+| -------------- | ------------------ |
+| `dstr_status_t` | Global status code. |
+
+> [!NOTE]
+>
+> This function only updates the length and writes `'\0'` at the new length; it does not grow or shrink the buffer.
+>
+> Typically used together with `dstr_data()`: first obtain a writable buffer and write data, then call this function to set the length.
 
 <a id="api-functions-getters-and-setters-dstr_is_empty"></a>
 

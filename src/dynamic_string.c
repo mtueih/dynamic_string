@@ -1062,9 +1062,32 @@ const char *dstr_cstr(const struct dynamic_string *const dstr) {
 	return (dstr != NULL) ? dstr->data : NULL;
 }
 
+/* 获取一个「动态字符串」的内部缓冲区指针（可写）。 */
+char *dstr_data(struct dynamic_string *const dstr) {
+	return (dstr != NULL) ? dstr->data : NULL;
+}
+
 /* 获取一个「动态字符串」的长度。 */
 size_t dstr_length(const struct dynamic_string *const dstr) {
 	return (dstr != NULL) ? dstr->len : 0;
+}
+
+/* 设置一个「动态字符串」的长度。 */
+dstr_status_t dstr_set_length(struct dynamic_string *const dstr, const size_t new_length) {
+	if (dstr == NULL) /* 参数检查。 */
+	{
+		return DSTR_INVALID_ARGUMENT;
+	}
+
+	/* 目标长度必须小于缓冲区大小（容量），否则缓冲区末尾无法容纳 '\0'。 */
+	if (new_length >= DSTR_CAP(dstr)) {
+		return DSTR_INVALID_ARGUMENT;
+	}
+
+	dstr->len = new_length;
+	dstr->data[new_length] = '\0'; /* 无条件写入 '\0'。 */
+
+	return DSTR_SUCCESS;
 }
 
 /* 判断一个「动态字符串」是否是空「动态字符串」。 */

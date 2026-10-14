@@ -338,9 +338,13 @@ dstr_adt *dstr_create_vformat(
   </thead>
   <tbody>
     <tr>
-      <td rowspan="4">获取</td>
+      <td rowspan="5">获取</td>
       <td>获取内部「C 字符串」指针</td>
       <td><a href="#api-functions-getters-and-setters-dstr_cstr"><code>dstr_cstr()</code></a></td>
+    </tr>
+    <tr>
+      <td>获取内部缓冲区指针（可写）</td>
+      <td><a href="#api-functions-getters-and-setters-dstr_data"><code>dstr_data()</code></a></td>
     </tr>
     <tr>
       <td>获取长度</td>
@@ -355,7 +359,11 @@ dstr_adt *dstr_create_vformat(
       <td><a href="#api-functions-getters-and-setters-dstr_is_empty"><code>dstr_is_empty()</code></a></td>
     </tr>
     <tr>
-      <td rowspan="2">设置</td>
+      <td rowspan="3">设置</td>
+      <td>设置长度</td>
+      <td><a href="#api-functions-getters-and-setters-dstr_set_length"><code>dstr_set_length()</code></a></td>
+    </tr>
+    <tr>
       <td>设置容量</td>
       <td><a href="#api-functions-getters-and-setters-dstr_set_capacity"><code>dstr_set_capacity()</code></a></td>
     </tr>
@@ -396,6 +404,38 @@ const char *dstr_cstr(
 >
 > 该指针是临时的，可能因 `dstr` 的内容或容量的变化而失效，切勿依赖。
 
+<a id="api-functions-getters-and-setters-dstr_data"></a>
+
+#### `dstr_data()` [↑](#api-functions-getters-and-setters)
+
+获取一个「动态字符串」内部缓冲区的可写指针。
+
+```c
+char *dstr_data(
+	dstr_adt *dstr
+);
+```
+
+| 参数   | 类型         | 说明                                                           |
+| ------ | ------------ | -------------------------------------------------------------- |
+| `dstr` | `dstr_adt *` | 目标「动态字符串」的指针。<br>为*空指针*时，函数会直接返回*空指针*。 |
+
+| 返回值    | 说明                          |
+| --------- | ----------------------------- |
+| `char *`  | `dstr` 内部缓冲区的可写指针。 |
+
+> [!NOTE]
+>
+> 此函数用于避免拷贝开销：调用者可向返回的缓冲区直接写入数据（最多可写入 `dstr_capacity() - 1` 字节），随后调用 `dstr_set_length()` 更新字符串长度。
+
+> [!WARNING]
+>
+> 返回的指针指向内部缓冲区，写入时请勿越过缓冲区末尾（容量 _`-1`_）。
+>
+> 该指针是临时的，可能因 `dstr` 的内容或容量的变化而失效，切勿依赖。
+>
+> 写入后必须调用 `dstr_set_length()` 更新长度，否则字符串的长度与内容不一致。
+
 <a id="api-functions-getters-and-setters-dstr_length"></a>
 
 #### `dstr_length()` [↑](#api-functions-getters-and-setters)
@@ -415,6 +455,34 @@ size_t dstr_length(
 | 返回值   | 说明            |
 | -------- | --------------- |
 | `size_t` | `dstr` 的长度。 |
+
+<a id="api-functions-getters-and-setters-dstr_set_length"></a>
+
+#### `dstr_set_length()` [↑](#api-functions-getters-and-setters)
+
+设置一个「动态字符串」的长度。
+
+```c
+dstr_status_t dstr_set_length(
+	dstr_adt *dstr,
+	size_t new_length
+);
+```
+
+| 参数         | 类型             | 说明                                                                        |
+| ------------ | ---------------- | --------------------------------------------------------------------------- |
+| `dstr`       | `dstr_adt *`     | 目标「动态字符串」的指针。<br>为*空指针*时，视为无效参数。                  |
+| `new_length` | `size_t`         | 新的长度。<br>必须小于缓冲区大小（即 `dstr_capacity()`），否则视为无效参数。 |
+
+| 返回值          | 说明         |
+| --------------- | ------------ |
+| `dstr_status_t` | 全局状态码。 |
+
+> [!NOTE]
+>
+> 此函数仅更新长度并在新长度处写入 `'\0'`，不会扩容或缩容缓冲区。
+>
+> 通常与 `dstr_data()` 配合使用：先获取可写缓冲区、写入数据，再调用本函数设定长度。
 
 <a id="api-functions-getters-and-setters-dstr_is_empty"></a>
 

@@ -246,6 +246,25 @@ void test_dstr_cstr(void) {
 	dstr_destroy(s);
 }
 
+void test_dstr_data(void) {
+	TEST_ASSERT_NULL(dstr_data(NULL));
+
+	dstr_adt *s = dstr_create("abc");
+	char *buf = dstr_data(s);
+	TEST_ASSERT_NOT_NULL(buf);
+	TEST_ASSERT_EQUAL_PTR(dstr_cstr(s), buf);
+	TEST_ASSERT_EQUAL_STRING("abc", buf);
+
+	/* 通过 dstr_data() 直接写入，再用 dstr_set_length() 设定长度。 */
+	const size_t cap = dstr_capacity(s);
+	TEST_ASSERT_TRUE(cap > 3);
+	memcpy(buf, "xyz", 3);
+	ASSERT_OK(dstr_set_length(s, 3));
+	ASSERT_DSTR_EQ(s, "xyz");
+
+	dstr_destroy(s);
+}
+
 void test_dstr_length(void) {
 	TEST_ASSERT_EQUAL_size_t(0, dstr_length(NULL));
 
@@ -253,6 +272,35 @@ void test_dstr_length(void) {
 	TEST_ASSERT_EQUAL_size_t(4, dstr_length(s));
 	dstr_clear(s);
 	TEST_ASSERT_EQUAL_size_t(0, dstr_length(s));
+	dstr_destroy(s);
+}
+
+void test_dstr_set_length(void) {
+	ASSERT_INVALID(dstr_set_length(NULL, 0));
+
+	dstr_adt *s = dstr_create("hello");
+	const size_t cap = dstr_capacity(s);
+
+	/* 目标长度必须小于缓冲区大小（容量），否则视为无效参数。 */
+	ASSERT_INVALID(dstr_set_length(s, cap)); /* 等于容量，非法。 */
+	ASSERT_INVALID(dstr_set_length(s, cap + 100)); /* 大于容量，非法。 */
+
+	/* 缩短长度，并在新长度处补 '\0'。 */
+	ASSERT_OK(dstr_set_length(s, 2));
+	ASSERT_DSTR_EQ(s, "he");
+	TEST_ASSERT_EQUAL_INT('\0', dstr_cstr(s)[2]);
+
+	/* 设为 0，清空。 */
+	ASSERT_OK(dstr_set_length(s, 0));
+	ASSERT_DSTR_EQ(s, "");
+
+	/* 配合 dstr_data() 写入后设定长度。 */
+	char *buf = dstr_data(s);
+	TEST_ASSERT_NOT_NULL(buf);
+	memcpy(buf, "abc", 3);
+	ASSERT_OK(dstr_set_length(s, 3));
+	ASSERT_DSTR_EQ(s, "abc");
+
 	dstr_destroy(s);
 }
 
@@ -1366,7 +1414,9 @@ int main(void) {
 	RUN_TEST(test_dstr_create_vformat);
 
 	RUN_TEST(test_dstr_cstr);
+	RUN_TEST(test_dstr_data);
 	RUN_TEST(test_dstr_length);
+	RUN_TEST(test_dstr_set_length);
 	RUN_TEST(test_dstr_is_empty);
 	RUN_TEST(test_dstr_capacity);
 	RUN_TEST(test_dstr_set_capacity);
