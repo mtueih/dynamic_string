@@ -1164,6 +1164,9 @@ void test_dstr_replace_cstr(void) {
 	ASSERT_OK(dstr_cpy_cstr(s, "one"));
 	ASSERT_INVALID(dstr_replace_cstr(s, "one", "X", DSTR_DIR_FORWARD, 2));
 	ASSERT_DSTR_EQ(s, "one");
+	/* n 为 0 且一次都没有出现，视为成功，不进行替换。 */
+	ASSERT_OK(dstr_replace_cstr(s, "two", "X", DSTR_DIR_FORWARD, 0));
+	ASSERT_DSTR_EQ(s, "one");
 	ASSERT_INVALID(dstr_replace_cstr(s, "", "X", DSTR_DIR_FORWARD, 0));
 	ASSERT_INVALID(dstr_replace_cstr(s, NULL, "X", DSTR_DIR_FORWARD, 0));
 	ASSERT_INVALID(dstr_replace_cstr(NULL, "a", "b", DSTR_DIR_FORWARD, 0));

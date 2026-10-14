@@ -455,9 +455,15 @@ static dstr_status_t replace_str(struct dynamic_string *const dstr, const char *
 	const size_t old_str_count =
 		find_str(dstr->data, dstr->len, old_str, old_str_len, NULL, NULL, direction, n);
 
-	/* 如果 old_str 实际出现次数为 0 次或不足 n 次，视为参数不合法并返回。 */
-	if (old_str_count == 0 || old_str_count < n) {
+	/* 仅在需要替换指定次数（n 不为 0）且实际出现次数不足 n 次时，视为参数不合法并返回。
+	 * n 为 0 时，即使一次都没有出现，也视为成功（不进行任何替换）。 */
+	if (n != 0 && old_str_count < n) {
 		return DSTR_INVALID_ARGUMENT;
+	}
+
+	/* n 为 0 且一次都没有出现，无需替换，直接返回成功。 */
+	if (old_str_count == 0) {
+		return DSTR_SUCCESS;
 	}
 
 	/* 计算替换后的新长度。 */
