@@ -51,7 +51,7 @@
  * 而且不论如何变动，成员变量 cap 永远都是必不可少的，因此此宏的值大概率不会小于一个 size_t 的大小，
  * 也就是说，【栈缓冲区的大小一定大于 0】，此文件中的代码可以根据此事实做优化。
  */
-#define DYNAMIC_STRING_SSO_BUF_SIZE (sizeof(size_t) * 2)
+#define DSTR_SSO_BUF_SIZE (sizeof(size_t) * 2)
 
 #define CHECK_DSTR_EMPTY(dstr) ((dstr) == NULL || (dstr)->len == 0)
 #define CHECK_CSTR_EMPTY(cstr) ((cstr) == NULL || (cstr)[0] == '\0')
@@ -61,6 +61,9 @@
 
 #define DSTR_HEAP_CAP(dstr) ((dstr)->storage.heap_info.cap)
 #define DSTR_HEAP_MIN_CAP(dstr) ((dstr)->storage.heap_info.min_cap)
+
+#define DSTR_CAP(dstr)                                                                             \
+	((CHECK_DSTR_STACK_MODE((dstr))) ? (DSTR_SSO_BUF_SIZE) : (DSTR_HEAP_CAP((dstr))))
 
 
 /*--------------------------------------------------------------------------------------------------
@@ -73,11 +76,11 @@ struct dynamic_string {
 
 	union {
 		struct {
-			size_t cap;     /* 「动态字符串」的容量。 */
+			size_t cap;		/* 「动态字符串」的容量。 */
 			size_t min_cap; /* 「动态字符串」的保底容量。 */
 		} heap_info;
 
-		char sso_buf[DYNAMIC_STRING_SSO_BUF_SIZE];
+		char sso_buf[DSTR_SSO_BUF_SIZE];
 	} storage;
 };
 
@@ -96,10 +99,8 @@ struct dynamic_string {
  *
  * @return 如果调整成功则返回 true，否则返回 false。
  */
-static bool resize_capacity(
-	struct dynamic_string *const dstr, size_t new_cap,
-	const bool should_adjust_dynamically
-) {
+static bool resize_capacity(struct dynamic_string *const dstr, size_t new_cap,
+							const bool should_adjust_dynamically) {
 	assert(dstr != NULL);
 
 	/* 当使用栈缓冲区时。
@@ -107,7 +108,7 @@ static bool resize_capacity(
 	 * 否则直接返回 true。 */
 	if (CHECK_DSTR_STACK_MODE(dstr)) {
 		/* 如果请求容量 <= 栈缓冲区大小，直接返回 true。 */
-		if (new_cap <= DYNAMIC_STRING_SSO_BUF_SIZE) {
+		if (new_cap <= DSTR_SSO_BUF_SIZE) {
 			return true;
 		}
 
@@ -118,9 +119,9 @@ static bool resize_capacity(
 		}
 
 		/* 拷贝栈缓冲区全部内容至堆缓冲区。 */
-		memcpy(new_data, DSTR_STACK_BUFFER(dstr), DYNAMIC_STRING_SSO_BUF_SIZE);
+		memcpy(new_data, DSTR_STACK_BUFFER(dstr), DSTR_SSO_BUF_SIZE);
 
-		dstr->data = new_data;         /* 让 data 指向堆缓冲区。 */
+		dstr->data = new_data;		   /* 让 data 指向堆缓冲区。 */
 		DSTR_HEAP_CAP(dstr) = new_cap; /* 更新容量。 */
 		DSTR_HEAP_MIN_CAP(dstr) = 0;   /* 初始化保底容量为 0。 */
 
@@ -136,12 +137,12 @@ static bool resize_capacity(
 	}
 
 	/* 如果请求容量 <= 栈缓冲区的大小，则将堆缓冲区转回栈缓冲区。 */
-	if (new_cap <= DYNAMIC_STRING_SSO_BUF_SIZE) {
+	if (new_cap <= DSTR_SSO_BUF_SIZE) {
 		/* 拷贝堆缓冲区内容到栈缓冲区。
 		 * 仅拷贝栈缓冲区大小所能容纳的数据量。 */
-		memcpy(DSTR_STACK_BUFFER(dstr), dstr->data, DYNAMIC_STRING_SSO_BUF_SIZE);
+		memcpy(DSTR_STACK_BUFFER(dstr), dstr->data, DSTR_SSO_BUF_SIZE);
 
-		free(dstr->data);                     /* 释放堆缓冲区。*/
+		free(dstr->data);					  /* 释放堆缓冲区。*/
 		dstr->data = DSTR_STACK_BUFFER(dstr); /* 让 data 指向栈缓冲区。 */
 
 		return true;
@@ -182,7 +183,7 @@ static bool resize_capacity(
 		return false;
 	}
 
-	dstr->data = new_data;         /* 更新堆缓冲区指针。 */
+	dstr->data = new_data;		   /* 更新堆缓冲区指针。 */
 	DSTR_HEAP_CAP(dstr) = new_cap; /* 更新容量。 */
 
 	return true;
@@ -204,14 +205,12 @@ static struct dynamic_string *create_dstr(const char *const src, const size_t sr
 		return NULL;
 	}
 
-	*new_dstr = (struct dynamic_string) { 0 };    /* 初始化。 */
+	*new_dstr = (struct dynamic_string){0};		  /* 初始化。 */
 	new_dstr->data = DSTR_STACK_BUFFER(new_dstr); /* data 默认指向栈小字符串缓冲区。 */
 
 	if (src_len > 0) {
-		if (
-			safe_size_add(src_len, 1, NULL) != SAFE_CALC_OK ||
-			!resize_capacity(new_dstr, src_len + 1, false)
-		) {
+		if (safe_size_add(src_len, 1, NULL) != SAFE_CALC_OK ||
+			!resize_capacity(new_dstr, src_len + 1, false)) {
 			free(new_dstr);
 			return NULL;
 		}
@@ -238,24 +237,18 @@ static struct dynamic_string *create_dstr(const char *const src, const size_t sr
  *
  * @return 全局状态码。
  */
-static dstr_status_t insert_str(
-	struct dynamic_string *const dest, const size_t index,
-	const size_t remove_length, const char *const src,
-	const size_t src_len
-) {
-	assert(
-		dest != NULL && index <= dest->len && remove_length <= dest->len &&
-		index + remove_length <= dest->len && (src_len == 0 || (src_len > 0 && src != NULL))
-	);
+static dstr_status_t insert_str(struct dynamic_string *const dest, const size_t index,
+								const size_t remove_length, const char *const src,
+								const size_t src_len) {
+	assert(dest != NULL && index <= dest->len && remove_length <= dest->len &&
+		   index + remove_length <= dest->len && (src_len == 0 || (src_len > 0 && src != NULL)));
 
 	const size_t new_len = dest->len - remove_length + src_len; /* 插入后，dstr 新的长度。 */
 
 	/* 当新长度大于当前长度时尝试扩容。 */
 	if (new_len > dest->len) {
-		if (
-			safe_size_add(new_len, 1, NULL) != SAFE_CALC_OK ||
-			!resize_capacity(dest, new_len + 1, true)
-		) {
+		if (safe_size_add(new_len, 1, NULL) != SAFE_CALC_OK ||
+			!resize_capacity(dest, new_len + 1, true)) {
 			return DSTR_MEMORY_ALLOC_FAILED;
 		}
 	}
@@ -296,15 +289,11 @@ static dstr_status_t insert_str(
  *
  * @return 全局状态码。
  */
-static dstr_status_t insert_str_format(
-	struct dynamic_string *const dstr, const size_t index,
-	const size_t remove_length, const char *const format,
-	va_list args
-) {
-	assert(
-		dstr != NULL && index <= dstr->len && remove_length <= dstr->len &&
-		index + remove_length <= dstr->len && !CHECK_CSTR_EMPTY(format)
-	);
+static dstr_status_t insert_str_format(struct dynamic_string *const dstr, const size_t index,
+									   const size_t remove_length, const char *const format,
+									   va_list args) {
+	assert(dstr != NULL && index <= dstr->len && remove_length <= dstr->len &&
+		   index + remove_length <= dstr->len && !CHECK_CSTR_EMPTY(format));
 
 	va_list temp_args;
 
@@ -322,10 +311,8 @@ static dstr_status_t insert_str_format(
 
 	/* 当新长度大于当前长度时尝试扩容。 */
 	if (new_len > dstr->len) {
-		if (
-			safe_size_add(new_len, 1, NULL) != SAFE_CALC_OK ||
-			!resize_capacity(dstr, new_len + 1, true)
-		) {
+		if (safe_size_add(new_len, 1, NULL) != SAFE_CALC_OK ||
+			!resize_capacity(dstr, new_len + 1, true)) {
 			return DSTR_MEMORY_ALLOC_FAILED;
 		}
 	}
@@ -379,15 +366,13 @@ static dstr_status_t insert_str_format(
  *
  * @return 指定子「C 字符串」截止第 n 次，实际一共出现的次数。
  */
-static size_t find_str(
-	const char *const cstr, const size_t cstr_len, const char *const sub,
-	const size_t sub_len, size_t *const out_index, size_t *const out_indexes,
-	const dstr_direction_t direction, const size_t n
-) {
+static size_t find_str(const char *const cstr, const size_t cstr_len, const char *const sub,
+					   const size_t sub_len, size_t *const out_index, size_t *const out_indexes,
+					   const dstr_direction_t direction, const size_t n) {
 	assert(cstr != NULL && cstr_len > 0 && sub != NULL && sub_len > 0 && sub_len <= cstr_len);
 
 	const char *find = NULL; /* 用于存储当前出现位置的指针。 */
-	size_t find_count = 0;   /* 用于统计出现的次数。 */
+	size_t find_count = 0;	 /* 用于统计出现的次数。 */
 	/* 指向查找区间结尾的指针。用于迭代边界。 */
 	const char *const find_end = cstr + cstr_len - sub_len + 1;
 
@@ -459,24 +444,16 @@ static size_t find_str(
  *
  * @return 全局状态码。
  */
-static dstr_status_t replace_str(
-	struct dynamic_string *const dstr, const char *const old_str,
-	const size_t old_str_len, const char *const new_str,
-	const size_t new_str_len, const dstr_direction_t direction,
-	const size_t n
-) {
-	assert(
-		!CHECK_DSTR_EMPTY(dstr) && old_str != NULL && old_str_len > 0 &&
-		old_str_len <= dstr->len && (new_str_len == 0 || (new_str_len > 0 && new_str != NULL))
-	);
+static dstr_status_t replace_str(struct dynamic_string *const dstr, const char *const old_str,
+								 const size_t old_str_len, const char *const new_str,
+								 const size_t new_str_len, const dstr_direction_t direction,
+								 const size_t n) {
+	assert(!CHECK_DSTR_EMPTY(dstr) && old_str != NULL && old_str_len > 0 &&
+		   old_str_len <= dstr->len && (new_str_len == 0 || (new_str_len > 0 && new_str != NULL)));
 
 	/* 先查找一次，以统计 old_str 实际出现的次数（截止第 n 次）。 */
-	const size_t old_str_count = find_str(
-		dstr->data, dstr->len,
-		old_str, old_str_len,
-		NULL, NULL,
-		direction, n
-	);
+	const size_t old_str_count =
+		find_str(dstr->data, dstr->len, old_str, old_str_len, NULL, NULL, direction, n);
 
 	/* 如果 old_str 实际出现次数为 0 次或不足 n 次，视为参数不合法并返回。 */
 	if (old_str_count == 0 || old_str_count < n) {
@@ -485,13 +462,11 @@ static dstr_status_t replace_str(
 
 	/* 计算替换后的新长度。 */
 	/* new_str_len 与 old_str_len 比较情况。 */
-	const int new_len_cmp_old_len = (new_str_len > old_str_len)
-									? 1
-									: ((new_str_len < old_str_len) ? -1 : 0);
+	const int new_len_cmp_old_len =
+		(new_str_len > old_str_len) ? 1 : ((new_str_len < old_str_len) ? -1 : 0);
 	/* new_str_len 与 old_str_len 差的绝对值。 */
-	const size_t len_diff = (new_len_cmp_old_len > 0)
-							? (new_str_len - old_str_len)
-							: (old_str_len - new_str_len);
+	const size_t len_diff =
+		(new_len_cmp_old_len > 0) ? (new_str_len - old_str_len) : (old_str_len - new_str_len);
 
 	size_t new_len; /* 替换完成后新的字符串长度。 */
 
@@ -507,8 +482,7 @@ static dstr_status_t replace_str(
 			/* 安全计算 size_t 加法「new_len + 1」，防止溢出。 */
 			safe_size_add(new_len, 1, NULL) != SAFE_CALC_OK ||
 			/* 调整容量。 */
-			!resize_capacity(dstr, new_len + 1, true)
-		) {
+			!resize_capacity(dstr, new_len + 1, true)) {
 			return DSTR_MEMORY_ALLOC_FAILED;
 		}
 	} else if (new_len_cmp_old_len < 0) {
@@ -519,18 +493,13 @@ static dstr_status_t replace_str(
 
 	/* 分配 size_t 数组以存储所有出现的位置。 */
 	size_t *const indexes = (safe_size_mul(old_str_count, sizeof(size_t), NULL) == SAFE_CALC_OK)
-							? malloc(old_str_count * sizeof(size_t))
-							: NULL;
+								? malloc(old_str_count * sizeof(size_t))
+								: NULL;
 
 	/* 如果分配成功，走优路径，二次查找记录位置并基于位置替换。 */
 	if (indexes != NULL) {
 		/* 进行第二次查找，以记录所有出现的位置。 */
-		find_str(
-			dstr->data, dstr->len,
-			old_str, old_str_len,
-			NULL, indexes,
-			direction, n
-		);
+		find_str(dstr->data, dstr->len, old_str, old_str_len, NULL, indexes, direction, n);
 
 		/* 执行替换。
 		 * 当 new_str_len > old_str_len
@@ -721,8 +690,7 @@ static dstr_status_t replace_str(
 		/* 指向 dstr 结尾的指针。迭代过程中可能改变。 */
 		char *dstr_end = dstr->data + dstr->len;
 		/* 指向查找区间结尾的指针。迭代过程中可能改变。 */
-		char *find_end =
-			dstr_end - old_str_len + 1;
+		char *find_end = dstr_end - old_str_len + 1;
 
 		/* 从后往前替换。 */
 		if (direction == DSTR_DIR_BACKWARD) {
@@ -838,16 +806,12 @@ static dstr_status_t replace_str(
  *
  * @return 全局状态码。
  */
-static dstr_status_t replace_str_nth(
-	struct dynamic_string *const dstr, const char *const old_str,
-	const size_t old_str_len, const char *const new_str,
-	const size_t new_str_len, const dstr_direction_t direction,
-	const size_t n
-) {
-	assert(
-		!CHECK_DSTR_EMPTY(dstr) && old_str != NULL && old_str_len > 0 &&
-		old_str_len <= dstr->len && (new_str_len == 0 || (new_str_len > 0 && new_str != NULL))
-	);
+static dstr_status_t replace_str_nth(struct dynamic_string *const dstr, const char *const old_str,
+									 const size_t old_str_len, const char *const new_str,
+									 const size_t new_str_len, const dstr_direction_t direction,
+									 const size_t n) {
+	assert(!CHECK_DSTR_EMPTY(dstr) && old_str != NULL && old_str_len > 0 &&
+		   old_str_len <= dstr->len && (new_str_len == 0 || (new_str_len > 0 && new_str != NULL)));
 
 	size_t index; /* 存储第 n 次出现的位置索引。 */
 	/* 查找第 n 次出现的位置。 */
@@ -875,15 +839,11 @@ static dstr_status_t replace_str_nth(
  * @return 分割后「动态字符串」指针数组的指针。如果分割失败则返回空指针。
  *         注意：数组中的某些元素可能为空指针，表示该部分为空字符串。
  */
-static struct dynamic_string **split_str(
-	const char *const cstr, const size_t cstr_len,
-	const char *const separator, const size_t separator_len,
-	size_t *const out_dstr_count
-) {
-	assert(
-		cstr != NULL && cstr_len > 0 && separator != NULL && separator_len > 0 &&
-		separator_len <= cstr_len && out_dstr_count != NULL
-	);
+static struct dynamic_string **split_str(const char *const cstr, const size_t cstr_len,
+										 const char *const separator, const size_t separator_len,
+										 size_t *const out_dstr_count) {
+	assert(cstr != NULL && cstr_len > 0 && separator != NULL && separator_len > 0 &&
+		   separator_len <= cstr_len && out_dstr_count != NULL);
 
 	/* 第一遍查找，统计 separator 在 cstr 中，出现的次数。 */
 	const size_t separator_count =
@@ -899,9 +859,9 @@ static struct dynamic_string **split_str(
 
 	/* 动态分配 struct dynamic_string * 数组。 */
 	struct dynamic_string **const dstrs =
-		(safe_size_mul(dstr_count, sizeof(struct dynamic_string*), NULL) == SAFE_CALC_OK)
-		? malloc(dstr_count * sizeof(struct dynamic_string*))
-		: NULL;
+		(safe_size_mul(dstr_count, sizeof(struct dynamic_string *), NULL) == SAFE_CALC_OK)
+			? malloc(dstr_count * sizeof(struct dynamic_string *))
+			: NULL;
 
 	if (dstrs == NULL) {
 		return NULL;
@@ -998,10 +958,8 @@ struct dynamic_string *dstr_clone(const struct dynamic_string *const dstr) {
 }
 
 /* 提取一个「C 字符串」的子串为一个新的「动态字符串」。 */
-struct dynamic_string *dstr_sub_cstr(
-	const char *const cstr, const size_t sub_start,
-	const size_t sub_length
-) {
+struct dynamic_string *dstr_sub_cstr(const char *const cstr, const size_t sub_start,
+									 const size_t sub_length) {
 	if (CHECK_CSTR_EMPTY(cstr)) /* 参数检查。 */
 	{
 		return create_dstr(NULL, 0); /* 委托 create_dstr() 函数，创建空的新「动态字符串」。 */
@@ -1020,10 +978,8 @@ struct dynamic_string *dstr_sub_cstr(
 }
 
 /* 提取一个「动态字符串」的子串为一个新的「动态字符串」。 */
-struct dynamic_string *dstr_sub(
-	const struct dynamic_string *const dstr, const size_t sub_start,
-	const size_t sub_length
-) {
+struct dynamic_string *dstr_sub(const struct dynamic_string *const dstr, const size_t sub_start,
+								const size_t sub_length) {
 	if (CHECK_DSTR_EMPTY(dstr)) /* 参数检查。 */
 	{
 		return create_dstr(NULL, 0); /* 委托 create_dstr() 函数，创建空的新「动态字符串」。 */
@@ -1036,10 +992,8 @@ struct dynamic_string *dstr_sub(
 	}
 
 	/* 委托 create_dstr() 函数，创建新「动态字符串」，并使用 dstr 子串初始化。 */
-	return create_dstr(
-		dstr->data + sub_start,
-		(sub_length > 0) ? sub_length : (dstr->len - sub_start)
-	);
+	return create_dstr(dstr->data + sub_start,
+					   (sub_length > 0) ? sub_length : (dstr->len - sub_start));
 }
 
 /* 格式化创建一个「动态字符串」。 */
@@ -1120,9 +1074,7 @@ bool dstr_is_empty(const struct dynamic_string *const dstr) {
 
 /* 获取一个「动态字符串」的容量。 */
 size_t dstr_capacity(const struct dynamic_string *const dstr) {
-	return (dstr != NULL)
-		   ? ((CHECK_DSTR_STACK_MODE(dstr)) ? DYNAMIC_STRING_SSO_BUF_SIZE : DSTR_HEAP_CAP(dstr))
-		   : 0;
+	return (dstr != NULL) ? (DSTR_CAP(dstr)) : 0;
 }
 
 /* 设置一个「动态字符串」的容量。 */
@@ -1147,7 +1099,7 @@ dstr_status_t dstr_set_capacity(struct dynamic_string *const dstr, size_t new_ca
 	 * 此时就要更新 new_capacity 的值为栈缓冲区大小，以使得 new_capacity 的值不小于栈缓冲区大小，
 	 * 避免后续截断字符串时，进行大量判断。 */
 	else {
-		new_capacity = DYNAMIC_STRING_SSO_BUF_SIZE;
+		new_capacity = DSTR_SSO_BUF_SIZE;
 	}
 
 	/* 如果 new_capacity <= 当前长度，则截断字符串。
@@ -1200,16 +1152,13 @@ dstr_status_t dstr_cpy(struct dynamic_string *const dest, const struct dynamic_s
 	}
 
 	/* 委托 insert_str() 函数，删除 dest 全部，插入 src 全部。 */
-	return (src != NULL)
-		   ? insert_str(dest, 0, dest->len, src->data, src->len)
-		   : insert_str(dest, 0, dest->len, NULL, 0);
+	return (src != NULL) ? insert_str(dest, 0, dest->len, src->data, src->len)
+						 : insert_str(dest, 0, dest->len, NULL, 0);
 }
 
 /* 复制一个「C 字符串」的子串到一个「动态字符串」。 */
-dstr_status_t dstr_cpy_sub_cstr(
-	struct dynamic_string *const dest, const char *const src,
-	const size_t sub_start, const size_t sub_length
-) {
+dstr_status_t dstr_cpy_sub_cstr(struct dynamic_string *const dest, const char *const src,
+								const size_t sub_start, const size_t sub_length) {
 	if (dest == NULL) /* 参数检查。 */
 	{
 		return DSTR_INVALID_ARGUMENT;
@@ -1229,18 +1178,14 @@ dstr_status_t dstr_cpy_sub_cstr(
 	}
 
 	/* 委托 insert_str() 函数，删除 dest 全部，插入 src 子串。 */
-	return insert_str(
-		dest, 0, dest->len, src + sub_start,
-		(sub_length > 0) ? sub_length : (src_len - sub_start)
-	);
+	return insert_str(dest, 0, dest->len, src + sub_start,
+					  (sub_length > 0) ? sub_length : (src_len - sub_start));
 }
 
 /* 复制一个「动态字符串」的子串到另一个「动态字符串」。 */
-dstr_status_t dstr_cpy_sub(
-	struct dynamic_string *const dest,
-	const struct dynamic_string *const src, const size_t sub_start,
-	const size_t sub_length
-) {
+dstr_status_t dstr_cpy_sub(struct dynamic_string *const dest,
+						   const struct dynamic_string *const src, const size_t sub_start,
+						   const size_t sub_length) {
 	if (dest == NULL) /* 参数检查。 */
 	{
 		return DSTR_INVALID_ARGUMENT;
@@ -1259,10 +1204,8 @@ dstr_status_t dstr_cpy_sub(
 	}
 
 	/* 委托 insert_str() 函数，删除 dest 全部，插入 src 子串。 */
-	return insert_str(
-		dest, 0, dest->len, src->data + sub_start,
-		(sub_length > 0) ? sub_length : (src->len - sub_start)
-	);
+	return insert_str(dest, 0, dest->len, src->data + sub_start,
+					  (sub_length > 0) ? sub_length : (src->len - sub_start));
 }
 
 /* 格式化复制一个字符串到一个「动态字符串」。 */
@@ -1289,10 +1232,8 @@ dstr_status_t dstr_cpy_format(struct dynamic_string *const dest, const char *con
 }
 
 /* 格式化复制一个字符串到一个「动态字符串」（va_list 版本）。 */
-dstr_status_t dstr_cpy_vformat(
-	struct dynamic_string *const dest, const char *const format,
-	va_list args
-) {
+dstr_status_t dstr_cpy_vformat(struct dynamic_string *const dest, const char *const format,
+							   va_list args) {
 	if (dest == NULL) /* 参数检查。 */
 	{
 		return DSTR_INVALID_ARGUMENT;
@@ -1316,9 +1257,8 @@ dstr_status_t dstr_cat_cstr(struct dynamic_string *const dest, const char *const
 	}
 
 	/* 委托 insert_str() 函数，不删除，尾部插入 src 全部。 */
-	return (!CHECK_CSTR_EMPTY(src))
-		   ? insert_str(dest, dest->len, 0, src, strlen(src))
-		   : DSTR_SUCCESS;
+	return (!CHECK_CSTR_EMPTY(src)) ? insert_str(dest, dest->len, 0, src, strlen(src))
+									: DSTR_SUCCESS;
 }
 
 /* 追加一个「动态字符串」到另一个「动态字符串」。 */
@@ -1329,16 +1269,13 @@ dstr_status_t dstr_cat(struct dynamic_string *const dest, const struct dynamic_s
 	}
 
 	/* 委托 insert_str() 函数，不删除，尾部插入 src 全部。 */
-	return (!CHECK_DSTR_EMPTY(src))
-		   ? insert_str(dest, dest->len, 0, src->data, src->len)
-		   : DSTR_SUCCESS;
+	return (!CHECK_DSTR_EMPTY(src)) ? insert_str(dest, dest->len, 0, src->data, src->len)
+									: DSTR_SUCCESS;
 }
 
 /* 追加一个「C 字符串」的子串到一个「动态字符串」。 */
-dstr_status_t dstr_cat_sub_cstr(
-	struct dynamic_string *const dest, const char *const src,
-	const size_t sub_start, const size_t sub_length
-) {
+dstr_status_t dstr_cat_sub_cstr(struct dynamic_string *const dest, const char *const src,
+								const size_t sub_start, const size_t sub_length) {
 	if (dest == NULL) /* 参数检查。 */
 	{
 		return DSTR_INVALID_ARGUMENT;
@@ -1356,18 +1293,14 @@ dstr_status_t dstr_cat_sub_cstr(
 		return DSTR_INVALID_ARGUMENT;
 	}
 
-	return insert_str(
-		dest, dest->len, 0, src + sub_start,
-		(sub_length > 0) ? sub_length : (src_len - sub_start)
-	);
+	return insert_str(dest, dest->len, 0, src + sub_start,
+					  (sub_length > 0) ? sub_length : (src_len - sub_start));
 }
 
 /* 追加一个「动态字符串」的子串到另一个「动态字符串」。 */
-dstr_status_t dstr_cat_sub(
-	struct dynamic_string *const dest,
-	const struct dynamic_string *const src, const size_t sub_start,
-	const size_t sub_length
-) {
+dstr_status_t dstr_cat_sub(struct dynamic_string *const dest,
+						   const struct dynamic_string *const src, const size_t sub_start,
+						   const size_t sub_length) {
 	if (dest == NULL) /* 参数检查。 */
 	{
 		return DSTR_INVALID_ARGUMENT;
@@ -1386,10 +1319,8 @@ dstr_status_t dstr_cat_sub(
 	}
 
 	/* 委托 insert_str() 函数，不删除，尾部插入 src 子串。 */
-	return insert_str(
-		dest, dest->len, 0, src->data + sub_start,
-		(sub_length > 0) ? sub_length : (src->len - sub_start)
-	);
+	return insert_str(dest, dest->len, 0, src->data + sub_start,
+					  (sub_length > 0) ? sub_length : (src->len - sub_start));
 }
 
 /* 格式化追加一个字符串到一个「动态字符串」。 */
@@ -1415,10 +1346,8 @@ dstr_status_t dstr_cat_format(struct dynamic_string *const dest, const char *con
 }
 
 /* 格式化追加一个字符串到一个「动态字符串」（va_list 版本）。 */
-dstr_status_t dstr_cat_vformat(
-	struct dynamic_string *const dest, const char *const format,
-	va_list args
-) {
+dstr_status_t dstr_cat_vformat(struct dynamic_string *const dest, const char *const format,
+							   va_list args) {
 	if (dest == NULL) /* 参数检查。 */
 	{
 		return DSTR_INVALID_ARGUMENT;
@@ -1435,10 +1364,8 @@ dstr_status_t dstr_cat_vformat(
 }
 
 /* 插入一个「C 字符串」到一个「动态字符串」。 */
-dstr_status_t dstr_insert_cstr(
-	struct dynamic_string *const dest, const size_t index,
-	const char *const src
-) {
+dstr_status_t dstr_insert_cstr(struct dynamic_string *const dest, const size_t index,
+							   const char *const src) {
 	if (dest == NULL || index > dest->len) /* 参数检查。 */
 	{
 		return DSTR_INVALID_ARGUMENT;
@@ -1449,27 +1376,22 @@ dstr_status_t dstr_insert_cstr(
 }
 
 /* 插入一个「动态字符串」到另一个「动态字符串」。 */
-dstr_status_t dstr_insert(
-	struct dynamic_string *const dest, const size_t index,
-	const struct dynamic_string *const src
-) {
+dstr_status_t dstr_insert(struct dynamic_string *const dest, const size_t index,
+						  const struct dynamic_string *const src) {
 	if (dest == NULL || index > dest->len) /* 参数检查。 */
 	{
 		return DSTR_INVALID_ARGUMENT;
 	}
 
 	/* 委托 insert_str() 函数，不删除，指定位置插入 src 全部。 */
-	return (!CHECK_DSTR_EMPTY(src))
-		   ? insert_str(dest, index, 0, src->data, src->len)
-		   : DSTR_SUCCESS;
+	return (!CHECK_DSTR_EMPTY(src)) ? insert_str(dest, index, 0, src->data, src->len)
+									: DSTR_SUCCESS;
 }
 
 /* 插入一个「C 字符串」的子串到一个「动态字符串」。 */
-dstr_status_t dstr_insert_sub_cstr(
-	struct dynamic_string *const dest, const size_t index,
-	const char *const src, const size_t sub_start,
-	const size_t sub_length
-) {
+dstr_status_t dstr_insert_sub_cstr(struct dynamic_string *const dest, const size_t index,
+								   const char *const src, const size_t sub_start,
+								   const size_t sub_length) {
 	if (dest == NULL || index > dest->len) /* 参数检查。 */
 	{
 		return DSTR_INVALID_ARGUMENT;
@@ -1489,18 +1411,14 @@ dstr_status_t dstr_insert_sub_cstr(
 	}
 
 	/* 委托 insert_str() 函数，不删除，指定位置插入 src 子串。 */
-	return insert_str(
-		dest, index, 0, src + sub_start,
-		(sub_length > 0) ? sub_length : (src_len - sub_start)
-	);
+	return insert_str(dest, index, 0, src + sub_start,
+					  (sub_length > 0) ? sub_length : (src_len - sub_start));
 }
 
 /* 插入一个「动态字符串」的子串到另一个「动态字符串」。 */
-dstr_status_t dstr_insert_sub(
-	struct dynamic_string *const dest, const size_t index,
-	const struct dynamic_string *const src, const size_t sub_start,
-	const size_t sub_length
-) {
+dstr_status_t dstr_insert_sub(struct dynamic_string *const dest, const size_t index,
+							  const struct dynamic_string *const src, const size_t sub_start,
+							  const size_t sub_length) {
 	if (dest == NULL || index > dest->len) /* 参数检查。 */
 	{
 		return DSTR_INVALID_ARGUMENT;
@@ -1519,17 +1437,13 @@ dstr_status_t dstr_insert_sub(
 	}
 
 	/* 委托 insert_str() 函数，不删除，指定位置插入 src 子串。 */
-	return insert_str(
-		dest, index, 0, src->data + sub_start,
-		(sub_length > 0) ? sub_length : (src->len - sub_start)
-	);
+	return insert_str(dest, index, 0, src->data + sub_start,
+					  (sub_length > 0) ? sub_length : (src->len - sub_start));
 }
 
 /* 格式化插入一个字符串到一个「动态字符串」。 */
-dstr_status_t dstr_insert_format(
-	struct dynamic_string *const dest, const size_t index,
-	const char *const format, ...
-) {
+dstr_status_t dstr_insert_format(struct dynamic_string *const dest, const size_t index,
+								 const char *const format, ...) {
 	if (dest == NULL || index > dest->len) /* 参数检查。 */
 	{
 		return DSTR_INVALID_ARGUMENT;
@@ -1552,10 +1466,8 @@ dstr_status_t dstr_insert_format(
 }
 
 /* 格式化插入一个字符串到一个「动态字符串」（va_list 版本）。 */
-dstr_status_t dstr_insert_vformat(
-	struct dynamic_string *const dest, const size_t index,
-	const char *const format, va_list args
-) {
+dstr_status_t dstr_insert_vformat(struct dynamic_string *const dest, const size_t index,
+								  const char *const format, va_list args) {
 	if (dest == NULL || index > dest->len) /* 参数检查。 */
 	{
 		return DSTR_INVALID_ARGUMENT;
@@ -1584,10 +1496,8 @@ void dstr_clear(struct dynamic_string *const dstr) {
 }
 
 /* 删除一个「动态字符串」的子串。 */
-void dstr_remove(
-	struct dynamic_string *const dstr, const size_t sub_start,
-	const size_t sub_length
-) {
+void dstr_remove(struct dynamic_string *const dstr, const size_t sub_start,
+				 const size_t sub_length) {
 	/* 参数检查。 */
 	if (dstr == NULL || sub_start >= dstr->len ||
 		safe_size_add(sub_start, sub_length, NULL) != SAFE_CALC_OK ||
@@ -1617,7 +1527,7 @@ void dstr_trim(struct dynamic_string *const dstr, const char *const trim_chars) 
 	if (is_specified_trim_chars) /* 指定字符分支。 */
 	{
 		/* 使用查表法提升性能，用空间换时间。 */
-		bool mask[UCHAR_MAX + 1] = { false };
+		bool mask[UCHAR_MAX + 1] = {false};
 		for (const char *c = trim_chars; *c != '\0'; ++c) {
 			mask[(unsigned char)*c] = true;
 		}
@@ -1695,10 +1605,8 @@ bool dstr_starts_with_cstr(const struct dynamic_string *const dstr, const char *
 }
 
 /* 判断一个「动态字符串」是否以指定「动态字符串」前缀开头。 */
-bool dstr_starts_with(
-	const struct dynamic_string *const dstr,
-	const struct dynamic_string *const prefix
-) {
+bool dstr_starts_with(const struct dynamic_string *const dstr,
+					  const struct dynamic_string *const prefix) {
 	if (CHECK_DSTR_EMPTY(prefix)) /* 视「空字符串」是任何字符串的前缀。 */
 	{
 		return true;
@@ -1757,10 +1665,8 @@ bool dstr_ends_with_cstr(const struct dynamic_string *const dstr, const char *co
 }
 
 /* 判断一个「动态字符串」是否以指定「动态字符串」后缀结尾。 */
-bool dstr_ends_with(
-	const struct dynamic_string *const dstr,
-	const struct dynamic_string *const suffix
-) {
+bool dstr_ends_with(const struct dynamic_string *const dstr,
+					const struct dynamic_string *const suffix) {
 	if (CHECK_DSTR_EMPTY(suffix)) /* 视「空字符串」是任何字符串的后缀。 */
 	{
 		return true;
@@ -1818,10 +1724,8 @@ bool dstr_contains_cstr(const struct dynamic_string *const dstr, const char *con
 }
 
 /* 判断一个「动态字符串」是否包含指定子「动态字符串」。 */
-bool dstr_contains(
-	const struct dynamic_string *const dstr,
-	const struct dynamic_string *const sub
-) {
+bool dstr_contains(const struct dynamic_string *const dstr,
+				   const struct dynamic_string *const sub) {
 	if (CHECK_DSTR_EMPTY(sub)) /* 视「空字符串」是任何字符串的子串。 */
 	{
 		return true;
@@ -1864,7 +1768,7 @@ bool dstr_equals_cstr(const struct dynamic_string *const lhs, const char *const 
 	if (str_1_non_empty + str_2_non_empty < 2) /* 存在「空字符串」时，需要提前返回。 */
 	{
 		return (str_1_non_empty ==
-			str_2_non_empty); /* 都为「空字符串」视为相等，否则视为不相等。 */
+				str_2_non_empty); /* 都为「空字符串」视为相等，否则视为不相等。 */
 	}
 
 	return (strcmp(lhs->data, rhs) == 0);
@@ -1879,7 +1783,7 @@ bool dstr_equals(const struct dynamic_string *const lhs, const struct dynamic_st
 	if (str_1_non_empty + str_2_non_empty < 2) /* 存在「空字符串」时，需要提前返回。 */
 	{
 		return (str_1_non_empty ==
-			str_2_non_empty); /* 都为「空字符串」视为相等，否则视为不相等。 */
+				str_2_non_empty); /* 都为「空字符串」视为相等，否则视为不相等。 */
 	}
 
 	if (lhs->len != rhs->len) /* 长度不相等，则一定不相等。 */
@@ -1899,7 +1803,7 @@ bool cstr_equals(const char *const lhs, const char *const rhs) {
 	if (str_1_non_empty + str_2_non_empty < 2) /* 存在「空字符串」时，需要提前返回。 */
 	{
 		return (str_1_non_empty ==
-			str_2_non_empty); /* 都为「空字符串」视为相等，否则视为不相等。 */
+				str_2_non_empty); /* 都为「空字符串」视为相等，否则视为不相等。 */
 	}
 
 	return (strcmp(lhs, rhs) == 0);
@@ -1953,10 +1857,8 @@ int cstr_compare(const char *const lhs, const char *const rhs) {
 /* 查找、统计与替换。 */
 
 /* 查找一个「动态字符串」中指定子「C 字符串」第一次出现的位置。 */
-bool dstr_find_cstr(
-	const struct dynamic_string *const dstr, const char *const sub,
-	size_t *const out_index, const dstr_direction_t direction
-) {
+bool dstr_find_cstr(const struct dynamic_string *const dstr, const char *const sub,
+					size_t *const out_index, const dstr_direction_t direction) {
 	if (CHECK_DSTR_EMPTY(dstr) || CHECK_CSTR_EMPTY(sub)) /* 参数检查。 */
 	{
 		return false;
@@ -1974,10 +1876,8 @@ bool dstr_find_cstr(
 }
 
 /* 查找一个「动态字符串」中指定子「动态字符串」第一次出现的位置。 */
-bool dstr_find(
-	const struct dynamic_string *const dstr, const struct dynamic_string *const sub,
-	size_t *const out_index, const dstr_direction_t direction
-) {
+bool dstr_find(const struct dynamic_string *const dstr, const struct dynamic_string *const sub,
+			   size_t *const out_index, const dstr_direction_t direction) {
 	if (CHECK_DSTR_EMPTY(dstr) || CHECK_DSTR_EMPTY(sub)) /* 参数检查。 */
 	{
 		return false;
@@ -1990,21 +1890,19 @@ bool dstr_find(
 
 	/* 委托 find_str() 函数，查找 sub 第一次出现的位置。 */
 	return (find_str(dstr->data, dstr->len, sub->data, sub->len, out_index, NULL, direction, 1) >
-		0);
+			0);
 }
 
 /* 查找一个「C 字符串」中指定子「C 字符串」第一次出现的位置。 */
-bool cstr_find(
-	const char *const cstr, const char *const sub, size_t *const out_index,
-	const dstr_direction_t direction
-) {
+bool cstr_find(const char *const cstr, const char *const sub, size_t *const out_index,
+			   const dstr_direction_t direction) {
 	if (CHECK_CSTR_EMPTY(cstr) || CHECK_CSTR_EMPTY(sub)) /* 参数检查。 */
 	{
 		return false;
 	}
 
 	const size_t cstr_len = strlen(cstr); /* 计算 cstr 长度。 */
-	const size_t sub_len = strlen(sub);   /* 计算 sub 长度。 */
+	const size_t sub_len = strlen(sub);	  /* 计算 sub 长度。 */
 
 	if (sub_len > cstr_len) /* 如果 sub 长度大于 cstr，则一定不存在，直接返回 false。 */
 	{
@@ -2016,10 +1914,8 @@ bool cstr_find(
 }
 
 /* 查找一个「动态字符串」中指定子「C 字符串」第 n 次出现的位置。 */
-bool dstr_find_nth_cstr(
-	const struct dynamic_string *const dstr, const char *const sub,
-	size_t *const out_index, const dstr_direction_t direction, const size_t n
-) {
+bool dstr_find_nth_cstr(const struct dynamic_string *const dstr, const char *const sub,
+						size_t *const out_index, const dstr_direction_t direction, const size_t n) {
 	if (CHECK_DSTR_EMPTY(dstr) || CHECK_CSTR_EMPTY(sub)) /* 参数检查。 */
 	{
 		return false;
@@ -2037,10 +1933,8 @@ bool dstr_find_nth_cstr(
 }
 
 /* 查找一个「动态字符串」中指定子「动态字符串」第 n 次出现的位置。 */
-bool dstr_find_nth(
-	const struct dynamic_string *const dstr, const struct dynamic_string *const sub,
-	size_t *const out_index, const dstr_direction_t direction, const size_t n
-) {
+bool dstr_find_nth(const struct dynamic_string *const dstr, const struct dynamic_string *const sub,
+				   size_t *const out_index, const dstr_direction_t direction, const size_t n) {
 	if (CHECK_DSTR_EMPTY(dstr) || CHECK_DSTR_EMPTY(sub)) /* 参数检查。 */
 	{
 		return false;
@@ -2053,21 +1947,19 @@ bool dstr_find_nth(
 
 	/* 委托 find_str() 函数，查找 sub 第 n 次出现的位置。 */
 	return (find_str(dstr->data, dstr->len, sub->data, sub->len, out_index, NULL, direction, n) >
-		0);
+			0);
 }
 
 /* 查找一个「C 字符串」中指定子「C 字符串」第 n 次出现的位置。 */
-bool cstr_find_nth(
-	const char *const cstr, const char *const sub, size_t *const out_index,
-	const dstr_direction_t direction, const size_t n
-) {
+bool cstr_find_nth(const char *const cstr, const char *const sub, size_t *const out_index,
+				   const dstr_direction_t direction, const size_t n) {
 	if (CHECK_CSTR_EMPTY(cstr) || CHECK_CSTR_EMPTY(sub)) /* 参数检查。 */
 	{
 		return false;
 	}
 
 	const size_t cstr_len = strlen(cstr); /* 计算 cstr 长度。 */
-	const size_t sub_len = strlen(sub);   /* 计算 sub 长度。 */
+	const size_t sub_len = strlen(sub);	  /* 计算 sub 长度。 */
 
 	if (sub_len > cstr_len) /* 如果 sub 长度大于 cstr，则一定不存在，直接返回 false。 */
 	{
@@ -2079,11 +1971,9 @@ bool cstr_find_nth(
 }
 
 /* 查找一个「动态字符串」中指定子「C 字符串」前 n 次出现的位置。 */
-size_t dstr_find_indexes_cstr(
-	const struct dynamic_string *const dstr, const char *const sub,
-	size_t *const out_indexes, const dstr_direction_t direction,
-	const size_t n
-) {
+size_t dstr_find_indexes_cstr(const struct dynamic_string *const dstr, const char *const sub,
+							  size_t *const out_indexes, const dstr_direction_t direction,
+							  const size_t n) {
 	if (CHECK_DSTR_EMPTY(dstr) || CHECK_CSTR_EMPTY(sub)) /* 参数检查。 */
 	{
 		return 0;
@@ -2101,11 +1991,9 @@ size_t dstr_find_indexes_cstr(
 }
 
 /* 查找一个「动态字符串」中指定子「动态字符串」前 n 次出现的位置。 */
-size_t dstr_find_indexes(
-	const struct dynamic_string *const dstr,
-	const struct dynamic_string *const sub, size_t *const out_indexes,
-	const dstr_direction_t direction, const size_t n
-) {
+size_t dstr_find_indexes(const struct dynamic_string *const dstr,
+						 const struct dynamic_string *const sub, size_t *const out_indexes,
+						 const dstr_direction_t direction, const size_t n) {
 	if (CHECK_DSTR_EMPTY(dstr) || CHECK_DSTR_EMPTY(sub)) /* 参数检查。 */
 	{
 		return 0;
@@ -2121,17 +2009,15 @@ size_t dstr_find_indexes(
 }
 
 /* 查找一个「C 字符串」中指定子「C 字符串」前 n 次出现的位置。 */
-size_t cstr_find_indexes(
-	const char *const cstr, const char *const sub, size_t *const out_indexes,
-	const dstr_direction_t direction, const size_t n
-) {
+size_t cstr_find_indexes(const char *const cstr, const char *const sub, size_t *const out_indexes,
+						 const dstr_direction_t direction, const size_t n) {
 	if (CHECK_CSTR_EMPTY(cstr) || CHECK_CSTR_EMPTY(sub)) /* 参数检查。 */
 	{
 		return 0;
 	}
 
 	const size_t cstr_len = strlen(cstr); /* 计算 cstr 长度。 */
-	const size_t sub_len = strlen(sub);   /* 计算 sub 长度。 */
+	const size_t sub_len = strlen(sub);	  /* 计算 sub 长度。 */
 
 	if (sub_len > cstr_len) /* 如果 sub 长度大于 cstr，则一定不存在，直接返回 false。 */
 	{
@@ -2184,7 +2070,7 @@ size_t cstr_count(const char *const cstr, const char *const sub) {
 	}
 
 	const size_t cstr_len = strlen(cstr); /* 计算 cstr 长度。 */
-	const size_t sub_len = strlen(sub);   /* 计算 sub 长度。 */
+	const size_t sub_len = strlen(sub);	  /* 计算 sub 长度。 */
 
 	if (sub_len > cstr_len) /* 如果 sub 长度大于 cstr，则一定不存在，直接返回 false。 */
 	{
@@ -2196,11 +2082,9 @@ size_t cstr_count(const char *const cstr, const char *const sub) {
 }
 
 /* 替换一个「动态字符串」中指定旧「C 字符串」前 n 次为指定新「C 字符串」。 */
-dstr_status_t dstr_replace_cstr(
-	struct dynamic_string *const dstr, const char *const old_str,
-	const char *const new_str, dstr_direction_t direction,
-	const size_t n
-) {
+dstr_status_t dstr_replace_cstr(struct dynamic_string *const dstr, const char *const old_str,
+								const char *const new_str, dstr_direction_t direction,
+								const size_t n) {
 	if (CHECK_DSTR_EMPTY(dstr) || CHECK_CSTR_EMPTY(old_str)) /* 参数检查。 */
 	{
 		return DSTR_INVALID_ARGUMENT;
@@ -2214,19 +2098,15 @@ dstr_status_t dstr_replace_cstr(
 	}
 
 	/* 委托 replace_str() 函数，替换 old_str 的前 n 次出现为 new_str。 */
-	return replace_str(
-		dstr, old_str, old_str_len, new_str,
-		(!CHECK_CSTR_EMPTY(new_str)) ? strlen(new_str) : 0, direction, n
-	);
+	return replace_str(dstr, old_str, old_str_len, new_str,
+					   (!CHECK_CSTR_EMPTY(new_str)) ? strlen(new_str) : 0, direction, n);
 }
 
 /* 替换一个「动态字符串」中指定旧「动态字符串」前 n 次为指定新「动态字符串」。 */
-dstr_status_t dstr_replace(
-	struct dynamic_string *const dstr,
-	const struct dynamic_string *const old_str,
-	const struct dynamic_string *const new_str,
-	const dstr_direction_t direction, const size_t n
-) {
+dstr_status_t dstr_replace(struct dynamic_string *const dstr,
+						   const struct dynamic_string *const old_str,
+						   const struct dynamic_string *const new_str,
+						   const dstr_direction_t direction, const size_t n) {
 	if (CHECK_DSTR_EMPTY(dstr) || CHECK_DSTR_EMPTY(old_str)) /* 参数检查。 */
 	{
 		return DSTR_INVALID_ARGUMENT;
@@ -2239,19 +2119,15 @@ dstr_status_t dstr_replace(
 
 	/* 委托 replace_str() 函数，替换 old_str 的前 n 次出现为 new_str。 */
 	return (!CHECK_DSTR_EMPTY(new_str))
-		   ? replace_str(
-			   dstr, old_str->data, old_str->len, new_str->data, new_str->len,
-			   direction, n
-		   )
-		   : replace_str(dstr, old_str->data, old_str->len, NULL, 0, direction, n);
+			   ? replace_str(dstr, old_str->data, old_str->len, new_str->data, new_str->len,
+							 direction, n)
+			   : replace_str(dstr, old_str->data, old_str->len, NULL, 0, direction, n);
 }
 
 /* 替换一个「动态字符串」中指定旧「C 字符串」第 n 次为指定新「C 字符串」。 */
-dstr_status_t dstr_replace_nth_cstr(
-	struct dynamic_string *const dstr, const char *const old_str,
-	const char *const new_str, const dstr_direction_t direction,
-	const size_t n
-) {
+dstr_status_t dstr_replace_nth_cstr(struct dynamic_string *const dstr, const char *const old_str,
+									const char *const new_str, const dstr_direction_t direction,
+									const size_t n) {
 	if (CHECK_DSTR_EMPTY(dstr) || CHECK_CSTR_EMPTY(old_str)) /* 参数检查。 */
 	{
 		return DSTR_INVALID_ARGUMENT;
@@ -2265,19 +2141,15 @@ dstr_status_t dstr_replace_nth_cstr(
 	}
 
 	/* 委托 replace_str_nth() 函数，替换 old_str 的第 n 次出现为 new_str。 */
-	return replace_str_nth(
-		dstr, old_str, old_str_len, new_str,
-		(!CHECK_CSTR_EMPTY(new_str)) ? strlen(new_str) : 0, direction, n
-	);
+	return replace_str_nth(dstr, old_str, old_str_len, new_str,
+						   (!CHECK_CSTR_EMPTY(new_str)) ? strlen(new_str) : 0, direction, n);
 }
 
 /* 替换一个「动态字符串」中指定旧「动态字符串」第 n 次为指定新「动态字符串」。 */
-dstr_status_t dstr_replace_nth(
-	struct dynamic_string *const dstr,
-	const struct dynamic_string *const old_str,
-	const struct dynamic_string *const new_str,
-	const dstr_direction_t direction, const size_t n
-) {
+dstr_status_t dstr_replace_nth(struct dynamic_string *const dstr,
+							   const struct dynamic_string *const old_str,
+							   const struct dynamic_string *const new_str,
+							   const dstr_direction_t direction, const size_t n) {
 	if (CHECK_DSTR_EMPTY(dstr) || CHECK_DSTR_EMPTY(old_str)) /* 参数检查。 */
 	{
 		return DSTR_INVALID_ARGUMENT;
@@ -2290,26 +2162,22 @@ dstr_status_t dstr_replace_nth(
 
 	/* 委托 replace_str_nth() 函数，替换 old_str 的第 n 次出现为 new_str。 */
 	return (!CHECK_DSTR_EMPTY(new_str))
-		   ? replace_str_nth(
-			   dstr, old_str->data, old_str->len, new_str->data, new_str->len,
-			   direction, n
-		   )
-		   : replace_str_nth(dstr, old_str->data, old_str->len, NULL, 0, direction, n);
+			   ? replace_str_nth(dstr, old_str->data, old_str->len, new_str->data, new_str->len,
+								 direction, n)
+			   : replace_str_nth(dstr, old_str->data, old_str->len, NULL, 0, direction, n);
 }
 
 /* 分隔与合并。 */
 
 /* 分隔一个「C 字符串」为多个「动态字符串」。 */
-struct dynamic_string **dstr_split_cstr(
-	const char *const cstr, const char *const separator,
-	size_t *const out_dstr_count
-) {
+struct dynamic_string **dstr_split_cstr(const char *const cstr, const char *const separator,
+										size_t *const out_dstr_count) {
 	/* 参数检查。 */
 	if (CHECK_CSTR_EMPTY(cstr) || CHECK_CSTR_EMPTY(separator) || out_dstr_count == NULL) {
 		return NULL;
 	}
 
-	const size_t cstr_len = strlen(cstr);           /* 计算 cstr 长度。 */
+	const size_t cstr_len = strlen(cstr);			/* 计算 cstr 长度。 */
 	const size_t separator_len = strlen(separator); /* 计算 separator 长度。 */
 
 	if (separator_len > cstr_len) /* 如果 separator 长度大于 cstr，则视为不合法参数，直接返回。  */
@@ -2322,11 +2190,9 @@ struct dynamic_string **dstr_split_cstr(
 }
 
 /* 分隔一个「动态字符串」为多个「动态字符串」。 */
-struct dynamic_string **dstr_split(
-	const struct dynamic_string *const dstr,
-	const struct dynamic_string *const separator,
-	size_t *const out_dstr_count
-) {
+struct dynamic_string **dstr_split(const struct dynamic_string *const dstr,
+								   const struct dynamic_string *const separator,
+								   size_t *const out_dstr_count) {
 	/* 参数检查。 */
 	if (CHECK_DSTR_EMPTY(dstr) || CHECK_DSTR_EMPTY(separator) || out_dstr_count == NULL) {
 		return NULL;
@@ -2342,16 +2208,14 @@ struct dynamic_string **dstr_split(
 }
 
 /* 分隔一个「C 字符串」为多个「C 字符串」。 */
-char **cstr_split(
-	const char *const cstr, const char *const separator,
-	size_t *const out_cstr_count
-) {
+char **cstr_split(const char *const cstr, const char *const separator,
+				  size_t *const out_cstr_count) {
 	/* 参数检查。 */
 	if (CHECK_CSTR_EMPTY(cstr) || CHECK_CSTR_EMPTY(separator) || out_cstr_count == NULL) {
 		return NULL;
 	}
 
-	const size_t cstr_len = strlen(cstr);           /* 计算 cstr 长度。 */
+	const size_t cstr_len = strlen(cstr);			/* 计算 cstr 长度。 */
 	const size_t separator_len = strlen(separator); /* 计算 separator 长度。 */
 
 	if (separator_len > cstr_len) /* 如果 separator 长度大于 cstr，则视为不合法参数，直接返回。  */
@@ -2372,9 +2236,9 @@ char **cstr_split(
 	const size_t cstr_count = separator_count + 1;
 
 	/* 动态分配 char * 数组。 */
-	char **const cstrs = (safe_size_mul(cstr_count, sizeof(char*), NULL) == SAFE_CALC_OK)
-						 ? malloc(cstr_count * sizeof(char*))
-						 : NULL;
+	char **const cstrs = (safe_size_mul(cstr_count, sizeof(char *), NULL) == SAFE_CALC_OK)
+							 ? malloc(cstr_count * sizeof(char *))
+							 : NULL;
 
 	if (cstrs == NULL) {
 		return NULL;
@@ -2444,10 +2308,8 @@ char **cstr_split(
 }
 
 /* 合并多个「C 字符串」为一个「动态字符串」。 */
-struct dynamic_string *dstr_join_cstr(
-	const char *const *const cstrs, const size_t cstr_count,
-	const char *const separator
-) {
+struct dynamic_string *dstr_join_cstr(const char *const *const cstrs, const size_t cstr_count,
+									  const char *const separator) {
 	if (cstrs == NULL || cstr_count == 0) /* 参数检查。 */
 	{
 		return NULL;
@@ -2468,8 +2330,8 @@ struct dynamic_string *dstr_join_cstr(
 	 * 避免在第一遍累加和第二遍拷贝时各执行一次 strlen()。
 	 * 分配失败则不缓存，后续重新计算，不视为致命错误。 */
 	size_t *const cstr_lens = (safe_size_mul(cstr_count, sizeof(size_t), NULL) == SAFE_CALC_OK)
-							  ? malloc(cstr_count * sizeof(size_t))
-							  : NULL;
+								  ? malloc(cstr_count * sizeof(size_t))
+								  : NULL;
 
 	/* 第一遍遍历：累加每个「C 字符串」的长度，以计算合并后的字符串长度。
 	 * 指针本身可能为空（视为长度 0）；不为空时长度也可能为 0；
@@ -2523,8 +2385,8 @@ struct dynamic_string *dstr_join_cstr(
 		/* 从缓存获取，或重新计算长度。 */
 		const size_t cstr_len =
 			(cstr_lens != NULL)
-			? cstr_lens[i]
-			: ((cstrs[i] != NULL && cstrs[i][0] != '\0') ? strlen(cstrs[i]) : 0);
+				? cstr_lens[i]
+				: ((cstrs[i] != NULL && cstrs[i][0] != '\0') ? strlen(cstrs[i]) : 0);
 
 		if (cstr_len > 0) /* 拷贝 cstr。 */
 		{
@@ -2533,7 +2395,7 @@ struct dynamic_string *dstr_join_cstr(
 		}
 	}
 
-	*dest = '\0';             /* 设置终止符。 */
+	*dest = '\0';			  /* 设置终止符。 */
 	result->len = target_len; /* 设置长度。 */
 
 	free(cstr_lens);
@@ -2541,11 +2403,9 @@ struct dynamic_string *dstr_join_cstr(
 }
 
 /* 合并多个「动态字符串」为一个「动态字符串」。 */
-struct dynamic_string *dstr_join(
-	const struct dynamic_string *const *const dstrs,
-	const size_t dstr_count,
-	const struct dynamic_string *const separator
-) {
+struct dynamic_string *dstr_join(const struct dynamic_string *const *const dstrs,
+								 const size_t dstr_count,
+								 const struct dynamic_string *const separator) {
 	if (dstrs == NULL || dstr_count == 0) /* 参数检查。 */
 	{
 		return NULL;
@@ -2603,17 +2463,15 @@ struct dynamic_string *dstr_join(
 		}
 	}
 
-	*dest = '\0';             /* 设置终止符。 */
+	*dest = '\0';			  /* 设置终止符。 */
 	result->len = target_len; /* 设置长度。 */
 
 	return result;
 }
 
 /* 合并多个「C 字符串」为一个「C 字符串」。 */
-char *cstr_join(
-	const char *const *const cstrs, const size_t cstr_count,
-	const char *const separator
-) {
+char *cstr_join(const char *const *const cstrs, const size_t cstr_count,
+				const char *const separator) {
 	if (cstrs == NULL || cstr_count == 0) /* 参数检查。 */
 	{
 		return NULL;
@@ -2634,8 +2492,8 @@ char *cstr_join(
 	 * 避免在第一遍累加和第二遍拷贝时各执行一次 strlen()。
 	 * 分配失败则不缓存，后续重新计算，不视为致命错误。 */
 	size_t *const cstr_lens = (safe_size_mul(cstr_count, sizeof(size_t), NULL) == SAFE_CALC_OK)
-							  ? malloc(cstr_count * sizeof(size_t))
-							  : NULL;
+								  ? malloc(cstr_count * sizeof(size_t))
+								  : NULL;
 
 	/* 第一遍遍历：累加每个「C 字符串」的长度，以计算合并后的字符串长度。
 	 * 指针本身可能为空（视为长度 0）；不为空时长度也可能为 0；
@@ -2674,8 +2532,8 @@ char *cstr_join(
 		/* 从缓存获取，或重新计算长度。 */
 		const size_t cstr_len =
 			(cstr_lens != NULL)
-			? cstr_lens[i]
-			: ((cstrs[i] != NULL && cstrs[i][0] != '\0') ? strlen(cstrs[i]) : 0);
+				? cstr_lens[i]
+				: ((cstrs[i] != NULL && cstrs[i][0] != '\0') ? strlen(cstrs[i]) : 0);
 
 		if (cstr_len > 0) /* 拷贝 cstr。 */
 		{
